@@ -148,8 +148,9 @@ function App() {
 
   /** Resolve displayed value for a role cell (manual edit > auto assignment) */
   const getCellValue = (loc: string, date: string, role: string, fallback: string) => {
-    const manual = getEdit(loc, date, role);
-    return manual || fallback;
+    const key = editKey(loc, date, role);
+    if (key in manualEdits) return manualEdits[key];
+    return fallback;
   };
 
   const pushVersion = (s: Shift[], e: Record<string, string>) => {
@@ -239,9 +240,9 @@ function App() {
 
         // Meal rows — number input + fixed 份 unit
         const mealVal = (s: Shift, field: string) => {
-          const v = getEdit(locationName, s.date, field);
-          const n = v || String(countAssigned(s, roles));
-          return `${n} 份`;
+          const valKey = editKey(locationName, s.date, field);
+          const v = valKey in manualEdits ? manualEdits[valKey] : String(countAssigned(s, roles));
+          return `${v} 份`;
         };
         if (locationName === '山莊大堂') {
           rows.push(['山莊早餐數量', ...locationShifts.map(s => mealVal(s, '早餐'))]);
@@ -347,7 +348,8 @@ function App() {
       <td style={mealLabelStyle}>{label}</td>
       {locationShifts.map(shift => {
         const defaultNum = countAssigned(shift, roles);
-        const val = getEdit(locationName, shift.date, field);
+        const valKey = editKey(locationName, shift.date, field);
+        const val = valKey in manualEdits ? manualEdits[valKey] : String(defaultNum);
         return (
           <td key={`${field}-${shift.date}`} style={mealValueStyle}>
             {editMode ? (
@@ -355,7 +357,7 @@ function App() {
                 <input
                   style={{ ...inputStyle, color: 'var(--text-meal)', width: '50px' }}
                   type="number" min="0"
-                  placeholder={String(defaultNum)}
+                  placeholder="0"
                   value={val}
                   onChange={e => setEdit(locationName, shift.date, field, e.target.value)}
                 />
@@ -427,8 +429,8 @@ function App() {
                       return (
                         <td key={shift.date}>
                           <input style={{ ...inputStyle, color: 'var(--text-primary)', width: '90px' }}
-                            value={getEdit(locationName, shift.date, role) || ''}
-                            placeholder={base}
+                            value={displayed}
+                            placeholder="—"
                             onChange={e => setEdit(locationName, shift.date, role, e.target.value)} />
                         </td>
                       );
