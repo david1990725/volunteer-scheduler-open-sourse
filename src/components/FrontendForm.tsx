@@ -75,7 +75,7 @@ export const FrontendForm: React.FC<FrontendFormProps> = ({ currentUser, onLogou
   if (submitted) {
     return (
       <div className="glass-card" style={{ padding: '60px 20px', textAlign: 'center', maxWidth: '600px', margin: '100px auto' }}>
-        <CheckCircle color="#10b981" size={64} style={{ margin: '0 auto 20px' }} />
+        <CheckCircle color="var(--icon-accent)" size={64} style={{ margin: '0 auto 20px' }} />
         <h2 style={{ fontSize: '1.8rem', marginBottom: '20px' }}>提交成功！</h2>
         <p style={{ color: 'var(--text-secondary)' }}>
           感謝 {currentUser.name} 填寫 {targetMonths[0]}、{targetMonths[1]} 月份的服事排班表單。

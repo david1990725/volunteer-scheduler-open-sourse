@@ -149,13 +149,29 @@ function App() {
   }, [versions]);
 
   useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      const x = (e.clientX / window.innerWidth) * 100;
+      const y = (e.clientY / window.innerHeight) * 100;
+      document.documentElement.style.setProperty('--mouse-x', `${x}%`);
+      document.documentElement.style.setProperty('--mouse-y', `${y}%`);
+      // Also calculate rotation for subtle tilt
+      const rotateY = (e.clientX / window.innerWidth - 0.5) * 4;
+      const rotateX = (e.clientY / window.innerHeight - 0.5) * -4;
+      document.documentElement.style.setProperty('--tilt-x', `${rotateX}deg`);
+      document.documentElement.style.setProperty('--tilt-y', `${rotateY}deg`);
+    };
+
     const handleClickOutside = (e: MouseEvent) => {
       if (exportMenuRef.current && !exportMenuRef.current.contains(e.target as Node)) {
         setShowExportMenu(false);
       }
     };
+    document.addEventListener('mousemove', handleMouseMove);
     document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
   }, []);
 
   const editKey = (loc: string, date: string, field: string) => `${loc}|${date}|${field}`;
@@ -538,187 +554,181 @@ function App() {
 
   const hasShifts = shifts.length > 0;
 
-  if (view === 'login') {
-    return (
-      <div style={{ padding: '40px 20px', maxWidth: '1400px', margin: '0 auto', width: '100%' }}>
-        <button className="theme-toggle" onClick={() => setDarkMode(d => !d)} title={darkMode ? '切換亮色模式' : '切換暗色模式'}>
-          {darkMode ? <Sun size={20} color="#fcd34d" /> : <Moon size={20} color="#6366f1" />}
-        </button>
-        <header style={{ marginBottom: '48px', textAlign: 'center' }}>
-          <h1 style={{
-            fontSize: '2.8rem', fontWeight: 800, letterSpacing: '-0.02em',
-            background: 'linear-gradient(135deg, var(--text-title-from) 0%, var(--text-title-to) 100%)',
-            WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
-            marginBottom: '12px',
-            filter: 'drop-shadow(0 2px 8px rgba(167, 139, 250, 0.3))',
-          }}>轉播拍攝排班系統</h1>
-        </header>
-        <Login onLogin={(user) => {
-          setCurrentUser(user);
-          if (user.role === 'admin') setView('admin');
-          else setView('frontend');
-        }} />
-      </div>
-    );
-  }
-
-  if (view === 'frontend') {
-    return (
-      <div style={{ padding: '40px 20px', maxWidth: '1400px', margin: '0 auto', width: '100%' }}>
-        <button className="theme-toggle" onClick={() => setDarkMode(d => !d)}>
-          {darkMode ? <Sun size={20} color="#fcd34d" /> : <Moon size={20} color="#6366f1" />}
-        </button>
-        <FrontendForm 
-          currentUser={currentUser!} 
-          onLogout={() => { setView('login'); setCurrentUser(null); }} 
-          onBackToAdmin={currentUser?.role === 'admin' ? () => setView('admin') : undefined}
-        />
-      </div>
-    );
-  }
-
-  // Admin View
   return (
     <div style={{ padding: '40px 20px', maxWidth: '1400px', margin: '0 auto', width: '100%' }}>
       {/* Theme Toggle */}
       <button className="theme-toggle" onClick={() => setDarkMode(d => !d)} title={darkMode ? '切換亮色模式' : '切換暗色模式'}>
-        {darkMode ? <Sun size={20} color="#fcd34d" /> : <Moon size={20} color="#6366f1" />}
+        {darkMode ? <Sun size={20} color="#fcd34d" /> : <Moon size={20} color="var(--icon-accent)" />}
       </button>
 
-      <header style={{ marginBottom: '48px', textAlign: 'center' }}>
-        <h1 style={{
-          fontSize: '2.8rem', fontWeight: 800, letterSpacing: '-0.02em',
-          background: 'linear-gradient(135deg, var(--text-title-from) 0%, var(--text-title-to) 100%)',
-          WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
-          marginBottom: '12px',
-          filter: 'drop-shadow(0 2px 8px rgba(167, 139, 250, 0.3))',
-        }}>轉播拍攝排班後台</h1>
-        <div style={{ display: 'flex', justifyContent: 'center', gap: '15px', marginTop: '20px', flexWrap: 'wrap' }}>
+      {/* Shared Header with Logo */}
+      <header className={`logo-container ${view !== 'login' ? 'minimized' : ''}`}>
+        <img 
+          src="/logo.png" 
+          alt="BOL Production" 
+          className="app-logo"
+        />
+        <div style={{ textAlign: view === 'login' ? 'center' : 'left' }}>
+          <h1 style={{
+            fontSize: view === 'login' ? '2.8rem' : '2.2rem', 
+            fontWeight: 800, 
+            letterSpacing: '-0.02em',
+            background: 'linear-gradient(135deg, var(--text-title-from) 0%, var(--text-title-to) 100%)',
+            WebkitBackgroundClip: 'text', 
+            WebkitTextFillColor: 'transparent',
+            marginBottom: '4px',
+            lineHeight: '1.2',
+            filter: 'drop-shadow(0 2px 8px rgba(234, 179, 8, 0.3))',
+            transition: 'all 0.5s cubic-bezier(0.4, 0, 0.2, 1)'
+          }}>
+            <span style={{ fontSize: view === 'login' ? '1.8rem' : '1.2rem', display: 'block', marginBottom: '4px', transition: 'all 0.5s' }}>BOL Production</span>
+            <span style={{ display: 'block' }}>
+              {view === 'admin' ? '主日轉播排班後台' : '主日轉播排班系統'}
+            </span>
+          </h1>
+        </div>
+      </header>
+
+      {view === 'admin' && (
+        <div style={{ display: 'flex', justifyContent: 'center', gap: '15px', marginBottom: '32px', flexWrap: 'wrap' }}>
           <button className={adminTab === 'raw' ? 'btn-primary' : 'btn-secondary'} onClick={() => setAdminTab('raw')}>RAW 資料表單</button>
           <button className={adminTab === 'scheduler' ? 'btn-primary' : 'btn-secondary'} onClick={() => setAdminTab('scheduler')}>自動排班系統</button>
           <button className="btn-secondary" onClick={() => setView('frontend')} style={{ borderColor: 'var(--icon-accent)', color: 'var(--text-primary)' }}>填寫個人表單</button>
           <button className="btn-secondary" onClick={() => { setView('login'); setCurrentUser(null); }}>登出</button>
         </div>
-      </header>
+      )}
 
-      {adminTab === 'raw' ? (
-        <AdminRawData onStartAutoSchedule={() => {
-          setAdminTab('scheduler');
-          generateSchedule();
-        }} />
-      ) : (
-        <>
-          {/* Upload & Actions */}
-      <div className="glass-card" style={{ padding: '24px', marginBottom: '30px', position: 'relative', zIndex: 10 }}>
-        <div style={{ display: 'flex', gap: '15px', alignItems: 'center', marginBottom: '20px' }}>
-          <div style={{ background: 'var(--icon-bg)', padding: '12px', borderRadius: '12px' }}>
-            <FileSpreadsheet color="var(--icon-accent)" size={24} />
-          </div>
-          <div>
-            <h2 style={{ margin: 0, fontSize: '1.2rem', color: 'var(--text-primary)' }}>資料上傳 (可選)</h2>
-            <p style={{ margin: 0, color: 'var(--text-secondary)', fontSize: '0.9rem' }}>丟入 Excel 或 CSV 回應表單檔案。技能樹將自動從 Google 試算表讀取。</p>
-          </div>
-        </div>
+      {/* Main Content Area */}
+      <main>
+        {view === 'login' && (
+          <Login onLogin={(user) => {
+            setCurrentUser(user);
+            if (user.role === 'admin') setView('admin');
+            else setView('frontend');
+          }} />
+        )}
 
-        <div style={{ display: 'flex', gap: '20px', flexWrap: 'wrap', marginBottom: '20px' }}>
-          <div style={{ flex: 1, minWidth: '250px', background: 'var(--bg-input)', padding: '15px', borderRadius: '8px', border: '1px dashed var(--bg-input-border)' }}>
-            <label style={{ display: 'block', marginBottom: '10px', fontSize: '0.9rem', color: 'var(--text-label)' }}>排班回應表單 (Responses)</label>
-            <input type="file" accept=".csv,.xlsx,.xls" onChange={handleFileUpload} ref={responseFileInputRef} style={{ width: '100%', color: 'var(--text-secondary)' }} />
-          </div>
-        </div>
+        {view === 'frontend' && (
+          <FrontendForm 
+            currentUser={currentUser!} 
+            onLogout={() => { setView('login'); setCurrentUser(null); }} 
+            onBackToAdmin={currentUser?.role === 'admin' ? () => setView('admin') : undefined}
+          />
+        )}
 
-        <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end', flexWrap: 'wrap', borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: '20px' }}>
-          <button className="btn-secondary" onClick={resetAll}><RotateCcw size={18} /> 重置</button>
-          <button className="btn-secondary" onClick={generateSchedule} disabled={loading}>
-            <RefreshCw size={18} className={loading ? 'animate-spin' : ''} /> {loading ? '排班中...' : '自動生成排班'}
-          </button>
-
-          {/* Export Dropdown */}
-          <div ref={exportMenuRef} style={{ position: 'relative' }}>
-            <button className="btn-primary" disabled={!hasShifts && !exporting}
-              onClick={() => setShowExportMenu(v => !v)}>
-              <Download size={18} /> {exporting ? '匯出中...' : '匯出'} <ChevronDown size={16} />
-            </button>
-            {showExportMenu && (
-              <div className="export-dropdown">
-                <button onClick={() => { exportExcel(); setShowExportMenu(false); }}>
-                  <FileSpreadsheet size={16} /> Excel
-                </button>
-                <button onClick={() => { exportPNG(); setShowExportMenu(false); }}>
-                  <Image size={16} /> PNG
-                </button>
-                <button onClick={() => { exportPDF(); setShowExportMenu(false); }}>
-                  <FileText size={16} /> PDF
-                </button>
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
-
-      {/* Edit Mode + Version History Bar */}
-      {(hasShifts || versions.length > 0) && (
-        <div className="glass-card" style={{ padding: '16px 24px', marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
-          {/* Edit / Save toggle */}
-          {hasShifts && (
-            editMode ? (
-              <button className="btn-primary" onClick={saveEdits}
-                style={{ background: 'linear-gradient(135deg, #059669 0%, #10b981 100%)' }}>
-                <Save size={18} /> 儲存變更
-              </button>
+        {view === 'admin' && (
+          <>
+            {adminTab === 'raw' ? (
+              <AdminRawData onStartAutoSchedule={() => {
+                setAdminTab('scheduler');
+                generateSchedule();
+              }} />
             ) : (
-              <button className="btn-secondary" onClick={() => setEditMode(true)}>
-                <Edit3 size={18} /> 編輯排班
-              </button>
-            )
-          )}
-          {hasShifts && editMode && (
-            <button className="btn-secondary" onClick={() => { setEditMode(false); if (activeVersionId) { const v = versions.find(x => x.id === activeVersionId); if (v) restoreVersion(v); } }}>
-              <RotateCcw size={16} /> 取消
-            </button>
-          )}
+              <>
+                {/* Upload & Actions */}
+                <div className="glass-card" style={{ padding: '24px', marginBottom: '24px' }}>
+                  <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap', alignItems: 'center' }}>
+                    <div style={{ flex: 1, minWidth: '300px' }}>
+                      <label className="btn-secondary" style={{ width: '100%', justifyContent: 'center', height: '48px', cursor: 'pointer' }}>
+                        <Download size={20} style={{ transform: 'rotate(180deg)' }} /> 上傳技能樹 / 排班 CSV
+                        <input type="file" accept=".csv" onChange={handleFileUpload} style={{ display: 'none' }} />
+                      </label>
+                    </div>
 
-          <div style={{ flex: 1 }} />
+                    <button className="btn-primary" onClick={() => generateSchedule()} disabled={loading} style={{ height: '48px', padding: '0 32px' }}>
+                      <RefreshCw size={20} className={loading ? 'animate-spin' : ''} /> {loading ? '生成中...' : '自動生成排班'}
+                    </button>
 
-          {/* Version History */}
-          {versions.length > 0 && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <History size={18} color="var(--text-secondary)" />
-              <select
-                value={activeVersionId ?? ''}
-                onChange={e => { const v = versions.find(x => x.id === Number(e.target.value)); if (v) restoreVersion(v); }}
-                style={{
-                  background: 'var(--bg-input)', border: '1px solid var(--bg-input-border)',
-                  borderRadius: '6px', color: 'var(--text-primary)', padding: '6px 12px', fontSize: '0.85rem',
-                }}
-              >
-                <option value="" disabled style={{ background: 'var(--bg-primary)' }}>回朔記憶的表單...</option>
-                {versions.map(v => (
-                  <option key={v.id} value={v.id} style={{ background: 'var(--bg-primary)' }}>
-                    {v.timestamp} - {v.filename}
-                  </option>
-                ))}
-              </select>
-            </div>
-          )}
-        </div>
-      )}
+                    <button className="btn-secondary" onClick={resetAll} disabled={!hasShifts} style={{ height: '48px' }}>
+                      <RotateCcw size={20} /> 清除
+                    </button>
 
-      {/* Schedule Tables */}
-      {hasShifts ? (
-        <div ref={scheduleRef}>
-          {renderLocationTable('山莊大堂', SHAN_ZHUANG_ROLES)}
-          {renderLocationTable('宣教大樓', XUAN_JIAO_ROLES)}
-        </div>
-      ) : (
-        <div className="glass-card" style={{ padding: '60px 20px', textAlign: 'center' }}>
-          <Users color="var(--text-muted)" size={48} style={{ margin: '0 auto 20px' }} />
-          <h3 style={{ color: 'var(--text-secondary)', fontSize: '1.2rem', marginBottom: '10px' }}>尚未生成排班資料</h3>
-          <p style={{ color: 'var(--text-muted)' }}>點擊上方的「自動生成排班」按鈕來開始</p>
-        </div>
-      )}
-        </>
-      )}
+                    {/* Export Dropdown */}
+                    <div ref={exportMenuRef} style={{ position: 'relative' }}>
+                      <button className="btn-primary" disabled={!hasShifts || exporting !== ''}
+                        onClick={() => setShowExportMenu(v => !v)}>
+                        <Download size={18} /> {exporting ? '匯出中...' : '匯出'} <ChevronDown size={16} />
+                      </button>
+                      {showExportMenu && (
+                        <div className="export-dropdown">
+                          <button onClick={() => { exportExcel(); setShowExportMenu(false); }}>
+                            <FileSpreadsheet size={16} /> Excel
+                          </button>
+                          <button onClick={() => { exportPNG(); setShowExportMenu(false); }}>
+                            <Image size={16} /> PNG
+                          </button>
+                          <button onClick={() => { exportPDF(); setShowExportMenu(false); }}>
+                            <FileText size={16} /> PDF
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Edit Mode + Version History Bar */}
+                {(hasShifts || versions.length > 0) && (
+                  <div className="glass-card" style={{ padding: '16px 24px', marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+                    {/* Edit / Save toggle */}
+                    {hasShifts && (
+                      editMode ? (
+                        <button className="btn-primary" onClick={saveEdits}>
+                          <Save size={18} /> 儲存變更
+                        </button>
+                      ) : (
+                        <button className="btn-secondary" onClick={() => setEditMode(true)}>
+                          <Edit3 size={18} /> 編輯排班
+                        </button>
+                      )
+                    )}
+                    {hasShifts && editMode && (
+                      <button className="btn-secondary" onClick={() => { setEditMode(false); if (activeVersionId) { const v = versions.find(x => x.id === activeVersionId); if (v) restoreVersion(v); } }}>
+                        <RotateCcw size={16} /> 取消
+                      </button>
+                    )}
+
+                    <div style={{ flex: 1 }} />
+
+                    {/* Version History */}
+                    {versions.length > 0 && (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <History size={18} color="var(--text-secondary)" />
+                        <span style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', marginRight: '8px' }}>歷史版本:</span>
+                        <div style={{ display: 'flex', gap: '6px', overflowX: 'auto', padding: '4px' }}>
+                          {versions.map(v => (
+                            <button
+                              key={v.id}
+                              className={v.id === activeVersionId ? 'btn-primary' : 'btn-secondary'}
+                              style={{ padding: '6px 12px', fontSize: '0.8rem', whiteSpace: 'nowrap' }}
+                              onClick={() => restoreVersion(v)}
+                            >
+                              {v.filename}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Schedule Tables */}
+                {hasShifts ? (
+                  <div ref={scheduleRef}>
+                    {renderLocationTable('山莊大堂', SHAN_ZHUANG_ROLES)}
+                    {renderLocationTable('宣教大樓', XUAN_JIAO_ROLES)}
+                  </div>
+                ) : (
+                  <div className="glass-card" style={{ padding: '60px 20px', textAlign: 'center' }}>
+                    <Users color="var(--text-muted)" size={48} style={{ margin: '0 auto 20px' }} />
+                    <h3 style={{ color: 'var(--text-secondary)', fontSize: '1.2rem', marginBottom: '10px' }}>尚未生成排班資料</h3>
+                    <p style={{ color: 'var(--text-muted)' }}>點擊上方的「自動生成排班」按鈕來開始</p>
+                  </div>
+                )}
+              </>
+            )}
+          </>
+        )}
+      </main>
     </div>
   );
 }
