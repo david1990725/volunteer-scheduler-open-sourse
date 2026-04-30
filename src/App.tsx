@@ -161,16 +161,53 @@ function App() {
       document.documentElement.style.setProperty('--tilt-y', `${rotateY}deg`);
     };
 
+    const handleDeviceOrientation = (e: DeviceOrientationEvent) => {
+      if (e.beta === null || e.gamma === null) return;
+      
+      // beta: -180 to 180 (front-back tilt)
+      // gamma: -90 to 90 (left-right tilt)
+      // We want to map these to reasonable tilt degrees (-5 to 5)
+      const tiltX = Math.max(-10, Math.min(10, e.beta / 10)) * -1;
+      const tiltY = Math.max(-10, Math.min(10, e.gamma / 10));
+      
+      document.documentElement.style.setProperty('--tilt-x', `${tiltX}deg`);
+      document.documentElement.style.setProperty('--tilt-y', `${tiltY}deg`);
+      
+      // Also move the spotlight based on tilt
+      const mouseX = 50 + (e.gamma / 90) * 50;
+      const mouseY = 50 + (e.beta / 180) * 50;
+      document.documentElement.style.setProperty('--mouse-x', `${mouseX}%`);
+      document.documentElement.style.setProperty('--mouse-y', `${mouseY}%`);
+    };
+
     const handleClickOutside = (e: MouseEvent) => {
       if (exportMenuRef.current && !exportMenuRef.current.contains(e.target as Node)) {
         setShowExportMenu(false);
       }
     };
+
     document.addEventListener('mousemove', handleMouseMove);
     document.addEventListener('mousedown', handleClickOutside);
+    window.addEventListener('deviceorientation', handleDeviceOrientation);
+
+    // Request permission for iOS if needed
+    if (typeof (DeviceOrientationEvent as any).requestPermission === 'function') {
+      const requestPermission = async () => {
+        try {
+          await (DeviceOrientationEvent as any).requestPermission();
+        } catch (e) {
+          console.error('Device orientation permission denied');
+        }
+      };
+      // Note: This usually needs a user interaction to trigger, 
+      // but adding the listener anyway might work on some environments.
+      document.addEventListener('click', requestPermission, { once: true });
+    }
+
     return () => {
       document.removeEventListener('mousemove', handleMouseMove);
       document.removeEventListener('mousedown', handleClickOutside);
+      window.removeEventListener('deviceorientation', handleDeviceOrientation);
     };
   }, []);
 
