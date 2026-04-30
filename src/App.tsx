@@ -100,6 +100,7 @@ const mealRowBg: React.CSSProperties = {
 interface ScheduleVersion {
   id: number;
   timestamp: string;
+  filename: string;
   shifts: Shift[];
   edits: Record<string, string>;
 }
@@ -115,18 +116,29 @@ function App() {
   const [responseFile, setResponseFile] = useState<File | null>(null);
   const [manualEdits, setManualEdits] = useState<Record<string, string>>({});
   const [editMode, setEditMode] = useState(false);
-  const [versions, setVersions] = useState<ScheduleVersion[]>([]);
+  const [versions, setVersions] = useState<ScheduleVersion[]>(() => {
+    try {
+      const saved = localStorage.getItem('volunteer_scheduler_versions');
+      if (saved) return JSON.parse(saved);
+    } catch (e) {
+      console.error('Failed to load versions from localStorage', e);
+    }
+    return [];
+  });
   const [activeVersionId, setActiveVersionId] = useState<number | null>(null);
   const [darkMode, setDarkMode] = useState(true);
   const [showExportMenu, setShowExportMenu] = useState(false);
   const responseFileInputRef = useRef<HTMLInputElement>(null);
   const scheduleRef = useRef<HTMLDivElement>(null);
   const exportMenuRef = useRef<HTMLDivElement>(null);
-  const nextVersionId = useRef(1);
 
   useEffect(() => {
     document.documentElement.classList.toggle('light-theme', !darkMode);
   }, [darkMode]);
+
+  useEffect(() => {
+    localStorage.setItem('volunteer_scheduler_versions', JSON.stringify(versions));
+  }, [versions]);
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
@@ -153,11 +165,16 @@ function App() {
     return fallback;
   };
 
-  const pushVersion = (s: Shift[], e: Record<string, string>) => {
-    const id = nextVersionId.current++;
+  const pushVersion = (s: Shift[], e: Record<string, string>, filename?: string) => {
+    const id = Date.now();
     const ts = new Date().toLocaleString('zh-TW', { hour12: false });
-    const v: ScheduleVersion = { id, timestamp: ts, shifts: JSON.parse(JSON.stringify(s)), edits: { ...e } };
-    setVersions(prev => [v, ...prev]);
+    
+    // Inherit filename from active version if not provided, or fallback
+    const currentActive = versions.find(v => v.id === activeVersionId);
+    const fname = filename || (currentActive?.filename ?? '已編輯版本');
+
+    const v: ScheduleVersion = { id, timestamp: ts, filename: fname, shifts: JSON.parse(JSON.stringify(s)), edits: { ...e } };
+    setVersions(prev => [v, ...prev].slice(0, 10)); // Keep latest 10
     setActiveVersionId(id);
   };
 
@@ -201,7 +218,9 @@ function App() {
       const newShifts = parseScheduleResponsesData(responseData, volunteers);
       setShifts(newShifts);
       setManualEdits({});
-      pushVersion(newShifts, {});
+      
+      const filename = responseFile ? responseFile.name : '預設測試表單';
+      pushVersion(newShifts, {}, filename);
     } catch (err) {
       console.error('Failed to generate schedule:', err);
       alert('解析檔案失敗，請確定上傳的是有效的 Excel 或 CSV 檔案。');
@@ -567,20 +586,22 @@ function App() {
       </div>
 
       {/* Edit Mode + Version History Bar */}
-      {hasShifts && (
+      {(hasShifts || versions.length > 0) && (
         <div className="glass-card" style={{ padding: '16px 24px', marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
           {/* Edit / Save toggle */}
-          {editMode ? (
-            <button className="btn-primary" onClick={saveEdits}
-              style={{ background: 'linear-gradient(135deg, #059669 0%, #10b981 100%)' }}>
-              <Save size={18} /> 儲存變更
-            </button>
-          ) : (
-            <button className="btn-secondary" onClick={() => setEditMode(true)}>
-              <Edit3 size={18} /> 編輯排班
-            </button>
+          {hasShifts && (
+            editMode ? (
+              <button className="btn-primary" onClick={saveEdits}
+                style={{ background: 'linear-gradient(135deg, #059669 0%, #10b981 100%)' }}>
+                <Save size={18} /> 儲存變更
+              </button>
+            ) : (
+              <button className="btn-secondary" onClick={() => setEditMode(true)}>
+                <Edit3 size={18} /> 編輯排班
+              </button>
+            )
           )}
-          {editMode && (
+          {hasShifts && editMode && (
             <button className="btn-secondary" onClick={() => { setEditMode(false); if (activeVersionId) { const v = versions.find(x => x.id === activeVersionId); if (v) restoreVersion(v); } }}>
               <RotateCcw size={16} /> 取消
             </button>
@@ -600,9 +621,10 @@ function App() {
                   borderRadius: '6px', color: 'var(--text-primary)', padding: '6px 12px', fontSize: '0.85rem',
                 }}
               >
+                <option value="" disabled style={{ background: 'var(--bg-primary)' }}>回朔記憶的表單...</option>
                 {versions.map(v => (
                   <option key={v.id} value={v.id} style={{ background: 'var(--bg-primary)' }}>
-                    {v.timestamp}{v.id === versions[0].id ? ' (最新)' : ''}
+                    {v.timestamp} - {v.filename}
                   </option>
                 ))}
               </select>
