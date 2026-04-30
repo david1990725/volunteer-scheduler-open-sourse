@@ -9,7 +9,11 @@ import {
   SHAN_ZHUANG_ROLES,
   XUAN_JIAO_ROLES,
 } from './utils/scheduler';
-import type { Shift } from './utils/scheduler';
+import type { Shift, Volunteer } from './utils/scheduler';
+
+import { Login } from './components/Login';
+import { FrontendForm } from './components/FrontendForm';
+import { AdminRawData } from './components/AdminRawData';
 
 // =============================================================================
 // Constants
@@ -110,6 +114,10 @@ interface ScheduleVersion {
 // =============================================================================
 
 function App() {
+  const [view, setView] = useState<'login' | 'frontend' | 'admin'>('login');
+  const [adminTab, setAdminTab] = useState<'raw' | 'scheduler'>('raw');
+  const [currentUser, setCurrentUser] = useState<Volunteer | null>(null);
+
   const [shifts, setShifts] = useState<Shift[]>([]);
   const [loading, setLoading] = useState(false);
   const [exporting, setExporting] = useState('');
@@ -209,12 +217,22 @@ function App() {
   const generateSchedule = useCallback(async () => {
     setLoading(true);
     try {
-      const skillData = await fetchCSVAsJson(SKILL_TREE_URL);
-      const responseData = responseFile
-        ? await parseSpreadsheetFile(responseFile)
-        : await fetchCSVAsJson(FALLBACK_RESPONSES_PATH);
+      let responseData;
+      if (responseFile) {
+        responseData = await parseSpreadsheetFile(responseFile);
+      } else {
+        const localData = JSON.parse(localStorage.getItem('volunteer_form_responses') || '[]');
+        if (localData.length > 0) {
+          responseData = localData;
+        } else {
+          responseData = await fetchCSVAsJson(FALLBACK_RESPONSES_PATH);
+        }
+      }
 
+      // If we are logged in, we already have skill tree data, but if we want to refresh:
+      const skillData = await fetchCSVAsJson(SKILL_TREE_URL);
       const volunteers = parseSkillTreeData(skillData);
+
       const newShifts = parseScheduleResponsesData(responseData, volunteers);
       setShifts(newShifts);
       setManualEdits({});
@@ -260,7 +278,8 @@ function App() {
         // Meal rows — number input + fixed 份 unit
         const mealVal = (s: Shift, field: string) => {
           const valKey = editKey(locationName, s.date, field);
-          const v = valKey in manualEdits ? manualEdits[valKey] : String(countAssigned(s, roles));
+          const baseNum = countAssigned(s, roles) + (field === '早餐' ? 1 : 0);
+          const v = valKey in manualEdits ? manualEdits[valKey] : String(baseNum);
           return `${v} 份`;
         };
         if (locationName === '山莊大堂') {
@@ -366,7 +385,7 @@ function App() {
     <tr style={mealRowBg}>
       <td style={mealLabelStyle}>{label}</td>
       {locationShifts.map(shift => {
-        const defaultNum = countAssigned(shift, roles);
+        const defaultNum = countAssigned(shift, roles) + (field === '早餐' ? 1 : 0);
         const valKey = editKey(locationName, shift.date, field);
         const val = valKey in manualEdits ? manualEdits[valKey] : String(defaultNum);
         return (
@@ -519,6 +538,46 @@ function App() {
 
   const hasShifts = shifts.length > 0;
 
+  if (view === 'login') {
+    return (
+      <div style={{ padding: '40px 20px', maxWidth: '1400px', margin: '0 auto', width: '100%' }}>
+        <button className="theme-toggle" onClick={() => setDarkMode(d => !d)} title={darkMode ? '切換亮色模式' : '切換暗色模式'}>
+          {darkMode ? <Sun size={20} color="#fcd34d" /> : <Moon size={20} color="#6366f1" />}
+        </button>
+        <header style={{ marginBottom: '48px', textAlign: 'center' }}>
+          <h1 style={{
+            fontSize: '2.8rem', fontWeight: 800, letterSpacing: '-0.02em',
+            background: 'linear-gradient(135deg, var(--text-title-from) 0%, var(--text-title-to) 100%)',
+            WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
+            marginBottom: '12px',
+            filter: 'drop-shadow(0 2px 8px rgba(167, 139, 250, 0.3))',
+          }}>轉播拍攝排班系統</h1>
+        </header>
+        <Login onLogin={(user) => {
+          setCurrentUser(user);
+          if (user.role === 'admin') setView('admin');
+          else setView('frontend');
+        }} />
+      </div>
+    );
+  }
+
+  if (view === 'frontend') {
+    return (
+      <div style={{ padding: '40px 20px', maxWidth: '1400px', margin: '0 auto', width: '100%' }}>
+        <button className="theme-toggle" onClick={() => setDarkMode(d => !d)}>
+          {darkMode ? <Sun size={20} color="#fcd34d" /> : <Moon size={20} color="#6366f1" />}
+        </button>
+        <FrontendForm 
+          currentUser={currentUser!} 
+          onLogout={() => { setView('login'); setCurrentUser(null); }} 
+          onBackToAdmin={currentUser?.role === 'admin' ? () => setView('admin') : undefined}
+        />
+      </div>
+    );
+  }
+
+  // Admin View
   return (
     <div style={{ padding: '40px 20px', maxWidth: '1400px', margin: '0 auto', width: '100%' }}>
       {/* Theme Toggle */}
@@ -533,11 +592,23 @@ function App() {
           WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
           marginBottom: '12px',
           filter: 'drop-shadow(0 2px 8px rgba(167, 139, 250, 0.3))',
-        }}>轉播拍攝排班系統</h1>
-        <p style={{ color: 'var(--text-secondary)', fontSize: '1.05rem', letterSpacing: '0.02em' }}>自動依據義工技能樹進行排班，無需手動選擇位置</p>
+        }}>轉播拍攝排班後台</h1>
+        <div style={{ display: 'flex', justifyContent: 'center', gap: '15px', marginTop: '20px', flexWrap: 'wrap' }}>
+          <button className={adminTab === 'raw' ? 'btn-primary' : 'btn-secondary'} onClick={() => setAdminTab('raw')}>RAW 資料表單</button>
+          <button className={adminTab === 'scheduler' ? 'btn-primary' : 'btn-secondary'} onClick={() => setAdminTab('scheduler')}>自動排班系統</button>
+          <button className="btn-secondary" onClick={() => setView('frontend')} style={{ borderColor: 'var(--icon-accent)', color: 'var(--text-primary)' }}>填寫個人表單</button>
+          <button className="btn-secondary" onClick={() => { setView('login'); setCurrentUser(null); }}>登出</button>
+        </div>
       </header>
 
-      {/* Upload & Actions */}
+      {adminTab === 'raw' ? (
+        <AdminRawData onStartAutoSchedule={() => {
+          setAdminTab('scheduler');
+          generateSchedule();
+        }} />
+      ) : (
+        <>
+          {/* Upload & Actions */}
       <div className="glass-card" style={{ padding: '24px', marginBottom: '30px', position: 'relative', zIndex: 10 }}>
         <div style={{ display: 'flex', gap: '15px', alignItems: 'center', marginBottom: '20px' }}>
           <div style={{ background: 'var(--icon-bg)', padding: '12px', borderRadius: '12px' }}>
@@ -645,6 +716,8 @@ function App() {
           <h3 style={{ color: 'var(--text-secondary)', fontSize: '1.2rem', marginBottom: '10px' }}>尚未生成排班資料</h3>
           <p style={{ color: 'var(--text-muted)' }}>點擊上方的「自動生成排班」按鈕來開始</p>
         </div>
+      )}
+        </>
       )}
     </div>
   );

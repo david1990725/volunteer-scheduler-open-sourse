@@ -1,0 +1,84 @@
+import React, { useState } from 'react';
+import * as XLSX from 'xlsx';
+import { Download } from 'lucide-react';
+
+interface AdminRawDataProps {
+  onStartAutoSchedule: () => void;
+}
+
+export const AdminRawData: React.FC<AdminRawDataProps> = ({ onStartAutoSchedule }) => {
+  const [data] = useState<any[]>(() => JSON.parse(localStorage.getItem('volunteer_form_responses') || '[]'));
+
+  const exportCSV = () => {
+    if (data.length === 0) return;
+    const ws = XLSX.utils.json_to_sheet(data);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Raw Data");
+    const wbout = XLSX.write(wb, { bookType: 'csv', type: 'array' });
+    const blob = new Blob([new Uint8Array(wbout)], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'form_responses_raw.csv';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
+  const clearData = () => {
+    if (confirm('確定要清空所有 RAW 資料嗎？這將無法復原。')) {
+      localStorage.removeItem('volunteer_form_responses');
+      window.location.reload();
+    }
+  };
+
+  if (data.length === 0) {
+    return (
+      <div className="glass-card" style={{ padding: '40px', textAlign: 'center' }}>
+        <p style={{ color: 'var(--text-secondary)' }}>目前尚無任何使用者填寫表單的紀錄。</p>
+        <button className="btn-primary" onClick={onStartAutoSchedule} style={{ marginTop: '20px' }}>
+          開始自動排班 (使用測試資料)
+        </button>
+      </div>
+    );
+  }
+
+  const columns = Array.from(new Set(data.flatMap(d => Object.keys(d))));
+
+  return (
+    <div className="glass-card" style={{ padding: '24px' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '20px' }}>
+        <h2 style={{ margin: 0, color: 'var(--text-primary)' }}>表單 RAW 資料 ({data.length} 筆)</h2>
+        <div style={{ display: 'flex', gap: '10px' }}>
+          <button className="btn-primary" onClick={onStartAutoSchedule}>
+            開始自動排班
+          </button>
+          <button className="btn-secondary" onClick={exportCSV}>
+            <Download size={16} /> 匯出 CSV
+          </button>
+          <button className="btn-secondary" onClick={clearData} style={{ color: 'var(--text-missing)' }}>
+            清空資料
+          </button>
+        </div>
+      </div>
+      
+      <div className="table-container">
+        <table>
+          <thead>
+            <tr>
+              {columns.map(col => <th key={col}>{col}</th>)}
+            </tr>
+          </thead>
+          <tbody>
+            {data.map((row, i) => (
+              <tr key={i}>
+                {columns.map(col => <td key={col} style={{ color: 'var(--text-primary)' }}>{row[col] || ''}</td>)}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+};

@@ -6,6 +6,7 @@
 
 export interface Volunteer {
   name: string;
+  role: 'admin' | 'user';
   roles: string[];
   skills: Record<string, number>;
 }
@@ -98,7 +99,9 @@ export function parseSkillTreeData(data: any[]): Record<string, Volunteer> {
     skills['HOST/CCU'] = roles.some((r: string) => r === 'HOST' || r === 'CCU') ? 10 : 0;
     skills['信息版']   = roles.some((r: string) => ['山莊導播', '宣教導播', '導播', 'HOST', 'CCU'].includes(r)) ? 10 : 0;
 
-    volunteers[name] = { name, roles, skills };
+    const userRole = row['role']?.trim().toLowerCase() === 'admin' ? 'admin' : 'user';
+
+    volunteers[name] = { name, role: userRole, roles, skills };
   }
 
   return volunteers;
