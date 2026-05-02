@@ -133,6 +133,7 @@ body {
   color: var(--text-primary);
   transition: background 0.4s ease, color 0.3s ease;
   background-attachment: fixed;
+  -webkit-tap-highlight-color: transparent;
 }
 
 body::after {
@@ -268,9 +269,13 @@ body::after {
  * ------------------------------------------------------------------------ */
 
 .btn-primary,
-.btn-secondary {
+.btn-secondary,
+.btn-danger {
   display: flex;
+  flex-direction: row;
   align-items: center;
+  justify-content: center;
+  white-space: nowrap;
   gap: 8px;
   padding: 10px 20px;
   border-radius: 12px;
@@ -280,6 +285,7 @@ body::after {
   border: none;
   position: relative;
   overflow: hidden;
+  height: 48px;
 }
 
 .btn-primary {
@@ -334,6 +340,82 @@ body::after {
   transform: translateY(-1px);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1),
     inset 0 1px 0 rgba(255, 255, 255, 0.1);
+}
+
+.btn-danger {
+  background: rgba(239, 68, 68, 0.1);
+  backdrop-filter: blur(10px);
+  color: #ef4444;
+  border: 1px solid rgba(239, 68, 68, 0.3);
+}
+
+.btn-danger:hover {
+  background: rgba(239, 68, 68, 0.2);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.1);
+  border-color: rgba(239, 68, 68, 0.5);
+}
+
+/* ---------------------------------------------------------------------------
+ * Navigation & Responsive Menu
+ * ------------------------------------------------------------------------ */
+
+.desktop-nav {
+  display: flex;
+  justify-content: center;
+  gap: 15px;
+  margin-bottom: 32px;
+  flex-wrap: nowrap;
+}
+
+.mobile-nav-container {
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  margin-bottom: 32px;
+  position: relative;
+  z-index: 100;
+}
+
+.mobile-menu-btn {
+  background: var(--bg-card);
+  border: 1px solid var(--bg-card-border);
+  color: var(--text-primary);
+  border-radius: 12px;
+  padding: 12px 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  font-size: 1.1rem;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: var(--shadow-card);
+  transition: all 0.2s;
+}
+
+.mobile-nav-menu {
+  position: absolute;
+  top: 100%;
+  margin-top: 10px;
+  background: var(--bg-primary);
+  border: 1px solid var(--bg-card-border);
+  border-radius: 16px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  box-shadow: 0 10px 40px rgba(0,0,0,0.8);
+  width: 250px;
+}
+
+@media (max-width: 768px) {
+  .desktop-nav {
+    display: none !important;
+  }
+  .mobile-nav-container {
+    display: flex;
+  }
 }
 
 /* ---------------------------------------------------------------------------

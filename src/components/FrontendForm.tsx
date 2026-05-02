@@ -89,7 +89,7 @@ export const FrontendForm: React.FC<FrontendFormProps> = ({ currentUser, onLogou
           {onBackToAdmin ? (
             <button className="btn-secondary" onClick={onBackToAdmin}>返回後台</button>
           ) : (
-            <button className="btn-secondary" onClick={onLogout}>登出</button>
+            <button className="btn-danger" onClick={onLogout}>登出</button>
           )}
         </div>
       </div>
@@ -111,7 +111,7 @@ export const FrontendForm: React.FC<FrontendFormProps> = ({ currentUser, onLogou
           {onBackToAdmin ? (
             <button className="btn-secondary" onClick={onBackToAdmin}>返回後台</button>
           ) : (
-            <button className="btn-secondary" onClick={onLogout}>登出</button>
+            <button className="btn-danger" onClick={onLogout}>登出</button>
           )}
         </div>
       </div>

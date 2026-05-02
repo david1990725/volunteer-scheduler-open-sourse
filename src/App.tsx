@@ -1,5 +1,5 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
-import { Download, Users, RefreshCw, FileSpreadsheet, RotateCcw, Image, FileText, Edit3, Save, History, Sun, Moon, ChevronDown } from 'lucide-react';
+import { Menu, X, Download, Users, RefreshCw, FileSpreadsheet, RotateCcw, Image, FileText, Edit3, Save, History, Sun, Moon, ChevronDown } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import html2canvas from 'html2canvas';
 import { jsPDF } from 'jspdf';
@@ -74,7 +74,8 @@ interface ScheduleVersion {
 
 function App() {
   const [view, setView] = useState<'login' | 'loading' | 'frontend' | 'admin'>('login');
-  const [adminTab, setAdminTab] = useState<'raw' | 'scheduler'>('raw');
+  const [adminTab, setAdminTab] = useState<'home' | 'raw' | 'scheduler'>('home');
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [currentUser, setCurrentUser] = useState<Volunteer | null>(null);
   const { logout: liffLogout } = useLiff();
 
@@ -84,7 +85,7 @@ function App() {
     liffLogout();
     setView('login');
     setCurrentUser(null);
-    setAdminTab('raw');
+    setAdminTab('home');
   };
 
   const [shifts, setShifts] = useState<Shift[]>([]);
@@ -519,7 +520,7 @@ function App() {
 
       <header className={`logo-container ${view !== 'login' ? 'minimized' : ''}`}>
         <img src="/logo.png" alt="BOL Production" className="app-logo" />
-        <div style={{ textAlign: view === 'login' ? 'center' : 'left' }}>
+        <div style={{ textAlign: view === 'login' ? 'center' : 'left', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
           <h1 style={{
             fontSize: view === 'login' ? '2.8rem' : '2.2rem', 
             fontWeight: 800, 
@@ -530,7 +531,8 @@ function App() {
             marginBottom: '4px',
             lineHeight: '1.2',
             filter: 'drop-shadow(0 2px 8px rgba(234, 179, 8, 0.3))',
-            transition: 'all 0.5s cubic-bezier(0.4, 0, 0.2, 1)'
+            transition: 'all 0.5s cubic-bezier(0.4, 0, 0.2, 1)',
+            textAlign: 'center'
           }}>
             <span style={{ fontSize: view === 'login' ? '1.8rem' : '1.2rem', display: 'block', marginBottom: '4px', transition: 'all 0.5s' }}>BOL Production</span>
             <span style={{ display: 'block' }}>
@@ -551,12 +553,32 @@ function App() {
       )}
 
       {view === 'admin' && (
-        <div style={{ display: 'flex', justifyContent: 'center', gap: '15px', marginBottom: '32px', flexWrap: 'wrap' }}>
-          <button className={adminTab === 'raw' ? 'btn-primary' : 'btn-secondary'} onClick={() => setAdminTab('raw')}>RAW 資料表單</button>
-          <button className={adminTab === 'scheduler' ? 'btn-primary' : 'btn-secondary'} onClick={() => setAdminTab('scheduler')}>自動排班系統</button>
-          <button className="btn-secondary" onClick={() => setView('frontend')} style={{ borderColor: 'var(--icon-accent)', color: 'var(--text-primary)' }}>填寫個人表單</button>
-          <button className="btn-secondary" onClick={handleLogout}>登出</button>
-        </div>
+        <>
+          {/* Desktop Navigation */}
+          <div className="desktop-nav">
+            <button className={adminTab === 'raw' ? 'btn-primary' : 'btn-secondary'} onClick={() => setAdminTab('raw')}>RAW 資料表單</button>
+            <button className={adminTab === 'scheduler' ? 'btn-primary' : 'btn-secondary'} onClick={() => setAdminTab('scheduler')}>自動排班系統</button>
+            <button className="btn-secondary" onClick={() => setView('frontend')} style={{ borderColor: 'var(--icon-accent)', color: 'var(--text-primary)' }}>填寫個人表單</button>
+            <button className="btn-danger" onClick={handleLogout}>登出</button>
+          </div>
+
+          {/* Mobile Navigation */}
+          <div className="mobile-nav-container">
+            <button className="mobile-menu-btn" onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}>
+              {isMobileMenuOpen ? <X size={24} /> : <Menu size={24} />} 
+              功能選單
+            </button>
+            
+            {isMobileMenuOpen && (
+              <div className="mobile-nav-menu">
+                <button className={adminTab === 'raw' ? 'btn-primary' : 'btn-secondary'} onClick={() => { setAdminTab('raw'); setIsMobileMenuOpen(false); }}>RAW 資料表單</button>
+                <button className={adminTab === 'scheduler' ? 'btn-primary' : 'btn-secondary'} onClick={() => { setAdminTab('scheduler'); setIsMobileMenuOpen(false); }}>自動排班系統</button>
+                <button className="btn-secondary" onClick={() => { setView('frontend'); setIsMobileMenuOpen(false); }} style={{ borderColor: 'var(--icon-accent)', color: 'var(--text-primary)' }}>填寫個人表單</button>
+                <button className="btn-danger" onClick={() => { handleLogout(); setIsMobileMenuOpen(false); }}>登出</button>
+              </div>
+            )}
+          </div>
+        </>
       )}
 
       <main>
@@ -566,7 +588,7 @@ function App() {
             setTimeout(() => {
               setCurrentUser(user);
               if (user.role === 'admin') {
-                setAdminTab('raw');
+                setAdminTab('home');
                 setView('admin');
               } else {
                 setView('frontend');
@@ -585,6 +607,15 @@ function App() {
 
         {view === 'admin' && (
           <>
+            {adminTab === 'home' && (
+              <div className="glass-card" style={{ padding: '60px 20px', textAlign: 'center', maxWidth: '600px', margin: '40px auto' }}>
+                <h2 style={{ fontSize: '1.8rem', marginBottom: '20px', color: 'var(--text-primary)' }}>歡迎進入主日轉播排班後台，請點選需要使用的功能！</h2>
+                <p style={{ color: 'var(--text-secondary)', lineHeight: '1.6' }}>
+                  請透過上方功能選單，切換至 RAW 資料表單管理義工，或使用自動排班系統。
+                </p>
+              </div>
+            )}
+            
             {adminTab === 'raw' ? (
               <AdminRawData onStartAutoSchedule={() => {
                 setAdminTab('scheduler');
