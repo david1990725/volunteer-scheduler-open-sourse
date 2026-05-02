@@ -299,7 +299,11 @@ function App() {
               // 燈控、備用、餐點 → manualEdits
               // 餐點數量移除「份」字尾
               const cleanVal = value.replace(/\s*份$/, '');
-              importedEdits[editKey(locationName, date, rowLabel)] = cleanVal;
+              let fieldKey = rowLabel;
+              if (rowLabel === '山莊早餐數量' || rowLabel === '宣教早餐數量') fieldKey = '早餐';
+              else if (rowLabel === '宣教午餐數量') fieldKey = '午餐';
+              
+              importedEdits[editKey(locationName, date, fieldKey)] = cleanVal;
             }
           }
 
