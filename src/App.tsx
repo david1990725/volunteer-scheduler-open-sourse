@@ -260,6 +260,8 @@ function App() {
             date,
             location: locationName,
             assignments: {},
+            roleKeys: [...roles],
+            overrides: {},
           };
 
           for (let rowIdx = 1; rowIdx < data.length; rowIdx++) {
