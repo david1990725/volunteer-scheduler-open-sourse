@@ -151,7 +151,7 @@ function App() {
   const pushVersion = (s: Shift[], e: Record<string, string>, filename?: string) => {
     const id = Date.now();
     const ts = new Date().toLocaleString('zh-TW', { hour12: false });
-    
+
     // Inherit filename from active version if not provided, or fallback
     const currentActive = versions.find(v => v.id === activeVersionId);
     const fname = filename || (currentActive?.filename ?? '已編輯版本');
@@ -215,7 +215,7 @@ function App() {
       const newShifts = parseScheduleResponsesData(responseData, volunteers);
       setShifts(newShifts);
       setManualEdits({});
-      
+
       const filename = responseFile ? responseFile.name : '預設測試表單';
       pushVersion(newShifts, {}, filename);
     } catch (err) {
@@ -522,11 +522,11 @@ function App() {
         <img src="/logo.png" alt="BOL Production" className="app-logo" />
         <div style={{ textAlign: view === 'login' ? 'center' : 'left', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
           <h1 style={{
-            fontSize: view === 'login' ? '2.8rem' : '2.2rem', 
-            fontWeight: 800, 
+            fontSize: view === 'login' ? '2.8rem' : '2.2rem',
+            fontWeight: 800,
             letterSpacing: '-0.02em',
             background: 'linear-gradient(135deg, var(--text-title-from) 0%, var(--text-title-to) 100%)',
-            WebkitBackgroundClip: 'text', 
+            WebkitBackgroundClip: 'text',
             WebkitTextFillColor: 'transparent',
             marginBottom: '4px',
             lineHeight: '1.2',
@@ -566,10 +566,10 @@ function App() {
           {/* Mobile Navigation */}
           <div className="mobile-nav-container">
             <button className="mobile-menu-btn" onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}>
-              {isMobileMenuOpen ? <X size={24} /> : <Menu size={24} />} 
+              {isMobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
               功能選單
             </button>
-            
+
             {isMobileMenuOpen && (
               <div className="mobile-nav-menu animate-morph stagger-1">
                 <button className={adminTab === 'home' ? 'btn-primary' : 'btn-secondary'} onClick={() => { setAdminTab('home'); setIsMobileMenuOpen(false); }}>首頁</button>
@@ -600,9 +600,9 @@ function App() {
         )}
 
         {view === 'frontend' && (
-          <FrontendForm 
-            currentUser={currentUser!} 
-            onLogout={handleLogout} 
+          <FrontendForm
+            currentUser={currentUser!}
+            onLogout={handleLogout}
             onBackToAdmin={currentUser?.role === 'admin' ? () => setView('admin') : undefined}
           />
         )}
@@ -617,22 +617,22 @@ function App() {
                 </p>
               </div>
             )}
-            
+
             {adminTab === 'raw' && (
               <AdminRawData onStartAutoSchedule={() => {
                 setAdminTab('scheduler');
                 generateSchedule();
               }} />
             )}
-            
+
             {adminTab === 'scheduler' && (
               <>
                 <div className="glass-card animate-morph stagger-2" style={{ padding: '24px', marginBottom: '24px', zIndex: 50, position: 'relative' }}>
                   <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap', alignItems: 'center' }}>
                     <div style={{ flex: 1, minWidth: '300px' }}>
                       <label className="btn-secondary" style={{ width: '100%', justifyContent: 'center', height: '48px', cursor: 'pointer', overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis' }}>
-                        <Download size={20} style={{ transform: 'rotate(180deg)' }} /> 
-                        {uploadedFileName || '上傳技能樹 / 排班 CSV'}
+                        <Download size={20} style={{ transform: 'rotate(180deg)' }} />
+                        {uploadedFileName || '上傳排班CSV'}
                         <input type="file" accept=".csv" onChange={handleFileUpload} style={{ display: 'none' }} />
                       </label>
                     </div>
@@ -687,21 +687,21 @@ function App() {
                         )}
                       </div>
                     )}
-                    
+
                     {versions.length > 0 && (
                       <div>
                         <h3 style={{ margin: '0 0 12px 0', fontSize: '1rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
                           <History size={18} color="var(--icon-accent)" /> 歷史版本
                         </h3>
-                        <select 
+                        <select
                           onChange={(e) => {
                             const id = Number(e.target.value);
                             const v = versions.find(x => x.id === id);
                             if (v) restoreVersion(v);
                             e.target.value = '';
                           }}
-                          style={{ 
-                            width: '100%', padding: '10px', borderRadius: '8px', 
+                          style={{
+                            width: '100%', padding: '10px', borderRadius: '8px',
                             background: 'var(--bg-input)', border: '1px solid var(--bg-input-border)',
                             color: 'var(--text-primary)', fontSize: '0.9rem', cursor: 'pointer'
                           }}
