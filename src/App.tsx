@@ -250,10 +250,29 @@ function App() {
       // Convert 2D array back to Shift[] objects
       const importedShifts: Shift[] = [];
 
+      /** 將日期字串正規化為 MM/DD 格式 */
+      const normalizeDate = (raw: string): string => {
+        const trimmed = raw.trim();
+        // 已經是 MM/DD 格式
+        if (/^\d{2}\/\d{2}$/.test(trimmed)) return trimmed;
+        // M/D 或 M/DD 或 MM/D → 補零
+        const slashMatch = trimmed.match(/^(\d{1,2})\/(\d{1,2})$/);
+        if (slashMatch) {
+          return `${slashMatch[1].padStart(2, '0')}/${slashMatch[2].padStart(2, '0')}`;
+        }
+        // 嘗試解析其他日期格式（如 YYYY/MM/DD 或 YYYY-MM-DD）
+        const d = new Date(trimmed);
+        if (!isNaN(d.getTime())) {
+          return `${String(d.getMonth() + 1).padStart(2, '0')}/${String(d.getDate()).padStart(2, '0')}`;
+        }
+        return trimmed; // 無法解析就原樣回傳
+      };
+
       const parseSheetToShifts = (data: string[][], locationName: string, roles: readonly string[]) => {
         if (!data || data.length < 2) return;
         const header = data[0]; // first row: '職務 / 日期', date1, date2...
-        const dates = header.slice(1);
+        const rawDates = header.slice(1);
+        const dates = rawDates.map(normalizeDate);
 
         for (const date of dates) {
           const shift: Shift = {
@@ -754,12 +773,18 @@ function App() {
                 {scheduleStep === 1 && (
                   <div className="glass-card animate-morph stagger-2" style={{ padding: '24px', marginBottom: '24px', zIndex: 50, position: 'relative' }}>
                     <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap', alignItems: 'center' }}>
-                      <div style={{ flex: 1, minWidth: '300px' }}>
+                      <div style={{ flex: 1, minWidth: '200px' }}>
                         <label className="btn-secondary" style={{ width: '100%', justifyContent: 'center', height: '48px', cursor: 'pointer', overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis' }}>
                           <Download size={20} style={{ transform: 'rotate(180deg)' }} /> 
                           {uploadedFileName || '上傳排班CSV'}
                           <input type="file" accept=".csv" onChange={handleFileUpload} style={{ display: 'none' }} />
                         </label>
+                      </div>
+
+                      <div style={{ flex: 1, minWidth: '200px' }}>
+                        <button className="btn-secondary" onClick={handleImportFromCloud} disabled={loading} style={{ width: '100%', justifyContent: 'center', height: '48px' }}>
+                          <CloudDownload size={20} /> {loading ? '匯入中...' : '從雲端匯入'}
+                        </button>
                       </div>
 
                       <button className="btn-primary" onClick={() => generateSchedule()} disabled={loading} style={{ height: '48px', padding: '0 32px' }}>
@@ -768,10 +793,6 @@ function App() {
 
                       <button className="btn-secondary" onClick={resetAll} disabled={!hasShifts} style={{ height: '48px' }}>
                         <RotateCcw size={20} /> 清除
-                      </button>
-
-                      <button className="btn-secondary" onClick={handleImportFromCloud} disabled={loading} style={{ height: '48px' }}>
-                        <CloudDownload size={20} /> {loading ? '匯入中...' : '從雲端匯入'}
                       </button>
 
                       {hasShifts && (
