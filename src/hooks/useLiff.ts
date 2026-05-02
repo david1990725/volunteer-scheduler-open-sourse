@@ -36,8 +36,14 @@ export const useLiff = () => {
   const login = () => {
     // 使用者主動點擊登入 → 清除登出旗標
     sessionStorage.removeItem('manual_logout');
-    if (liffObject && !liffObject.isLoggedIn()) {
-      liffObject.login();
+    if (liffObject) {
+      if (!liffObject.isLoggedIn()) {
+        liffObject.login();
+      } else {
+        // 如果底層 LIFF 其實還是登入狀態（例如在 LINE App 內），同步 React 狀態
+        setIsLoggedIn(true);
+        liffObject.getProfile().then((p: any) => setProfile(p));
+      }
     }
   };
 

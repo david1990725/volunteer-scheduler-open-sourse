@@ -60,9 +60,20 @@ export const Login: React.FC<LoginProps> = ({ onLogin }) => {
     try {
       const { volunteers, lineIdMap } = await fetchSkillTree();
       const lineUserId = profile.userId;
+      const displayName = profile.displayName || '未知使用者';
 
-      // 優先以 LINE userId 比對
-      const matchedName = lineIdMap[lineUserId];
+      // 1. 優先以 LINE userId 比對
+      let matchedName = lineIdMap[lineUserId];
+
+      // 2. 若找不到 LINE_ID，嘗試以 LINE 顯示名稱與名單「姓名」進行模糊比對
+      if (!matchedName) {
+        const match = Object.keys(volunteers).find(v => 
+          v === displayName.trim() || v.includes(displayName.trim()) || displayName.trim().includes(v)
+        );
+        if (match) {
+          matchedName = match;
+        }
+      }
 
       if (matchedName && volunteers[matchedName]) {
         const user = volunteers[matchedName];
@@ -74,7 +85,6 @@ export const Login: React.FC<LoginProps> = ({ onLogin }) => {
       setRegistering(true);
       setError('');
 
-      const displayName = profile.displayName || '未知使用者';
       const result = await registerNewVolunteer({
         name: displayName,
         lineId: lineUserId,
@@ -118,9 +128,18 @@ export const Login: React.FC<LoginProps> = ({ onLogin }) => {
     clearManualLogout();
     autoLoginAttempted.current = false;
 
-    if (isLoggedIn && profile) {
-      // 已有 LIFF session，直接驗證
-      handleLineLogin();
+    if (liffObject && liffObject.isLoggedIn()) {
+      // 若 LIFF 確實是登入狀態，直接驗證 (即使 React 狀態 isLoggedIn 尚未同步)
+      if (profile) {
+        handleLineLogin();
+      } else {
+        liffObject.getProfile().then((p: any) => {
+           // profile might not be in state yet
+           // We can just rely on useEffect to trigger once profile is fetched by the hook 
+           // But since the hook doesn't re-fetch on click, we call login()
+           login();
+        }).catch(() => login());
+      }
     } else {
       // 無 LIFF session，導向 LINE 授權頁
       login();
