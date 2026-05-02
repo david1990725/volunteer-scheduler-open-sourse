@@ -65,14 +65,17 @@ export const Login: React.FC<LoginProps> = ({ onLogin }) => {
       // 1. 優先以 LINE userId 比對
       let matchedName = lineIdMap[lineUserId];
 
-      // 2. 若找不到 user_id，嘗試以 LINE 顯示名稱與名單「姓名」進行模糊比對
+      // 2. 若找不到 user_id，嘗試以 LINE 顯示名稱與名單中的「LINE_ID」欄位進行比對
       let isFuzzyMatched = false;
       if (!matchedName) {
-        const match = Object.keys(volunteers).find(v => 
-          v === displayName.trim() || v.includes(displayName.trim()) || displayName.trim().includes(v)
-        );
+        const match = Object.values(volunteers).find(v => {
+          if (!v.lineDisplayName) return false;
+          const target = v.lineDisplayName.trim();
+          const source = displayName.trim();
+          return target === source || target.includes(source) || source.includes(target);
+        });
         if (match) {
-          matchedName = match;
+          matchedName = match.name;
           isFuzzyMatched = true;
         }
       }

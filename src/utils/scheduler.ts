@@ -9,7 +9,8 @@ export interface Volunteer {
   role: 'admin' | 'user';
   roles: string[];
   skills: Record<string, number>;
-  lineId?: string;
+  lineId?: string; // LINE platform internal user_id
+  lineDisplayName?: string; // from LINE_ID column
 }
 
 export interface Shift {
@@ -101,9 +102,10 @@ export function parseSkillTreeData(data: any[]): Record<string, Volunteer> {
     skills['信息版']   = roles.some((r: string) => ['山莊導播', '宣教導播', '導播', 'HOST', 'CCU'].includes(r)) ? 10 : 0;
 
     const userRole = row['role']?.trim().toLowerCase() === 'admin' ? 'admin' : 'user';
-    const lineId = (row['user_id'] || row['LINE_ID'] || '').trim() || undefined;
+    const lineId = (row['user_id'] || '').trim() || undefined;
+    const lineDisplayName = (row['LINE_ID'] || '').trim() || undefined;
 
-    volunteers[name] = { name, role: userRole, roles, skills, lineId };
+    volunteers[name] = { name, role: userRole, roles, skills, lineId, lineDisplayName };
   }
 
   return volunteers;
