@@ -27,6 +27,8 @@ function doPost(e) {
       return handleAddVolunteer(payload);
     } else if (payload.action === 'updateLineId') {
       return handleUpdateLineId(payload);
+    } else if (payload.action === 'syncSchedule') {
+      return handleSyncSchedule(payload);
     }
     
     return jsonResponse({ success: false, message: '未知的操作' });
@@ -125,6 +127,28 @@ function handleUpdateLineId(payload) {
   }
 
   return jsonResponse({ success: false, message: '找不到符合姓名的義工' });
+}
+
+/**
+ * 同步排班結果到 Google Sheets
+ * 根據名稱找尋 Sheet，如果沒有就建立一個新的。有就清空覆蓋。
+ */
+function handleSyncSchedule(payload) {
+  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  let sheet = ss.getSheetByName(payload.sheetName);
+  
+  if (!sheet) {
+    sheet = ss.insertSheet(payload.sheetName);
+  } else {
+    sheet.clear();
+  }
+  
+  // payload.data 是一個 2D Array
+  if (payload.data && payload.data.length > 0) {
+    sheet.getRange(1, 1, payload.data.length, payload.data[0].length).setValues(payload.data);
+  }
+  
+  return jsonResponse({ success: true, message: '同步成功' });
 }
 
 /**

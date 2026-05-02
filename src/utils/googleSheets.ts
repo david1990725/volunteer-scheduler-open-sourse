@@ -65,3 +65,30 @@ export async function updateVolunteerLineId(payload: { name: string; lineId: str
     return { success: false, message: '更新試算表失敗，請稍後再試。' };
   }
 }
+
+/**
+ * 透過 Google Apps Script 同步排班結果到 Google Sheets
+ */
+export async function syncSchedule(payload: { sheetName: string; data: string[][] }): Promise<{ success: boolean; message: string }> {
+  if (!APPS_SCRIPT_URL) {
+    console.error('VITE_APPS_SCRIPT_URL is not configured');
+    return { success: false, message: 'Apps Script URL 尚未設定，請聯繫管理員。' };
+  }
+
+  try {
+    const res = await fetch(APPS_SCRIPT_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain' },
+      body: JSON.stringify({
+        action: 'syncSchedule',
+        ...payload,
+      }),
+    });
+
+    const result = await res.json();
+    return { success: result.success ?? true, message: result.message ?? '同步成功' };
+  } catch (err) {
+    console.error('Failed to sync schedule:', err);
+    return { success: false, message: '同步試算表失敗，請稍後再試。' };
+  }
+}

@@ -1,5 +1,5 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
-import { Menu, X, Download, Users, RefreshCw, FileSpreadsheet, RotateCcw, Image, FileText, Edit3, Save, History, Sun, Moon, ChevronDown } from 'lucide-react';
+import { Menu, X, Download, Users, RefreshCw, FileSpreadsheet, RotateCcw, Image, FileText, Edit3, Save, History, Sun, Moon, ChevronDown, CloudUpload, ArrowRight, ArrowLeft } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import html2canvas from 'html2canvas';
 import { jsPDF } from 'jspdf';
@@ -13,6 +13,7 @@ import type { Shift, Volunteer } from './utils/scheduler';
 import { parseSpreadsheetFile, fetchCSVAsJson, triggerDownload } from './utils/fileUtils';
 import { useInteractiveLighting } from './hooks/useInteractiveLighting';
 import { useLiff } from './hooks/useLiff';
+import { syncSchedule } from './utils/googleSheets';
 import { Login } from './components/Login';
 import { FrontendForm } from './components/FrontendForm';
 import { AdminRawData } from './components/AdminRawData';
@@ -75,6 +76,7 @@ interface ScheduleVersion {
 function App() {
   const [view, setView] = useState<'login' | 'loading' | 'frontend' | 'admin'>('login');
   const [adminTab, setAdminTab] = useState<'home' | 'raw' | 'scheduler'>('home');
+  const [scheduleStep, setScheduleStep] = useState<1 | 2 | 3>(1);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [currentUser, setCurrentUser] = useState<Volunteer | null>(null);
   const { logout: liffLogout } = useLiff();
@@ -157,7 +159,7 @@ function App() {
     const fname = filename || (currentActive?.filename ?? '已編輯版本');
 
     const v: ScheduleVersion = { id, timestamp: ts, filename: fname, shifts: JSON.parse(JSON.stringify(s)), edits: { ...e } };
-    setVersions(prev => [v, ...prev].slice(0, 10)); // Keep latest 10
+    setVersions(prev => [v, ...prev].slice(0, 5)); // Keep latest 5
     setActiveVersionId(id);
   };
 
@@ -190,6 +192,7 @@ function App() {
     setVersions([]);
     setActiveVersionId(null);
     setEditMode(false);
+    setScheduleStep(1);
     setUploadedFileName('');
     if (responseFileInputRef.current) responseFileInputRef.current.value = '';
   };
@@ -234,36 +237,82 @@ function App() {
     try {
       const workbook = XLSX.utils.book_new();
 
+  // --- Helper for generating 2D Data Array ---
+  const getSheetData = useCallback((locationName: string, roles: readonly string[]): string[][] | null => {
+    const locationShifts = shifts.filter(s => s.location === locationName);
+    if (locationShifts.length === 0) return null;
+
+    const header = ['職務 / 日期', ...locationShifts.map(s => s.date)];
+    const rows: string[][] = [header];
+
+    for (const role of roles) {
+      rows.push([role, ...locationShifts.map(s => getCellValue(locationName, s.date, role, s.assignments[role] || '缺'))]);
+    }
+
+    const spareLabels = locationName === '山莊大堂' ? ['備用1', '備用2'] : ['備用1'];
+    for (const label of spareLabels) {
+      rows.push([label, ...locationShifts.map(s => getEdit(locationName, s.date, label))]);
+    }
+
+    rows.push(['燈控', ...locationShifts.map(s => getEdit(locationName, s.date, '燈控'))]);
+
+    const mealVal = (s: Shift, field: string) => {
+      const valKey = editKey(locationName, s.date, field);
+      const baseNum = countAssigned(s, roles) + (field === '早餐' ? 1 : 0);
+      const v = valKey in manualEdits ? manualEdits[valKey] : String(baseNum);
+      return `${v} 份`;
+    };
+    if (locationName === '山莊大堂') {
+      rows.push(['山莊早餐數量', ...locationShifts.map(s => mealVal(s, '早餐'))]);
+    } else {
+      rows.push(['宣教早餐數量', ...locationShifts.map(s => mealVal(s, '早餐'))]);
+      rows.push(['宣教午餐數量', ...locationShifts.map(s => mealVal(s, '午餐'))]);
+    }
+
+    return rows;
+  }, [shifts, manualEdits, getCellValue, getEdit]);
+
+  // --- Sync to Cloud ---
+  const handleSyncToCloud = async () => {
+    if (!shifts.length) return;
+    setLoading(true);
+    
+    // Generate sheet name
+    const { targetMonths } = await import('./utils/dateUtils').then(m => m.getCycleDates());
+    const year = new Date().getFullYear();
+    const sheetNamePrefix = `${year}年 ${targetMonths[0]}-${targetMonths[1]}月排班表`;
+
+    try {
+      const shanzhuangData = getSheetData('山莊大堂', SHAN_ZHUANG_ROLES);
+      if (shanzhuangData) {
+        await syncSchedule({ sheetName: `${sheetNamePrefix} - 山莊`, data: shanzhuangData });
+      }
+
+      const xuanjiaoData = getSheetData('宣教大樓', XUAN_JIAO_ROLES);
+      if (xuanjiaoData) {
+        await syncSchedule({ sheetName: `${sheetNamePrefix} - 宣教`, data: xuanjiaoData });
+      }
+
+      alert('排班資料已成功同步到 Google 雲端試算表！');
+    } catch (err) {
+      console.error(err);
+      alert('同步失敗，請稍後再試。');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // --- Excel Export ---------------------------------------------------------
+
+  const exportExcel = useCallback(() => {
+    if (shifts.length === 0) return;
+
+    try {
+      const workbook = XLSX.utils.book_new();
+
       const buildSheet = (locationName: string, roles: readonly string[]) => {
-        const locationShifts = shifts.filter(s => s.location === locationName);
-        if (locationShifts.length === 0) return;
-
-        const header = ['職務 / 日期', ...locationShifts.map(s => s.date)];
-        const rows: string[][] = [header];
-
-        for (const role of roles) {
-          rows.push([role, ...locationShifts.map(s => getCellValue(locationName, s.date, role, s.assignments[role] || '缺'))]);
-        }
-
-        const spareLabels = locationName === '山莊大堂' ? ['備用1', '備用2'] : ['備用1'];
-        for (const label of spareLabels) {
-          rows.push([label, ...locationShifts.map(s => getEdit(locationName, s.date, label))]);
-        }
-
-        rows.push(['燈控', ...locationShifts.map(s => getEdit(locationName, s.date, '燈控'))]);
-
-        const mealVal = (s: Shift, field: string) => {
-          const valKey = editKey(locationName, s.date, field);
-          const baseNum = countAssigned(s, roles) + (field === '早餐' ? 1 : 0);
-          const v = valKey in manualEdits ? manualEdits[valKey] : String(baseNum);
-          return `${v} 份`;
-        };
-        if (locationName === '山莊大堂') {
-          rows.push(['山莊早餐數量', ...locationShifts.map(s => mealVal(s, '早餐'))]);
-        } else {
-          rows.push(['宣教早餐數量', ...locationShifts.map(s => mealVal(s, '早餐'))]);
-          rows.push(['宣教午餐數量', ...locationShifts.map(s => mealVal(s, '午餐'))]);
-        }
+        const rows = getSheetData(locationName, roles);
+        if (!rows) return;
 
         const ws = XLSX.utils.aoa_to_sheet(rows);
         XLSX.utils.book_append_sheet(workbook, ws, locationName);
@@ -627,77 +676,106 @@ function App() {
 
             {adminTab === 'scheduler' && (
               <>
-                <div className="glass-card animate-morph stagger-2" style={{ padding: '24px', marginBottom: '24px', zIndex: 50, position: 'relative' }}>
-                  <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap', alignItems: 'center' }}>
-                    <div style={{ flex: 1, minWidth: '300px' }}>
-                      <label className="btn-secondary" style={{ width: '100%', justifyContent: 'center', height: '48px', cursor: 'pointer', overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis' }}>
-                        <Download size={20} style={{ transform: 'rotate(180deg)' }} />
-                        {uploadedFileName || '上傳排班CSV'}
-                        <input type="file" accept=".csv" onChange={handleFileUpload} style={{ display: 'none' }} />
-                      </label>
-                    </div>
+                {/* 階段標籤 */}
+                <div className="glass-card animate-morph stagger-1" style={{ padding: '16px 24px', marginBottom: '24px', display: 'flex', justifyContent: 'center', gap: '20px', flexWrap: 'wrap' }}>
+                   <div style={{ fontWeight: scheduleStep === 1 ? 700 : 400, color: scheduleStep === 1 ? 'var(--text-primary)' : 'var(--text-muted)' }}>1. 自動排班</div>
+                   <div style={{ color: 'var(--text-muted)' }}><ArrowRight size={16} /></div>
+                   <div style={{ fontWeight: scheduleStep === 2 ? 700 : 400, color: scheduleStep === 2 ? 'var(--text-primary)' : 'var(--text-muted)' }}>2. 班表微調</div>
+                   <div style={{ color: 'var(--text-muted)' }}><ArrowRight size={16} /></div>
+                   <div style={{ fontWeight: scheduleStep === 3 ? 700 : 400, color: scheduleStep === 3 ? 'var(--text-primary)' : 'var(--text-muted)' }}>3. 確認與輸出</div>
+                </div>
 
-                    <button className="btn-primary" onClick={() => generateSchedule()} disabled={loading} style={{ height: '48px', padding: '0 32px' }}>
-                      <RefreshCw size={20} className={loading ? 'animate-spin' : ''} /> {loading ? '生成中...' : '自動生成排班'}
-                    </button>
+                {/* Step 1 Actions */}
+                {scheduleStep === 1 && (
+                  <div className="glass-card animate-morph stagger-2" style={{ padding: '24px', marginBottom: '24px', zIndex: 50, position: 'relative' }}>
+                    <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap', alignItems: 'center' }}>
+                      <div style={{ flex: 1, minWidth: '300px' }}>
+                        <label className="btn-secondary" style={{ width: '100%', justifyContent: 'center', height: '48px', cursor: 'pointer', overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis' }}>
+                          <Download size={20} style={{ transform: 'rotate(180deg)' }} /> 
+                          {uploadedFileName || '上傳排班CSV'}
+                          <input type="file" accept=".csv" onChange={handleFileUpload} style={{ display: 'none' }} />
+                        </label>
+                      </div>
 
-                    <button className="btn-secondary" onClick={resetAll} disabled={!hasShifts} style={{ height: '48px' }}>
-                      <RotateCcw size={20} /> 清除
-                    </button>
-
-                    <div ref={exportMenuRef} style={{ position: 'relative' }}>
-                      <button className="btn-primary" disabled={!hasShifts || exporting !== ''}
-                        onClick={() => setShowExportMenu(v => !v)}>
-                        <Download size={18} /> {exporting ? '匯出中...' : '匯出'} <ChevronDown size={16} />
+                      <button className="btn-primary" onClick={() => generateSchedule()} disabled={loading} style={{ height: '48px', padding: '0 32px' }}>
+                        <RefreshCw size={20} className={loading ? 'animate-spin' : ''} /> {loading ? '生成中...' : '自動生成排班'}
                       </button>
-                      {showExportMenu && (
-                        <div className="export-dropdown">
-                          <button onClick={() => { exportExcel(); setShowExportMenu(false); }}>
-                            <FileSpreadsheet size={16} /> Excel
-                          </button>
-                          <button onClick={() => { exportPNG(); setShowExportMenu(false); }}>
-                            <Image size={16} /> PNG
-                          </button>
-                          <button onClick={() => { exportPDF(); setShowExportMenu(false); }}>
-                            <FileText size={16} /> PDF
-                          </button>
-                        </div>
+
+                      <button className="btn-secondary" onClick={resetAll} disabled={!hasShifts} style={{ height: '48px' }}>
+                        <RotateCcw size={20} /> 清除
+                      </button>
+
+                      {hasShifts && (
+                        <button className="btn-primary" onClick={() => { setScheduleStep(2); setEditMode(true); }} style={{ height: '48px' }}>
+                          下一步 <ArrowRight size={20} />
+                        </button>
                       )}
                     </div>
                   </div>
-                </div>
+                )}
 
-                {(hasShifts || versions.length > 0) && (
-                  <div className="glass-card animate-morph stagger-3" style={{ padding: '16px 24px', marginBottom: '20px', zIndex: 10, position: 'relative' }}>
-                    {hasShifts && (
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '20px' }}>
-                        {editMode ? (
-                          <button className="btn-primary" onClick={saveEdits}>
-                            <Save size={18} /> 儲存變更
+                {/* Step 2 Actions */}
+                {scheduleStep === 2 && (
+                  <div className="glass-card animate-morph stagger-2" style={{ padding: '16px 24px', marginBottom: '24px', zIndex: 10, position: 'relative' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px', justifyContent: 'space-between' }}>
+                      <button className="btn-secondary" onClick={() => { setScheduleStep(1); setEditMode(false); }}>
+                        <ArrowLeft size={18} /> 上一步
+                      </button>
+                      <button className="btn-primary" onClick={() => { saveEdits(); setScheduleStep(3); setEditMode(false); }}>
+                        完成微調 <ArrowRight size={18} />
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {/* Step 3 Actions */}
+                {scheduleStep === 3 && (
+                  <div className="glass-card animate-morph stagger-2" style={{ padding: '16px 24px', marginBottom: '24px', zIndex: 10, position: 'relative' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px', justifyContent: 'space-between', flexWrap: 'wrap' }}>
+                      <button className="btn-secondary" onClick={() => { setScheduleStep(2); setEditMode(true); }}>
+                        <ArrowLeft size={18} /> 返回微調
+                      </button>
+                      
+                      <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+                        <button className="btn-primary" onClick={handleSyncToCloud} disabled={loading}>
+                          <CloudUpload size={18} /> {loading ? '同步中...' : '同步寫入雲端'}
+                        </button>
+                        
+                        <div ref={exportMenuRef} style={{ position: 'relative' }}>
+                          <button className="btn-primary" disabled={!hasShifts || exporting !== ''}
+                            onClick={() => setShowExportMenu(v => !v)}>
+                            <Download size={18} /> {exporting ? '匯出中...' : '匯出'} <ChevronDown size={16} />
                           </button>
-                        ) : (
-                          <button className="btn-secondary" onClick={() => setEditMode(true)}>
-                            <Edit3 size={18} /> 編輯排班
-                          </button>
-                        )}
-                        {editMode && (
-                          <button className="btn-secondary" onClick={() => { setEditMode(false); if (activeVersionId) { const v = versions.find(x => x.id === activeVersionId); if (v) restoreVersion(v); } }}>
-                            <RotateCcw size={16} /> 取消
-                          </button>
-                        )}
+                          {showExportMenu && (
+                            <div className="export-dropdown">
+                              <button onClick={() => { exportExcel(); setShowExportMenu(false); }}>
+                                <FileSpreadsheet size={16} /> Excel
+                              </button>
+                              <button onClick={() => { exportPNG(); setShowExportMenu(false); }}>
+                                <Image size={16} /> PNG
+                              </button>
+                              <button onClick={() => { exportPDF(); setShowExportMenu(false); }}>
+                                <FileText size={16} /> PDF
+                              </button>
+                            </div>
+                          )}
+                        </div>
                       </div>
-                    )}
-
+                    </div>
+                    
                     {versions.length > 0 && (
-                      <div>
+                      <div style={{ marginTop: '20px' }}>
                         <h3 style={{ margin: '0 0 12px 0', fontSize: '1rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                          <History size={18} color="var(--icon-accent)" /> 歷史版本
+                          <History size={18} color="var(--icon-accent)" /> 歷史版本 (紀錄近 5 次)
                         </h3>
                         <select
                           onChange={(e) => {
                             const id = Number(e.target.value);
                             const v = versions.find(x => x.id === id);
-                            if (v) restoreVersion(v);
+                            if (v) {
+                               restoreVersion(v);
+                               setScheduleStep(3); // ensures they stay on step 3 to view or go back
+                            }
                             e.target.value = '';
                           }}
                           style={{
