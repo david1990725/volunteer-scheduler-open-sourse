@@ -35,7 +35,7 @@ export const AdminRawData: React.FC<AdminRawDataProps> = ({ onStartAutoSchedule 
 
   if (data.length === 0) {
     return (
-      <div className="glass-card" style={{ padding: '40px', textAlign: 'center' }}>
+      <div className="glass-card animate-morph stagger-2" style={{ padding: '40px', textAlign: 'center' }}>
         <p style={{ color: 'var(--text-secondary)' }}>目前尚無任何使用者填寫表單的紀錄。</p>
         <button className="btn-primary" onClick={onStartAutoSchedule} style={{ marginTop: '20px' }}>
           開始自動排班 (使用測試資料)
@@ -47,7 +47,7 @@ export const AdminRawData: React.FC<AdminRawDataProps> = ({ onStartAutoSchedule 
   const columns = Array.from(new Set(data.flatMap(d => Object.keys(d))));
 
   return (
-    <div className="glass-card" style={{ padding: '24px' }}>
+    <div className="glass-card animate-morph stagger-2" style={{ padding: '24px' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '20px' }}>
         <h2 style={{ margin: 0, color: 'var(--text-primary)' }}>表單 RAW 資料 ({data.length} 筆)</h2>
         <div style={{ display: 'flex', gap: '10px' }}>
@@ -63,7 +63,7 @@ export const AdminRawData: React.FC<AdminRawDataProps> = ({ onStartAutoSchedule 
         </div>
       </div>
       
-      <div className="table-container">
+      <div className="table-container animate-morph stagger-3">
         <table>
           <thead>
             <tr>

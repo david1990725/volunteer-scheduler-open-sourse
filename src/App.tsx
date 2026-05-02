@@ -571,7 +571,7 @@ function App() {
             </button>
             
             {isMobileMenuOpen && (
-              <div className="mobile-nav-menu">
+              <div className="mobile-nav-menu animate-morph stagger-1">
                 <button className={adminTab === 'home' ? 'btn-primary' : 'btn-secondary'} onClick={() => { setAdminTab('home'); setIsMobileMenuOpen(false); }}>首頁</button>
                 <button className={adminTab === 'raw' ? 'btn-primary' : 'btn-secondary'} onClick={() => { setAdminTab('raw'); setIsMobileMenuOpen(false); }}>RAW 資料表單</button>
                 <button className={adminTab === 'scheduler' ? 'btn-primary' : 'btn-secondary'} onClick={() => { setAdminTab('scheduler'); setIsMobileMenuOpen(false); }}>自動排班系統</button>
