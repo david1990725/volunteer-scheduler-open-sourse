@@ -1,5 +1,5 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
-import { Menu, X, Download, Users, RefreshCw, FileSpreadsheet, RotateCcw, Image, FileText, History, Sun, Moon, ChevronDown, CloudUpload, ArrowRight, ArrowLeft } from 'lucide-react';
+import { Menu, X, Download, Users, RefreshCw, FileSpreadsheet, RotateCcw, Image, FileText, History, Sun, Moon, ChevronDown, CloudUpload, CloudDownload, ArrowRight, ArrowLeft } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import html2canvas from 'html2canvas';
 import { jsPDF } from 'jspdf';
@@ -11,9 +11,10 @@ import {
 } from './utils/scheduler';
 import type { Shift, Volunteer } from './utils/scheduler';
 import { parseSpreadsheetFile, fetchCSVAsJson, triggerDownload } from './utils/fileUtils';
+import { getCycleDates } from './utils/dateUtils';
 import { useInteractiveLighting } from './hooks/useInteractiveLighting';
 import { useLiff } from './hooks/useLiff';
-import { syncSchedule } from './utils/googleSheets';
+import { syncSchedule, fetchScheduleFromCloud } from './utils/googleSheets';
 import { Login } from './components/Login';
 import { FrontendForm } from './components/FrontendForm';
 import { AdminRawData } from './components/AdminRawData';
@@ -229,6 +230,76 @@ function App() {
     }
   }, [responseFile]);
 
+  // --- Import from Cloud ---
+  const handleImportFromCloud = async () => {
+    setLoading(true);
+    try {
+      const { targetMonths } = getCycleDates();
+      const year = new Date().getFullYear();
+      const sheetNamePrefix = `${year}年 ${targetMonths[0]}-${targetMonths[1]}月排班表`;
+
+      // Try fetching both locations
+      const shanzhuangResult = await fetchScheduleFromCloud(`${sheetNamePrefix} - 山莊`);
+      const xuanjiaoResult = await fetchScheduleFromCloud(`${sheetNamePrefix} - 宣教`);
+
+      if (!shanzhuangResult.success && !xuanjiaoResult.success) {
+        alert(`在雲端找不到本期排班資料。\n\n嘗試搜尋的工作表名稱：\n• ${sheetNamePrefix} - 山莊\n• ${sheetNamePrefix} - 宣教\n\n請確認雲端試算表中是否已有對應的工作表。`);
+        return;
+      }
+
+      // Convert 2D array back to Shift[] objects
+      const importedShifts: Shift[] = [];
+
+      const parseSheetToShifts = (data: string[][], locationName: string, roles: readonly string[]) => {
+        if (!data || data.length < 2) return;
+        const header = data[0]; // first row: '職務 / 日期', date1, date2...
+        const dates = header.slice(1);
+
+        for (const date of dates) {
+          const shift: Shift = {
+            date,
+            location: locationName,
+            assignments: {},
+          };
+
+          for (let rowIdx = 1; rowIdx < data.length; rowIdx++) {
+            const roleName = data[rowIdx][0];
+            const dateIdx = dates.indexOf(date);
+            const value = data[rowIdx][dateIdx + 1] || '';
+
+            if (roles.includes(roleName)) {
+              shift.assignments[roleName] = value || '缺';
+            }
+          }
+
+          importedShifts.push(shift);
+        }
+      };
+
+      if (shanzhuangResult.success && shanzhuangResult.data) {
+        parseSheetToShifts(shanzhuangResult.data, '山莊大堂', SHAN_ZHUANG_ROLES);
+      }
+      if (xuanjiaoResult.success && xuanjiaoResult.data) {
+        parseSheetToShifts(xuanjiaoResult.data, '宣教大樓', XUAN_JIAO_ROLES);
+      }
+
+      if (importedShifts.length === 0) {
+        alert('從雲端讀取的資料為空，請確認工作表內容。');
+        return;
+      }
+
+      setShifts(importedShifts);
+      setManualEdits({});
+      pushVersion(importedShifts, {}, `雲端匯入 ${targetMonths[0]}-${targetMonths[1]}月`);
+      alert(`成功從雲端匯入 ${importedShifts.length} 筆排班資料！`);
+    } catch (err) {
+      console.error('Cloud import failed:', err);
+      alert('從雲端匯入失敗，請稍後再試。');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   // --- Helper for generating 2D Data Array ---
   const getSheetData = useCallback((locationName: string, roles: readonly string[]): string[][] | null => {
     const locationShifts = shifts.filter(s => s.location === locationName);
@@ -270,7 +341,7 @@ function App() {
     setLoading(true);
     
     // Generate sheet name
-    const { targetMonths } = await import('./utils/dateUtils').then(m => m.getCycleDates());
+    const { targetMonths } = getCycleDates();
     const year = new Date().getFullYear();
     const sheetNamePrefix = `${year}年 ${targetMonths[0]}-${targetMonths[1]}月排班表`;
 
@@ -695,6 +766,10 @@ function App() {
 
                       <button className="btn-secondary" onClick={resetAll} disabled={!hasShifts} style={{ height: '48px' }}>
                         <RotateCcw size={20} /> 清除
+                      </button>
+
+                      <button className="btn-secondary" onClick={handleImportFromCloud} disabled={loading} style={{ height: '48px' }}>
+                        <CloudDownload size={20} /> {loading ? '匯入中...' : '從雲端匯入'}
                       </button>
 
                       {hasShifts && (

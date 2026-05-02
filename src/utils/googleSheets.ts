@@ -92,3 +92,30 @@ export async function syncSchedule(payload: { sheetName: string; data: string[][
     return { success: false, message: '同步試算表失敗，請稍後再試。' };
   }
 }
+
+/**
+ * 透過 Google Apps Script 從雲端讀取指定工作表的排班資料
+ */
+export async function fetchScheduleFromCloud(sheetName: string): Promise<{ success: boolean; message: string; data: string[][] | null }> {
+  if (!APPS_SCRIPT_URL) {
+    console.error('VITE_APPS_SCRIPT_URL is not configured');
+    return { success: false, message: 'Apps Script URL 尚未設定，請聯繫管理員。', data: null };
+  }
+
+  try {
+    const res = await fetch(APPS_SCRIPT_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain' },
+      body: JSON.stringify({
+        action: 'fetchSchedule',
+        sheetName,
+      }),
+    });
+
+    const result = await res.json();
+    return { success: result.success ?? false, message: result.message ?? '讀取失敗', data: result.data ?? null };
+  } catch (err) {
+    console.error('Failed to fetch schedule from cloud:', err);
+    return { success: false, message: '從雲端讀取排班資料失敗，請稍後再試。', data: null };
+  }
+}

@@ -29,6 +29,8 @@ function doPost(e) {
       return handleUpdateLineId(payload);
     } else if (payload.action === 'syncSchedule') {
       return handleSyncSchedule(payload);
+    } else if (payload.action === 'fetchSchedule') {
+      return handleFetchSchedule(payload);
     }
     
     return jsonResponse({ success: false, message: '未知的操作' });
@@ -149,6 +151,37 @@ function handleSyncSchedule(payload) {
   }
   
   return jsonResponse({ success: true, message: '同步成功' });
+}
+
+/**
+ * 從 Google Sheets 讀取指定工作表的排班資料
+ * payload.sheetName: 要讀取的工作表名稱
+ */
+function handleFetchSchedule(payload) {
+  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  var sheet = ss.getSheetByName(payload.sheetName);
+  
+  if (!sheet) {
+    return jsonResponse({ success: false, message: '找不到工作表: ' + payload.sheetName, data: null });
+  }
+  
+  var lastRow = sheet.getLastRow();
+  var lastCol = sheet.getLastColumn();
+  
+  if (lastRow === 0 || lastCol === 0) {
+    return jsonResponse({ success: false, message: '工作表為空', data: null });
+  }
+  
+  var data = sheet.getRange(1, 1, lastRow, lastCol).getValues();
+  
+  // Convert all values to strings
+  for (var i = 0; i < data.length; i++) {
+    for (var j = 0; j < data[i].length; j++) {
+      data[i][j] = String(data[i][j]);
+    }
+  }
+  
+  return jsonResponse({ success: true, message: '讀取成功', data: data });
 }
 
 /**
