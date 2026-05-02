@@ -419,12 +419,15 @@ function App() {
       buildSheet('山莊大堂', SHAN_ZHUANG_ROLES);
       buildSheet('宣教大樓', XUAN_JIAO_ROLES);
 
-      const wbout = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
-      const blob = new Blob([wbout], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
-      triggerDownload(blob, 'schedule_report.xlsx');
-    } catch (err) {
+      if (workbook.SheetNames.length === 0) {
+        alert('沒有可匯出的資料');
+        return;
+      }
+      
+      XLSX.writeFile(workbook, 'schedule_report.xlsx');
+    } catch (err: any) {
       console.error('Excel export failed:', err);
-      alert('匯出 Excel 失敗');
+      alert('匯出 Excel 失敗: ' + (err.message || String(err)));
     }
   }, [shifts, getSheetData]);
 
@@ -442,6 +445,18 @@ function App() {
     clone.style.left = '-9999px';
     clone.style.top = '0';
     clone.classList.add('export-mode');
+    
+    // Disable animations on clone so html2canvas doesn't capture them at opacity 0
+    clone.style.animation = 'none';
+    clone.style.transition = 'none';
+    clone.style.opacity = '1';
+    const animatedEls = clone.querySelectorAll('.animate-morph');
+    animatedEls.forEach(el => {
+      (el as HTMLElement).style.animation = 'none';
+      (el as HTMLElement).style.transition = 'none';
+      (el as HTMLElement).style.opacity = '1';
+    });
+
     document.body.appendChild(clone);
 
     try {
@@ -845,7 +860,7 @@ function App() {
                           <CloudUpload size={18} /> {loading ? '同步中...' : '同步寫入雲端'}
                         </button>
                         
-                        <div ref={exportMenuRef} style={{ position: 'relative' }}>
+                        <div ref={exportMenuRef} style={{ position: 'relative', zIndex: showExportMenu ? 100 : 1 }}>
                           <button className="btn-primary" disabled={!hasShifts || exporting !== ''}
                             onClick={() => setShowExportMenu(v => !v)}>
                             <Download size={18} /> {exporting ? '匯出中...' : '匯出'} <ChevronDown size={16} />
