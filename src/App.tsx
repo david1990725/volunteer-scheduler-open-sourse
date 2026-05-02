@@ -10,7 +10,8 @@ import {
   XUAN_JIAO_ROLES,
 } from './utils/scheduler';
 import type { Shift, Volunteer } from './utils/scheduler';
-
+import { parseSpreadsheetFile, fetchCSVAsJson, triggerDownload } from './utils/fileUtils';
+import { useInteractiveLighting } from './hooks/useInteractiveLighting';
 import { Login } from './components/Login';
 import { FrontendForm } from './components/FrontendForm';
 import { AdminRawData } from './components/AdminRawData';
@@ -28,55 +29,12 @@ const FALLBACK_RESPONSES_PATH = '/schedule_responses.csv';
 // Helpers
 // =============================================================================
 
-/** 解析使用者上傳的 CSV / XLSX 檔案為 JSON 陣列 */
-async function parseSpreadsheetFile(file: File): Promise<any[]> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    const isCSV = file.name.toLowerCase().endsWith('.csv');
-
-    reader.onload = (e) => {
-      try {
-        const workbook = isCSV
-          ? XLSX.read(e.target?.result as string, { type: 'string' })
-          : XLSX.read(new Uint8Array(e.target?.result as ArrayBuffer), { type: 'array' });
-
-        const sheet = workbook.Sheets[workbook.SheetNames[0]];
-        resolve(XLSX.utils.sheet_to_json(sheet, { defval: '' }));
-      } catch (err) {
-        reject(err);
-      }
-    };
-    reader.onerror = reject;
-    isCSV ? reader.readAsText(file) : reader.readAsArrayBuffer(file);
-  });
-}
-
-/** 從 URL 下載 CSV 並解析為 JSON 陣列 */
-async function fetchCSVAsJson(url: string): Promise<any[]> {
-  const res = await fetch(url);
-  const text = await res.text();
-  const wb = XLSX.read(text, { type: 'string' });
-  return XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { defval: '' });
-}
-
 /** 計算某週有效人數（排除「缺」） */
 function countAssigned(shift: Shift, roles: readonly string[]): number {
   return roles.reduce(
     (sum, role) => sum + (shift.assignments[role] && shift.assignments[role] !== '缺' ? 1 : 0),
     0,
   );
-}
-
-/** 觸發瀏覽器下載 */
-function triggerDownload(blob: Blob, filename: string) {
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = filename;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
 }
 
 // =============================================================================
@@ -148,67 +106,18 @@ function App() {
     localStorage.setItem('volunteer_scheduler_versions', JSON.stringify(versions));
   }, [versions]);
 
+  // 互動光影效果（桌面滑鼠 + 行動加速度計）
+  useInteractiveLighting();
+
+  // 關閉匯出選單（點擊外部）
   useEffect(() => {
-    const handleMouseMove = (e: MouseEvent) => {
-      const x = (e.clientX / window.innerWidth) * 100;
-      const y = (e.clientY / window.innerHeight) * 100;
-      document.documentElement.style.setProperty('--mouse-x', `${x}%`);
-      document.documentElement.style.setProperty('--mouse-y', `${y}%`);
-      // Also calculate rotation for subtle tilt
-      const rotateY = (e.clientX / window.innerWidth - 0.5) * 4;
-      const rotateX = (e.clientY / window.innerHeight - 0.5) * -4;
-      document.documentElement.style.setProperty('--tilt-x', `${rotateX}deg`);
-      document.documentElement.style.setProperty('--tilt-y', `${rotateY}deg`);
-    };
-
-    const handleDeviceOrientation = (e: DeviceOrientationEvent) => {
-      if (e.beta === null || e.gamma === null) return;
-      
-      // beta: -180 to 180 (front-back tilt)
-      // gamma: -90 to 90 (left-right tilt)
-      // We want to map these to reasonable tilt degrees (-5 to 5)
-      const tiltX = Math.max(-10, Math.min(10, e.beta / 10)) * -1;
-      const tiltY = Math.max(-10, Math.min(10, e.gamma / 10));
-      
-      document.documentElement.style.setProperty('--tilt-x', `${tiltX}deg`);
-      document.documentElement.style.setProperty('--tilt-y', `${tiltY}deg`);
-      
-      // Also move the spotlight based on tilt
-      const mouseX = 50 + (e.gamma / 90) * 50;
-      const mouseY = 50 + (e.beta / 180) * 50;
-      document.documentElement.style.setProperty('--mouse-x', `${mouseX}%`);
-      document.documentElement.style.setProperty('--mouse-y', `${mouseY}%`);
-    };
-
     const handleClickOutside = (e: MouseEvent) => {
       if (exportMenuRef.current && !exportMenuRef.current.contains(e.target as Node)) {
         setShowExportMenu(false);
       }
     };
-
-    document.addEventListener('mousemove', handleMouseMove);
     document.addEventListener('mousedown', handleClickOutside);
-    window.addEventListener('deviceorientation', handleDeviceOrientation);
-
-    // Request permission for iOS if needed
-    if (typeof (DeviceOrientationEvent as any).requestPermission === 'function') {
-      const requestPermission = async () => {
-        try {
-          await (DeviceOrientationEvent as any).requestPermission();
-        } catch (e) {
-          console.error('Device orientation permission denied');
-        }
-      };
-      // Note: This usually needs a user interaction to trigger, 
-      // but adding the listener anyway might work on some environments.
-      document.addEventListener('click', requestPermission, { once: true });
-    }
-
-    return () => {
-      document.removeEventListener('mousemove', handleMouseMove);
-      document.removeEventListener('mousedown', handleClickOutside);
-      window.removeEventListener('deviceorientation', handleDeviceOrientation);
-    };
+    return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
   const editKey = (loc: string, date: string, field: string) => `${loc}|${date}|${field}`;

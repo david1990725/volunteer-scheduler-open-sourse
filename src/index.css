@@ -208,8 +208,9 @@ body::after {
 }
 
 /* ---------------------------------------------------------------------------
- * 轉播拍攝排班系統 — Liquid Glass Design System
+ * Logo & Header
  * ------------------------------------------------------------------------ */
+
 .logo-container {
   display: flex;
   flex-direction: column;

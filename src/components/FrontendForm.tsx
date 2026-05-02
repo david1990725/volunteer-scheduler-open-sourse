@@ -15,10 +15,6 @@ export const FrontendForm: React.FC<FrontendFormProps> = ({ currentUser, onLogou
   const [availability, setAvailability] = useState<Record<string, string[]>>({});
   const [submitted, setSubmitted] = useState(false);
 
-  // Allow testing even if closed
-  const isDevOpen = true; 
-  const isActuallyOpen = isOpen || (isDevOpen && currentUser.role === 'admin');
-
   const toggleAvailability = (date: string, location: string) => {
     setAvailability(prev => {
       const current = prev[date] || [];
@@ -55,7 +51,7 @@ export const FrontendForm: React.FC<FrontendFormProps> = ({ currentUser, onLogou
     setSubmitted(true);
   };
 
-  if (!isActuallyOpen) {
+  if (!isOpen) {
     return (
       <div className="glass-card" style={{ padding: '60px 20px', textAlign: 'center', maxWidth: '600px', margin: '100px auto' }}>
         <h2 style={{ fontSize: '1.8rem', marginBottom: '20px' }}>表單已關閉</h2>
