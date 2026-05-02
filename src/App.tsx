@@ -592,7 +592,7 @@ function App() {
               }} />
             ) : (
               <>
-                <div className="glass-card" style={{ padding: '24px', marginBottom: '24px' }}>
+                <div className="glass-card" style={{ padding: '24px', marginBottom: '24px', zIndex: 50, position: 'relative' }}>
                   <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap', alignItems: 'center' }}>
                     <div style={{ flex: 1, minWidth: '300px' }}>
                       <label className="btn-secondary" style={{ width: '100%', justifyContent: 'center', height: '48px', cursor: 'pointer', overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis' }}>
@@ -633,7 +633,7 @@ function App() {
                 </div>
 
                 {(hasShifts || versions.length > 0) && (
-                  <div className="glass-card" style={{ padding: '16px 24px', marginBottom: '20px' }}>
+                  <div className="glass-card" style={{ padding: '16px 24px', marginBottom: '20px', zIndex: 10, position: 'relative' }}>
                     {hasShifts && (
                       <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '20px' }}>
                         {editMode ? (
