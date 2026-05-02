@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import * as XLSX from 'xlsx';
 import { parseSkillTreeData, buildLineIdMap } from '../utils/scheduler';
 import type { Volunteer } from '../utils/scheduler';
@@ -18,14 +18,26 @@ export const Login: React.FC<LoginProps> = ({ onLogin }) => {
   const [error, setError] = useState('');
   const [registering, setRegistering] = useState(false);
   const [registerSuccess, setRegisterSuccess] = useState('');
-  const { isLoggedIn, profile, login, liffObject } = useLiff();
+  const { isLoggedIn, profile, login, liffObject, isReady, isManualLogout, clearManualLogout } = useLiff();
 
-  // Auto-login if LIFF profile is available
+  // 追蹤是否已嘗試過自動登入，避免重複觸發
+  const autoLoginAttempted = useRef(false);
+
+  // 自動登入：僅在 LIFF 就緒、有 profile、且非手動登出狀態時觸發
   React.useEffect(() => {
-    if (isLoggedIn && profile && !loading && !registering) {
-      handleLineLogin();
+    if (!isReady) return;
+    if (!isLoggedIn || !profile) return;
+    if (loading || registering) return;
+    if (autoLoginAttempted.current) return;
+
+    // 若使用者剛剛手動登出，不要自動登入
+    if (isManualLogout()) {
+      return;
     }
-  }, [isLoggedIn, profile]);
+
+    autoLoginAttempted.current = true;
+    handleLineLogin();
+  }, [isReady, isLoggedIn, profile]);
 
   /** 載入技能樹並回傳解析結果 */
   const fetchSkillTree = async () => {
@@ -53,7 +65,8 @@ export const Login: React.FC<LoginProps> = ({ onLogin }) => {
       const matchedName = lineIdMap[lineUserId];
 
       if (matchedName && volunteers[matchedName]) {
-        onLogin(volunteers[matchedName], volunteers);
+        const user = volunteers[matchedName];
+        onLogin(user, volunteers);
         return;
       }
 
@@ -99,6 +112,21 @@ export const Login: React.FC<LoginProps> = ({ onLogin }) => {
     }
   };
 
+  /** 使用者主動點擊 LINE 登入 */
+  const handleExplicitLineLogin = () => {
+    // 清除手動登出旗標
+    clearManualLogout();
+    autoLoginAttempted.current = false;
+
+    if (isLoggedIn && profile) {
+      // 已有 LIFF session，直接驗證
+      handleLineLogin();
+    } else {
+      // 無 LIFF session，導向 LINE 授權頁
+      login();
+    }
+  };
+
   /** 手動姓名登入 */
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -135,7 +163,7 @@ export const Login: React.FC<LoginProps> = ({ onLogin }) => {
         {/* LINE 快速登入（放在最上方，作為主要登入方式） */}
         <button 
           type="button" 
-          onClick={() => login()}
+          onClick={handleExplicitLineLogin}
           className="btn-secondary" 
           disabled={loading || registering || !liffObject} 
           style={{ 
@@ -152,6 +180,8 @@ export const Login: React.FC<LoginProps> = ({ onLogin }) => {
         >
           {registering ? (
             <><RefreshCw className="animate-spin" size={20} /> 正在自動加入名單...</>
+          ) : loading ? (
+            <><RefreshCw className="animate-spin" size={20} /> LINE 登入驗證中...</>
           ) : (
             <><MessageCircle size={22} fill="#fff" /> LINE 快速登入</>
           )}

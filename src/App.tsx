@@ -76,12 +76,12 @@ function App() {
   const [view, setView] = useState<'login' | 'frontend' | 'admin'>('login');
   const [adminTab, setAdminTab] = useState<'raw' | 'scheduler'>('raw');
   const [currentUser, setCurrentUser] = useState<Volunteer | null>(null);
-  const { logout: liffLogout, isLoggedIn: isLiffLoggedIn } = useLiff();
+  const { logout: liffLogout } = useLiff();
 
   const handleLogout = () => {
-    if (isLiffLoggedIn) {
-      liffLogout();
-    }
+    // liffLogout 會設置 sessionStorage 旗標 + 清除 LIFF session
+    // 防止回到登入頁後自動觸發 LINE 登入
+    liffLogout();
     setView('login');
     setCurrentUser(null);
   };
