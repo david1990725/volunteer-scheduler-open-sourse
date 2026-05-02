@@ -1,5 +1,5 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
-import { Menu, X, Download, Users, RefreshCw, FileSpreadsheet, RotateCcw, Image, FileText, Edit3, Save, History, Sun, Moon, ChevronDown, CloudUpload, ArrowRight, ArrowLeft } from 'lucide-react';
+import { Menu, X, Download, Users, RefreshCw, FileSpreadsheet, RotateCcw, Image, FileText, History, Sun, Moon, ChevronDown, CloudUpload, ArrowRight, ArrowLeft } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import html2canvas from 'html2canvas';
 import { jsPDF } from 'jspdf';
