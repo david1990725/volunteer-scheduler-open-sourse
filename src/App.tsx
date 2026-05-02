@@ -583,7 +583,7 @@ function App() {
         </>
       )}
 
-      <main>
+      <main className="animate-morph stagger-1">
         {view === 'login' && (
           <Login onLogin={(user) => {
             setView('loading');
@@ -610,7 +610,7 @@ function App() {
         {view === 'admin' && (
           <>
             {adminTab === 'home' && (
-              <div className="glass-card" style={{ padding: '60px 20px', textAlign: 'center', maxWidth: '600px', margin: '40px auto' }}>
+              <div className="glass-card animate-morph stagger-2" style={{ padding: '60px 20px', textAlign: 'center', maxWidth: '600px', margin: '40px auto' }}>
                 <h2 style={{ fontSize: '1.8rem', marginBottom: '20px', color: 'var(--text-primary)' }}>歡迎進入主日轉播排班後台，請點選需要使用的功能！</h2>
                 <p style={{ color: 'var(--text-secondary)', lineHeight: '1.6' }}>
                   請透過上方功能選單，切換至 RAW 資料表單管理義工，或使用自動排班系統。
@@ -627,7 +627,7 @@ function App() {
             
             {adminTab === 'scheduler' && (
               <>
-                <div className="glass-card" style={{ padding: '24px', marginBottom: '24px', zIndex: 50, position: 'relative' }}>
+                <div className="glass-card animate-morph stagger-2" style={{ padding: '24px', marginBottom: '24px', zIndex: 50, position: 'relative' }}>
                   <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap', alignItems: 'center' }}>
                     <div style={{ flex: 1, minWidth: '300px' }}>
                       <label className="btn-secondary" style={{ width: '100%', justifyContent: 'center', height: '48px', cursor: 'pointer', overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis' }}>
@@ -668,7 +668,7 @@ function App() {
                 </div>
 
                 {(hasShifts || versions.length > 0) && (
-                  <div className="glass-card" style={{ padding: '16px 24px', marginBottom: '20px', zIndex: 10, position: 'relative' }}>
+                  <div className="glass-card animate-morph stagger-3" style={{ padding: '16px 24px', marginBottom: '20px', zIndex: 10, position: 'relative' }}>
                     {hasShifts && (
                       <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '20px' }}>
                         {editMode ? (
@@ -721,12 +721,12 @@ function App() {
 
                 {/* Schedule Tables */}
                 {hasShifts ? (
-                  <div ref={scheduleRef}>
+                  <div ref={scheduleRef} className="animate-morph stagger-4">
                     {renderLocationTable('山莊大堂', SHAN_ZHUANG_ROLES)}
                     {renderLocationTable('宣教大樓', XUAN_JIAO_ROLES)}
                   </div>
                 ) : (
-                  <div className="glass-card" style={{ padding: '60px 20px', textAlign: 'center' }}>
+                  <div className="glass-card animate-morph stagger-4" style={{ padding: '60px 20px', textAlign: 'center' }}>
                     <Users color="var(--text-muted)" size={48} style={{ margin: '0 auto 20px' }} />
                     <h3 style={{ color: 'var(--text-secondary)', fontSize: '1.2rem', marginBottom: '10px' }}>尚未生成排班資料</h3>
                     <p style={{ color: 'var(--text-muted)' }}>點擊上方的「自動生成排班」按鈕來開始</p>

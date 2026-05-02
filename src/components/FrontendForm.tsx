@@ -100,7 +100,7 @@ export const FrontendForm: React.FC<FrontendFormProps> = ({ currentUser, onLogou
     <div style={{ maxWidth: '800px', margin: '40px auto', width: '100%', padding: '0 10px' }}>
       
       {/* 區塊 1: 說明文字 */}
-      <div className="glass-card" style={{ padding: '30px', marginBottom: '20px' }}>
+      <div className="glass-card animate-morph stagger-1" style={{ padding: '30px', marginBottom: '20px' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
           <div>
             <h2 style={{ margin: 0, fontSize: '2rem', background: 'linear-gradient(135deg, var(--text-title-from) 0%, var(--text-title-to) 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
@@ -119,7 +119,7 @@ export const FrontendForm: React.FC<FrontendFormProps> = ({ currentUser, onLogou
       <form onSubmit={handleSubmit}>
         
         {/* 區塊 2: 所屬組別 */}
-        <div className="glass-card" style={{ padding: '30px', marginBottom: '20px' }}>
+        <div className="glass-card animate-morph stagger-2" style={{ padding: '30px', marginBottom: '20px' }}>
           <label style={{ display: 'block', fontSize: '1.2rem', fontWeight: 700, marginBottom: '20px', color: 'var(--text-primary)' }}>所屬組別 <span style={{ color: 'var(--text-missing)' }}>*</span></label>
           <div style={{ display: 'flex', gap: '15px', flexWrap: 'wrap' }}>
             {['動態攝影組', '平面拍照組', '舞台燈光組'].map(g => (
@@ -138,8 +138,8 @@ export const FrontendForm: React.FC<FrontendFormProps> = ({ currentUser, onLogou
         </div>
 
         {/* 區塊 3 & 4: 按月分塊 */}
-        {Object.entries(sundaysByMonth).map(([month, dates]) => (
-          <div key={month} className="glass-card" style={{ padding: '30px', marginBottom: '20px' }}>
+        {Object.entries(sundaysByMonth).map(([month, dates], index) => (
+          <div key={month} className={`glass-card animate-morph stagger-${index + 3}`} style={{ padding: '30px', marginBottom: '20px' }}>
             <label style={{ display: 'block', fontSize: '1.2rem', fontWeight: 700, marginBottom: '20px', color: 'var(--text-primary)' }}>
               {month} 月份可服事日期與地點
             </label>
@@ -173,7 +173,7 @@ export const FrontendForm: React.FC<FrontendFormProps> = ({ currentUser, onLogou
           </div>
         ))}
 
-        <button type="submit" className="btn-primary" style={{ width: '100%', justifyContent: 'center', padding: '18px', fontSize: '1.3rem', borderRadius: '16px', marginBottom: '40px', boxShadow: 'var(--shadow-card)' }}>
+        <button type="submit" className="btn-primary animate-morph stagger-5" style={{ width: '100%', justifyContent: 'center', padding: '18px', fontSize: '1.3rem', borderRadius: '16px', marginBottom: '40px', boxShadow: 'var(--shadow-card)' }}>
           <Save size={24} /> 提交表單
         </button>
       </form>
