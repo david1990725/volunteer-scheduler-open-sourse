@@ -84,6 +84,7 @@ function App() {
     liffLogout();
     setView('login');
     setCurrentUser(null);
+    setAdminTab('raw');
   };
 
   const [shifts, setShifts] = useState<Shift[]>([]);
@@ -559,8 +560,12 @@ function App() {
         {view === 'login' && (
           <Login onLogin={(user) => {
             setCurrentUser(user);
-            if (user.role === 'admin') setView('admin');
-            else setView('frontend');
+            if (user.role === 'admin') {
+              setAdminTab('raw');
+              setView('admin');
+            } else {
+              setView('frontend');
+            }
           }} />
         )}
 
