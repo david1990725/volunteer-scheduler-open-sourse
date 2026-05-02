@@ -556,6 +556,7 @@ function App() {
         <>
           {/* Desktop Navigation */}
           <div className="desktop-nav">
+            <button className={adminTab === 'home' ? 'btn-primary' : 'btn-secondary'} onClick={() => setAdminTab('home')}>首頁</button>
             <button className={adminTab === 'raw' ? 'btn-primary' : 'btn-secondary'} onClick={() => setAdminTab('raw')}>RAW 資料表單</button>
             <button className={adminTab === 'scheduler' ? 'btn-primary' : 'btn-secondary'} onClick={() => setAdminTab('scheduler')}>自動排班系統</button>
             <button className="btn-secondary" onClick={() => setView('frontend')} style={{ borderColor: 'var(--icon-accent)', color: 'var(--text-primary)' }}>填寫個人表單</button>
@@ -571,6 +572,7 @@ function App() {
             
             {isMobileMenuOpen && (
               <div className="mobile-nav-menu">
+                <button className={adminTab === 'home' ? 'btn-primary' : 'btn-secondary'} onClick={() => { setAdminTab('home'); setIsMobileMenuOpen(false); }}>首頁</button>
                 <button className={adminTab === 'raw' ? 'btn-primary' : 'btn-secondary'} onClick={() => { setAdminTab('raw'); setIsMobileMenuOpen(false); }}>RAW 資料表單</button>
                 <button className={adminTab === 'scheduler' ? 'btn-primary' : 'btn-secondary'} onClick={() => { setAdminTab('scheduler'); setIsMobileMenuOpen(false); }}>自動排班系統</button>
                 <button className="btn-secondary" onClick={() => { setView('frontend'); setIsMobileMenuOpen(false); }} style={{ borderColor: 'var(--icon-accent)', color: 'var(--text-primary)' }}>填寫個人表單</button>
@@ -616,12 +618,14 @@ function App() {
               </div>
             )}
             
-            {adminTab === 'raw' ? (
+            {adminTab === 'raw' && (
               <AdminRawData onStartAutoSchedule={() => {
                 setAdminTab('scheduler');
                 generateSchedule();
               }} />
-            ) : (
+            )}
+            
+            {adminTab === 'scheduler' && (
               <>
                 <div className="glass-card" style={{ padding: '24px', marginBottom: '24px', zIndex: 50, position: 'relative' }}>
                   <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap', alignItems: 'center' }}>
