@@ -9,6 +9,7 @@ export interface Volunteer {
   role: 'admin' | 'user';
   roles: string[];
   skills: Record<string, number>;
+  lineId?: string;
 }
 
 export interface Shift {
@@ -100,11 +101,26 @@ export function parseSkillTreeData(data: any[]): Record<string, Volunteer> {
     skills['信息版']   = roles.some((r: string) => ['山莊導播', '宣教導播', '導播', 'HOST', 'CCU'].includes(r)) ? 10 : 0;
 
     const userRole = row['role']?.trim().toLowerCase() === 'admin' ? 'admin' : 'user';
+    const lineId = (row['LINE_ID'] || '').trim() || undefined;
 
-    volunteers[name] = { name, role: userRole, roles, skills };
+    volunteers[name] = { name, role: userRole, roles, skills, lineId };
   }
 
   return volunteers;
+}
+
+/**
+ * 建立 LINE userId → 義工姓名 的反向對照表
+ * 用於 LINE 登入時快速查找對應的義工資料
+ */
+export function buildLineIdMap(volunteers: Record<string, Volunteer>): Record<string, string> {
+  const map: Record<string, string> = {};
+  for (const [name, vol] of Object.entries(volunteers)) {
+    if (vol.lineId) {
+      map[vol.lineId] = name;
+    }
+  }
+  return map;
 }
 
 // =============================================================================
