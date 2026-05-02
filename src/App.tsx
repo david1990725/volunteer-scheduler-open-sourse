@@ -229,14 +229,6 @@ function App() {
     }
   }, [responseFile]);
 
-  // --- Excel Export ---------------------------------------------------------
-
-  const exportExcel = useCallback(() => {
-    if (shifts.length === 0) return;
-
-    try {
-      const workbook = XLSX.utils.book_new();
-
   // --- Helper for generating 2D Data Array ---
   const getSheetData = useCallback((locationName: string, roles: readonly string[]): string[][] | null => {
     const locationShifts = shifts.filter(s => s.location === locationName);
@@ -328,7 +320,7 @@ function App() {
       console.error('Excel export failed:', err);
       alert('匯出 Excel 失敗');
     }
-  }, [shifts, manualEdits]);
+  }, [shifts, getSheetData]);
 
   // --- PNG / PDF Export --------------------------------------------------
 
