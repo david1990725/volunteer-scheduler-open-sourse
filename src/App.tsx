@@ -268,6 +268,10 @@ function App() {
         return trimmed; // 無法解析就原樣回傳
       };
 
+      // Extra fields stored in manualEdits (燈控, 備用, 餐點)
+      const EXTRA_FIELDS = ['燈控', '備用1', '備用2', '山莊早餐數量', '宣教早餐數量', '宣教午餐數量'];
+      const importedEdits: Record<string, string> = {};
+
       const parseSheetToShifts = (data: string[][], locationName: string, roles: readonly string[]) => {
         if (!data || data.length < 2) return;
         const header = data[0]; // first row: '職務 / 日期', date1, date2...
@@ -284,12 +288,18 @@ function App() {
           };
 
           for (let rowIdx = 1; rowIdx < data.length; rowIdx++) {
-            const roleName = data[rowIdx][0];
+            const rowLabel = (data[rowIdx][0] || '').trim();
             const dateIdx = dates.indexOf(date);
-            const value = data[rowIdx][dateIdx + 1] || '';
+            const value = (data[rowIdx][dateIdx + 1] || '').trim();
 
-            if (roles.includes(roleName)) {
-              shift.assignments[roleName] = value || '缺';
+            if (roles.includes(rowLabel)) {
+              // 職位欄位 → assignments
+              shift.assignments[rowLabel] = value || '缺';
+            } else if (EXTRA_FIELDS.includes(rowLabel) && value) {
+              // 燈控、備用、餐點 → manualEdits
+              // 餐點數量移除「份」字尾
+              const cleanVal = value.replace(/\s*份$/, '');
+              importedEdits[editKey(locationName, date, rowLabel)] = cleanVal;
             }
           }
 
@@ -310,8 +320,8 @@ function App() {
       }
 
       setShifts(importedShifts);
-      setManualEdits({});
-      pushVersion(importedShifts, {}, `雲端匯入 ${targetMonths[0]}-${targetMonths[1]}月`);
+      setManualEdits(importedEdits);
+      pushVersion(importedShifts, importedEdits, `雲端匯入 ${targetMonths[0]}-${targetMonths[1]}月`);
       alert(`成功從雲端匯入 ${importedShifts.length} 筆排班資料！`);
     } catch (err) {
       console.error('Cloud import failed:', err);
