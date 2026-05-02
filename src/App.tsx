@@ -12,6 +12,7 @@ import {
 import type { Shift, Volunteer } from './utils/scheduler';
 import { parseSpreadsheetFile, fetchCSVAsJson, triggerDownload } from './utils/fileUtils';
 import { useInteractiveLighting } from './hooks/useInteractiveLighting';
+import { useLiff } from './hooks/useLiff';
 import { Login } from './components/Login';
 import { FrontendForm } from './components/FrontendForm';
 import { AdminRawData } from './components/AdminRawData';
@@ -75,6 +76,15 @@ function App() {
   const [view, setView] = useState<'login' | 'frontend' | 'admin'>('login');
   const [adminTab, setAdminTab] = useState<'raw' | 'scheduler'>('raw');
   const [currentUser, setCurrentUser] = useState<Volunteer | null>(null);
+  const { logout: liffLogout, isLoggedIn: isLiffLoggedIn } = useLiff();
+
+  const handleLogout = () => {
+    if (isLiffLoggedIn) {
+      liffLogout();
+    }
+    setView('login');
+    setCurrentUser(null);
+  };
 
   const [shifts, setShifts] = useState<Shift[]>([]);
   const [loading, setLoading] = useState(false);
@@ -540,7 +550,7 @@ function App() {
           <button className={adminTab === 'raw' ? 'btn-primary' : 'btn-secondary'} onClick={() => setAdminTab('raw')}>RAW 資料表單</button>
           <button className={adminTab === 'scheduler' ? 'btn-primary' : 'btn-secondary'} onClick={() => setAdminTab('scheduler')}>自動排班系統</button>
           <button className="btn-secondary" onClick={() => setView('frontend')} style={{ borderColor: 'var(--icon-accent)', color: 'var(--text-primary)' }}>填寫個人表單</button>
-          <button className="btn-secondary" onClick={() => { setView('login'); setCurrentUser(null); }}>登出</button>
+          <button className="btn-secondary" onClick={handleLogout}>登出</button>
         </div>
       )}
 
@@ -557,7 +567,7 @@ function App() {
         {view === 'frontend' && (
           <FrontendForm 
             currentUser={currentUser!} 
-            onLogout={() => { setView('login'); setCurrentUser(null); }} 
+            onLogout={handleLogout} 
             onBackToAdmin={currentUser?.role === 'admin' ? () => setView('admin') : undefined}
           />
         )}
