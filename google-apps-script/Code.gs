@@ -52,19 +52,21 @@ function handleAddVolunteer(payload) {
   
   if (!sheet) return jsonResponse({ success: false, message: '找不到工作表' });
   
-  const lastCol = sheet.getLastColumn();
+  let lastCol = sheet.getLastColumn();
   if (lastCol === 0) return jsonResponse({ success: false, message: '工作表為空' });
 
   const headers = sheet.getRange(1, 1, 1, lastCol).getValues()[0];
   const nameCol = headers.indexOf('姓名');
-  const lineIdCol = headers.indexOf('user_id');
+  let lineIdCol = headers.indexOf('user_id');
   const roleCol = headers.indexOf('role');
   
   if (nameCol === -1) return jsonResponse({ success: false, message: '找不到「姓名」欄位' });
   
   if (lineIdCol === -1) {
-    sheet.getRange(1, lastCol + 1).setValue('user_id');
-    return handleAddVolunteer(payload);
+    lastCol += 1;
+    sheet.getRange(1, lastCol).setValue('user_id');
+    lineIdCol = lastCol - 1; // 更新 index
+    SpreadsheetApp.flush(); // 強制寫入
   }
   
   const lastRow = sheet.getLastRow();
@@ -77,7 +79,8 @@ function handleAddVolunteer(payload) {
     }
   }
   
-  const newRow = new Array(headers.length).fill('');
+  // 新增一列時，長度需與目前的 lastCol 相符
+  const newRow = new Array(lastCol).fill('');
   newRow[nameCol] = payload.name || payload.lineName || '未知';
   newRow[lineIdCol] = payload.lineId;
   if (roleCol !== -1) newRow[roleCol] = 'user';
@@ -95,20 +98,22 @@ function handleUpdateLineId(payload) {
   const sheet = ss.getSheetByName(SHEET_NAME);
   if (!sheet) return jsonResponse({ success: false, message: '找不到工作表' });
 
-  const lastCol = sheet.getLastColumn();
+  let lastCol = sheet.getLastColumn();
   const lastRow = sheet.getLastRow();
   if (lastCol === 0 || lastRow <= 1) return jsonResponse({ success: false, message: '無資料可更新' });
 
   const headers = sheet.getRange(1, 1, 1, lastCol).getValues()[0];
   const nameCol = headers.indexOf('姓名');
-  const lineIdCol = headers.indexOf('user_id');
+  let lineIdCol = headers.indexOf('user_id');
 
   if (nameCol === -1) return jsonResponse({ success: false, message: '找不到「姓名」欄位' });
   
   // 如果沒有 user_id 欄位，就建一個
   if (lineIdCol === -1) {
-    sheet.getRange(1, lastCol + 1).setValue('user_id');
-    return handleUpdateLineId(payload);
+    lastCol += 1;
+    sheet.getRange(1, lastCol).setValue('user_id');
+    lineIdCol = lastCol - 1;
+    SpreadsheetApp.flush();
   }
 
   const allData = sheet.getRange(2, 1, lastRow - 1, lastCol).getValues();

@@ -144,7 +144,7 @@ export const Login: React.FC<LoginProps> = ({ onLogin }) => {
       if (profile) {
         handleLineLogin();
       } else {
-        liffObject.getProfile().then((p: any) => {
+        liffObject.getProfile().then(() => {
            // profile might not be in state yet
            // We can just rely on useEffect to trigger once profile is fetched by the hook 
            // But since the hook doesn't re-fetch on click, we call login()
