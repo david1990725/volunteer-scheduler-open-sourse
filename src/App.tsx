@@ -73,7 +73,7 @@ interface ScheduleVersion {
 // =============================================================================
 
 function App() {
-  const [view, setView] = useState<'login' | 'frontend' | 'admin'>('login');
+  const [view, setView] = useState<'login' | 'loading' | 'frontend' | 'admin'>('login');
   const [adminTab, setAdminTab] = useState<'raw' | 'scheduler'>('raw');
   const [currentUser, setCurrentUser] = useState<Volunteer | null>(null);
   const { logout: liffLogout } = useLiff();
@@ -93,6 +93,7 @@ function App() {
   const [responseFile, setResponseFile] = useState<File | null>(null);
   const [manualEdits, setManualEdits] = useState<Record<string, string>>({});
   const [editMode, setEditMode] = useState(false);
+  const [uploadedFileName, setUploadedFileName] = useState('');
   const [versions, setVersions] = useState<ScheduleVersion[]>(() => {
     try {
       const saved = localStorage.getItem('volunteer_scheduler_versions');
@@ -174,7 +175,11 @@ function App() {
   // --- Event Handlers -------------------------------------------------------
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setResponseFile(e.target.files?.[0] || null);
+    const file = e.target.files?.[0];
+    if (file) {
+      setUploadedFileName(file.name);
+      setResponseFile(file);
+    }
   };
 
   const resetAll = () => {
@@ -184,6 +189,7 @@ function App() {
     setVersions([]);
     setActiveVersionId(null);
     setEditMode(false);
+    setUploadedFileName('');
     if (responseFileInputRef.current) responseFileInputRef.current.value = '';
   };
 
@@ -202,7 +208,6 @@ function App() {
         }
       }
 
-      // If we are logged in, we already have skill tree data, but if we want to refresh:
       const skillData = await fetchCSVAsJson(SKILL_TREE_URL);
       const volunteers = parseSkillTreeData(skillData);
 
@@ -239,16 +244,13 @@ function App() {
           rows.push([role, ...locationShifts.map(s => getCellValue(locationName, s.date, role, s.assignments[role] || '缺'))]);
         }
 
-        // 備用列 (山莊2列、宣教1列)
         const spareLabels = locationName === '山莊大堂' ? ['備用1', '備用2'] : ['備用1'];
         for (const label of spareLabels) {
           rows.push([label, ...locationShifts.map(s => getEdit(locationName, s.date, label))]);
         }
 
-        // 燈控 row
         rows.push(['燈控', ...locationShifts.map(s => getEdit(locationName, s.date, '燈控'))]);
 
-        // Meal rows — number input + fixed 份 unit
         const mealVal = (s: Shift, field: string) => {
           const valKey = editKey(locationName, s.date, field);
           const baseNum = countAssigned(s, roles) + (field === '早餐' ? 1 : 0);
@@ -278,7 +280,7 @@ function App() {
     }
   }, [shifts, manualEdits]);
 
-  // --- PNG / PDF Export (1920px wide, 2× scale ≈ 200+ DPI) ------------------
+  // --- PNG / PDF Export --------------------------------------------------
 
   const captureSchedule = useCallback(async (): Promise<HTMLCanvasElement | null> => {
     if (!scheduleRef.current || shifts.length === 0) return null;
@@ -291,7 +293,7 @@ function App() {
     clone.style.position = 'absolute';
     clone.style.left = '-9999px';
     clone.style.top = '0';
-    clone.classList.add('export-mode'); // Scale up fonts for export
+    clone.classList.add('export-mode');
     document.body.appendChild(clone);
 
     try {
@@ -459,7 +461,6 @@ function App() {
                 </tr>
               ))}
 
-              {/* 備用空列 — 僅在編輯模式顯示 (山莊2列、宣教1列) */}
               {editMode && (locationName === '山莊大堂' ? ['備用1', '備用2'] : ['備用1']).map(label => (
                 <tr key={label} style={mealRowBg}>
                   <td style={{ fontWeight: 600, color: 'var(--text-muted)', background: 'var(--bg-sticky)', position: 'sticky', left: 0, zIndex: 10 }}>{label}</td>
@@ -476,7 +477,6 @@ function App() {
                 </tr>
               ))}
 
-              {/* 備用列有值時，非編輯模式也顯示 */}
               {!editMode && (locationName === '山莊大堂' ? ['備用1', '備用2'] : ['備用1']).map(label => {
                 const hasAny = locationShifts.some(s => getEdit(locationName, s.date, label));
                 if (!hasAny) return null;
@@ -513,18 +513,12 @@ function App() {
 
   return (
     <div style={{ padding: '40px 20px', maxWidth: '1400px', margin: '0 auto', width: '100%' }}>
-      {/* Theme Toggle */}
       <button className="theme-toggle" onClick={() => setDarkMode(d => !d)} title={darkMode ? '切換亮色模式' : '切換暗色模式'}>
         {darkMode ? <Sun size={20} color="#fcd34d" /> : <Moon size={20} color="var(--icon-accent)" />}
       </button>
 
-      {/* Shared Header with Logo */}
       <header className={`logo-container ${view !== 'login' ? 'minimized' : ''}`}>
-        <img 
-          src="/logo.png" 
-          alt="BOL Production" 
-          className="app-logo"
-        />
+        <img src="/logo.png" alt="BOL Production" className="app-logo" />
         <div style={{ textAlign: view === 'login' ? 'center' : 'left' }}>
           <h1 style={{
             fontSize: view === 'login' ? '2.8rem' : '2.2rem', 
@@ -546,6 +540,16 @@ function App() {
         </div>
       </header>
 
+      {view === 'loading' && (
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '60vh' }}>
+          <div className="animate-spin" style={{ marginBottom: '20px' }}>
+            <RefreshCw size={48} color="var(--icon-accent)" />
+          </div>
+          <h2 style={{ color: 'var(--text-primary)', marginBottom: '8px' }}>登入進度處理中...</h2>
+          <p style={{ color: 'var(--text-secondary)' }}>正在載入您的資料，請稍候</p>
+        </div>
+      )}
+
       {view === 'admin' && (
         <div style={{ display: 'flex', justifyContent: 'center', gap: '15px', marginBottom: '32px', flexWrap: 'wrap' }}>
           <button className={adminTab === 'raw' ? 'btn-primary' : 'btn-secondary'} onClick={() => setAdminTab('raw')}>RAW 資料表單</button>
@@ -555,17 +559,19 @@ function App() {
         </div>
       )}
 
-      {/* Main Content Area */}
       <main>
         {view === 'login' && (
           <Login onLogin={(user) => {
-            setCurrentUser(user);
-            if (user.role === 'admin') {
-              setAdminTab('raw');
-              setView('admin');
-            } else {
-              setView('frontend');
-            }
+            setView('loading');
+            setTimeout(() => {
+              setCurrentUser(user);
+              if (user.role === 'admin') {
+                setAdminTab('raw');
+                setView('admin');
+              } else {
+                setView('frontend');
+              }
+            }, 3500);
           }} />
         )}
 
@@ -586,12 +592,12 @@ function App() {
               }} />
             ) : (
               <>
-                {/* Upload & Actions */}
                 <div className="glass-card" style={{ padding: '24px', marginBottom: '24px' }}>
                   <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap', alignItems: 'center' }}>
                     <div style={{ flex: 1, minWidth: '300px' }}>
-                      <label className="btn-secondary" style={{ width: '100%', justifyContent: 'center', height: '48px', cursor: 'pointer' }}>
-                        <Download size={20} style={{ transform: 'rotate(180deg)' }} /> 上傳技能樹 / 排班 CSV
+                      <label className="btn-secondary" style={{ width: '100%', justifyContent: 'center', height: '48px', cursor: 'pointer', overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis' }}>
+                        <Download size={20} style={{ transform: 'rotate(180deg)' }} /> 
+                        {uploadedFileName || '上傳技能樹 / 排班 CSV'}
                         <input type="file" accept=".csv" onChange={handleFileUpload} style={{ display: 'none' }} />
                       </label>
                     </div>
@@ -604,7 +610,6 @@ function App() {
                       <RotateCcw size={20} /> 清除
                     </button>
 
-                    {/* Export Dropdown */}
                     <div ref={exportMenuRef} style={{ position: 'relative' }}>
                       <button className="btn-primary" disabled={!hasShifts || exporting !== ''}
                         onClick={() => setShowExportMenu(v => !v)}>
@@ -627,46 +632,53 @@ function App() {
                   </div>
                 </div>
 
-                {/* Edit Mode + Version History Bar */}
                 {(hasShifts || versions.length > 0) && (
-                  <div className="glass-card" style={{ padding: '16px 24px', marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
-                    {/* Edit / Save toggle */}
+                  <div className="glass-card" style={{ padding: '16px 24px', marginBottom: '20px' }}>
                     {hasShifts && (
-                      editMode ? (
-                        <button className="btn-primary" onClick={saveEdits}>
-                          <Save size={18} /> 儲存變更
-                        </button>
-                      ) : (
-                        <button className="btn-secondary" onClick={() => setEditMode(true)}>
-                          <Edit3 size={18} /> 編輯排班
-                        </button>
-                      )
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '20px' }}>
+                        {editMode ? (
+                          <button className="btn-primary" onClick={saveEdits}>
+                            <Save size={18} /> 儲存變更
+                          </button>
+                        ) : (
+                          <button className="btn-secondary" onClick={() => setEditMode(true)}>
+                            <Edit3 size={18} /> 編輯排班
+                          </button>
+                        )}
+                        {editMode && (
+                          <button className="btn-secondary" onClick={() => { setEditMode(false); if (activeVersionId) { const v = versions.find(x => x.id === activeVersionId); if (v) restoreVersion(v); } }}>
+                            <RotateCcw size={16} /> 取消
+                          </button>
+                        )}
+                      </div>
                     )}
-                    {hasShifts && editMode && (
-                      <button className="btn-secondary" onClick={() => { setEditMode(false); if (activeVersionId) { const v = versions.find(x => x.id === activeVersionId); if (v) restoreVersion(v); } }}>
-                        <RotateCcw size={16} /> 取消
-                      </button>
-                    )}
-
-                    <div style={{ flex: 1 }} />
-
-                    {/* Version History */}
+                    
                     {versions.length > 0 && (
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <History size={18} color="var(--text-secondary)" />
-                        <span style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', marginRight: '8px' }}>歷史版本:</span>
-                        <div style={{ display: 'flex', gap: '6px', overflowX: 'auto', padding: '4px' }}>
+                      <div>
+                        <h3 style={{ margin: '0 0 12px 0', fontSize: '1rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <History size={18} color="var(--icon-accent)" /> 歷史版本
+                        </h3>
+                        <select 
+                          onChange={(e) => {
+                            const id = Number(e.target.value);
+                            const v = versions.find(x => x.id === id);
+                            if (v) restoreVersion(v);
+                            e.target.value = '';
+                          }}
+                          style={{ 
+                            width: '100%', padding: '10px', borderRadius: '8px', 
+                            background: 'var(--bg-input)', border: '1px solid var(--bg-input-border)',
+                            color: 'var(--text-primary)', fontSize: '0.9rem', cursor: 'pointer'
+                          }}
+                          value=""
+                        >
+                          <option value="" disabled>選擇版本以切換 ({versions.length} 個紀錄)...</option>
                           {versions.map(v => (
-                            <button
-                              key={v.id}
-                              className={v.id === activeVersionId ? 'btn-primary' : 'btn-secondary'}
-                              style={{ padding: '6px 12px', fontSize: '0.8rem', whiteSpace: 'nowrap' }}
-                              onClick={() => restoreVersion(v)}
-                            >
-                              {v.filename}
-                            </button>
+                            <option key={v.id} value={v.id}>
+                              {v.filename} ({new Date(v.timestamp).toLocaleString()} - {v.shifts.length} 班次)
+                            </option>
                           ))}
-                        </div>
+                        </select>
                       </div>
                     )}
                   </div>

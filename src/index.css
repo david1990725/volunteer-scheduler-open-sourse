@@ -149,6 +149,12 @@ body::after {
   transition: opacity 0.5s ease;
 }
 
+@media (max-width: 768px) {
+  body::after {
+    display: none;
+  }
+}
+
 #root {
   width: 100%;
 }
@@ -186,6 +192,12 @@ body::after {
   mix-blend-mode: overlay;
 }
 
+@media (max-width: 768px) {
+  .glass-card::after {
+    display: none;
+  }
+}
+
 /* Shine overlay */
 .glass-card::before {
   content: '';
@@ -217,25 +229,38 @@ body::after {
   align-items: center;
   margin-bottom: 48px;
   transition: all 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  width: 100%;
 }
 
 .logo-container.minimized {
-  flex-direction: row;
-  justify-content: flex-start;
   margin-bottom: 32px;
-  gap: 20px;
+  flex-direction: column;
+  justify-content: center;
 }
 
 .app-logo {
   display: block;
-  width: 200px; /* 調整至 200px */
+  width: 200px;
   height: auto;
   transition: all 0.6s cubic-bezier(0.4, 0, 0.2, 1);
   filter: drop-shadow(0 4px 12px rgba(234, 179, 8, 0.2));
+  margin-bottom: 20px;
 }
 
 .logo-container.minimized .app-logo {
-  width: 200px; /* 大小不變 */
+  position: absolute;
+  top: 0;
+  left: 20px;
+  width: 150px;
+  margin-bottom: 0;
+}
+
+@media (max-width: 768px) {
+  .logo-container.minimized .app-logo {
+    width: 80px;
+    left: 10px;
+  }
 }
 
 /* ---------------------------------------------------------------------------
@@ -443,18 +468,16 @@ tr:hover td {
 
 .export-dropdown {
   position: absolute;
-  top: calc(100% + 8px);
+  top: 100%;
   right: 0;
-  min-width: 170px;
-  background: var(--bg-dropdown);
-  backdrop-filter: blur(24px) saturate(1.5);
-  -webkit-backdrop-filter: blur(24px) saturate(1.5);
+  margin-top: 8px;
+  background: var(--bg-primary); /* Solid color instead of transparent card bg to cover everything */
   border: 1px solid var(--bg-card-border);
-  border-radius: 14px;
-  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.3),
-    inset 0 1px 0 rgba(255, 255, 255, 0.08);
-  padding: 6px;
-  z-index: 200;
+  border-radius: 12px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.8);
+  z-index: 9999;
+  min-width: 180px;
+  overflow: hidden;
   animation: dropdownIn 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 

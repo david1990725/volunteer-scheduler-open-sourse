@@ -15,6 +15,14 @@ export const FrontendForm: React.FC<FrontendFormProps> = ({ currentUser, onLogou
   const [availability, setAvailability] = useState<Record<string, string[]>>({});
   const [submitted, setSubmitted] = useState(false);
 
+  // Group sundays by month
+  const sundaysByMonth = sundays.reduce((acc, date) => {
+    const month = date.split('/')[0];
+    if (!acc[month]) acc[month] = [];
+    acc[month].push(date);
+    return acc;
+  }, {} as Record<string, string[]>);
+
   const toggleAvailability = (date: string, location: string) => {
     setAvailability(prev => {
       const current = prev[date] || [];
@@ -89,14 +97,16 @@ export const FrontendForm: React.FC<FrontendFormProps> = ({ currentUser, onLogou
   }
 
   return (
-    <div style={{ maxWidth: '800px', margin: '40px auto', width: '100%' }}>
-      <div className="glass-card" style={{ padding: '40px' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '30px' }}>
+    <div style={{ maxWidth: '800px', margin: '40px auto', width: '100%', padding: '0 10px' }}>
+      
+      {/* 區塊 1: 說明文字 */}
+      <div className="glass-card" style={{ padding: '30px', marginBottom: '20px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
           <div>
             <h2 style={{ margin: 0, fontSize: '2rem', background: 'linear-gradient(135deg, var(--text-title-from) 0%, var(--text-title-to) 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
               {targetMonths[0]}、{targetMonths[1]} 月份服事排班表
             </h2>
-            <p style={{ color: 'var(--text-secondary)', marginTop: '10px' }}>哈囉 {currentUser.name}，請勾選您可以服事的地點與時間。</p>
+            <p style={{ color: 'var(--text-secondary)', marginTop: '10px' }}>哈囉 {currentUser.name}，請填寫您的排班資訊。</p>
           </div>
           {onBackToAdmin ? (
             <button className="btn-secondary" onClick={onBackToAdmin}>返回後台</button>
@@ -104,48 +114,53 @@ export const FrontendForm: React.FC<FrontendFormProps> = ({ currentUser, onLogou
             <button className="btn-secondary" onClick={onLogout}>登出</button>
           )}
         </div>
+      </div>
 
-        <form onSubmit={handleSubmit}>
-          {/* Group Selection */}
-          <div style={{ marginBottom: '40px' }}>
-            <label style={{ display: 'block', fontSize: '1.1rem', fontWeight: 600, marginBottom: '15px' }}>所屬組別 <span style={{ color: 'var(--text-missing)' }}>*</span></label>
-            <div style={{ display: 'flex', gap: '15px', flexWrap: 'wrap' }}>
-              {['動態攝影組', '平面拍照組', '舞台燈光組'].map(g => (
-                <label key={g} style={{ 
-                  display: 'flex', alignItems: 'center', gap: '10px', 
-                  background: group === g ? 'var(--icon-bg)' : 'var(--bg-input)',
-                  border: `1px solid ${group === g ? 'var(--icon-accent)' : 'var(--bg-input-border)'}`,
-                  padding: '12px 20px', borderRadius: '8px', cursor: 'pointer',
-                  transition: 'all 0.2s'
-                }}>
-                  <input type="radio" name="group" value={g} checked={group === g} onChange={(e) => setGroup(e.target.value)} style={{ accentColor: 'var(--icon-accent)', width: '18px', height: '18px' }} />
-                  <span style={{ fontWeight: group === g ? 600 : 400 }}>{g}</span>
-                </label>
-              ))}
-            </div>
+      <form onSubmit={handleSubmit}>
+        
+        {/* 區塊 2: 所屬組別 */}
+        <div className="glass-card" style={{ padding: '30px', marginBottom: '20px' }}>
+          <label style={{ display: 'block', fontSize: '1.2rem', fontWeight: 700, marginBottom: '20px', color: 'var(--text-primary)' }}>所屬組別 <span style={{ color: 'var(--text-missing)' }}>*</span></label>
+          <div style={{ display: 'flex', gap: '15px', flexWrap: 'wrap' }}>
+            {['動態攝影組', '平面拍照組', '舞台燈光組'].map(g => (
+              <label key={g} style={{ 
+                display: 'flex', alignItems: 'center', gap: '10px', 
+                background: group === g ? 'var(--icon-bg)' : 'var(--bg-input)',
+                border: `1px solid ${group === g ? 'var(--icon-accent)' : 'var(--bg-input-border)'}`,
+                padding: '14px 24px', borderRadius: '12px', cursor: 'pointer',
+                transition: 'all 0.2s', flex: 1, minWidth: '150px', justifyContent: 'center'
+              }}>
+                <input type="radio" name="group" value={g} checked={group === g} onChange={(e) => setGroup(e.target.value)} style={{ accentColor: 'var(--icon-accent)', width: '18px', height: '18px' }} />
+                <span style={{ fontWeight: group === g ? 600 : 400, fontSize: '1.1rem' }}>{g}</span>
+              </label>
+            ))}
           </div>
+        </div>
 
-          {/* Date Selection */}
-          <div style={{ marginBottom: '40px' }}>
-            <label style={{ display: 'block', fontSize: '1.1rem', fontWeight: 600, marginBottom: '15px' }}>可服事日期與地點</label>
+        {/* 區塊 3 & 4: 按月分塊 */}
+        {Object.entries(sundaysByMonth).map(([month, dates]) => (
+          <div key={month} className="glass-card" style={{ padding: '30px', marginBottom: '20px' }}>
+            <label style={{ display: 'block', fontSize: '1.2rem', fontWeight: 700, marginBottom: '20px', color: 'var(--text-primary)' }}>
+              {month} 月份可服事日期與地點
+            </label>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
-              {sundays.map(date => (
+              {dates.map(date => (
                 <div key={date} style={{ 
                   display: 'flex', alignItems: 'center', padding: '16px 20px', 
                   background: 'var(--bg-input)', border: '1px solid var(--bg-input-border)',
                   borderRadius: '12px', gap: '20px', flexWrap: 'wrap'
                 }}>
                   <div style={{ fontSize: '1.2rem', fontWeight: 700, width: '80px', color: 'var(--text-primary)' }}>{date}</div>
-                  <div style={{ display: 'flex', gap: '20px' }}>
+                  <div style={{ display: 'flex', gap: '20px', flex: 1 }}>
                     {['山莊', '宣教'].map(loc => {
                       const checked = (availability[date] || []).includes(loc);
                       return (
-                        <label key={loc} style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
+                        <label key={loc} style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', background: checked ? 'rgba(234, 179, 8, 0.1)' : 'transparent', padding: '8px 16px', borderRadius: '8px', border: checked ? '1px solid var(--icon-accent)' : '1px solid transparent' }}>
                           <input 
                             type="checkbox" 
                             checked={checked}
                             onChange={() => toggleAvailability(date, loc)}
-                            style={{ accentColor: 'var(--icon-accent)', width: '20px', height: '20px' }}
+                            style={{ accentColor: 'var(--icon-accent)', width: '22px', height: '22px' }}
                           />
                           <span style={{ fontSize: '1.1rem', color: checked ? 'var(--text-primary)' : 'var(--text-secondary)' }}>{loc}</span>
                         </label>
@@ -156,12 +171,12 @@ export const FrontendForm: React.FC<FrontendFormProps> = ({ currentUser, onLogou
               ))}
             </div>
           </div>
+        ))}
 
-          <button type="submit" className="btn-primary" style={{ width: '100%', justifyContent: 'center', padding: '16px', fontSize: '1.2rem' }}>
-            <Save size={20} /> 提交表單
-          </button>
-        </form>
-      </div>
+        <button type="submit" className="btn-primary" style={{ width: '100%', justifyContent: 'center', padding: '18px', fontSize: '1.3rem', borderRadius: '16px', marginBottom: '40px', boxShadow: 'var(--shadow-card)' }}>
+          <Save size={24} /> 提交表單
+        </button>
+      </form>
     </div>
   );
 };
