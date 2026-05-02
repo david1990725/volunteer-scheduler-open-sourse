@@ -2,7 +2,7 @@ import React, { useState, useRef } from 'react';
 import * as XLSX from 'xlsx';
 import { parseSkillTreeData, buildLineIdMap } from '../utils/scheduler';
 import type { Volunteer } from '../utils/scheduler';
-import { registerNewVolunteer } from '../utils/googleSheets';
+import { registerNewVolunteer, updateVolunteerLineId } from '../utils/googleSheets';
 import { Users, LogIn, RefreshCw, MessageCircle, UserPlus } from 'lucide-react';
 import { useLiff } from '../hooks/useLiff';
 
@@ -50,7 +50,7 @@ export const Login: React.FC<LoginProps> = ({ onLogin }) => {
     return { volunteers, lineIdMap };
   };
 
-  /** LINE 登入：以 profile.userId 比對技能樹中的 LINE_ID 欄位 */
+  /** LINE 登入：以 profile.userId 比對技能樹中的 user_id 欄位 */
   const handleLineLogin = async () => {
     if (!profile) return;
     setLoading(true);
@@ -65,18 +65,26 @@ export const Login: React.FC<LoginProps> = ({ onLogin }) => {
       // 1. 優先以 LINE userId 比對
       let matchedName = lineIdMap[lineUserId];
 
-      // 2. 若找不到 LINE_ID，嘗試以 LINE 顯示名稱與名單「姓名」進行模糊比對
+      // 2. 若找不到 user_id，嘗試以 LINE 顯示名稱與名單「姓名」進行模糊比對
+      let isFuzzyMatched = false;
       if (!matchedName) {
         const match = Object.keys(volunteers).find(v => 
           v === displayName.trim() || v.includes(displayName.trim()) || displayName.trim().includes(v)
         );
         if (match) {
           matchedName = match;
+          isFuzzyMatched = true;
         }
       }
 
       if (matchedName && volunteers[matchedName]) {
         const user = volunteers[matchedName];
+        
+        // 若是透過模糊比對找到的，表示原本試算表中沒有 user_id，自動寫入幫他綁定
+        if (isFuzzyMatched) {
+           updateVolunteerLineId({ name: matchedName, lineId: lineUserId }).catch(console.error);
+        }
+
         onLogin(user, volunteers);
         return;
       }

@@ -25,6 +25,8 @@ function doPost(e) {
     
     if (payload.action === 'addVolunteer') {
       return handleAddVolunteer(payload);
+    } else if (payload.action === 'updateLineId') {
+      return handleUpdateLineId(payload);
     }
     
     return jsonResponse({ success: false, message: '未知的操作' });
@@ -42,63 +44,82 @@ function doGet() {
 
 /**
  * 新增義工到試算表
- * 會先檢查 LINE_ID 是否已存在，避免重複新增
+ * 會先檢查 user_id 是否已存在，避免重複新增
  */
 function handleAddVolunteer(payload) {
   const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
   const sheet = ss.getSheetByName(SHEET_NAME);
   
-  if (!sheet) {
-    return jsonResponse({ success: false, message: '找不到工作表' });
-  }
+  if (!sheet) return jsonResponse({ success: false, message: '找不到工作表' });
   
-  // 取得標題列，找到各欄位的位置
-  const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+  const lastCol = sheet.getLastColumn();
+  if (lastCol === 0) return jsonResponse({ success: false, message: '工作表為空' });
+
+  const headers = sheet.getRange(1, 1, 1, lastCol).getValues()[0];
   const nameCol = headers.indexOf('姓名');
-  const lineIdCol = headers.indexOf('LINE_ID');
+  const lineIdCol = headers.indexOf('user_id');
   const roleCol = headers.indexOf('role');
   
-  if (nameCol === -1) {
-    return jsonResponse({ success: false, message: '找不到「姓名」欄位' });
-  }
+  if (nameCol === -1) return jsonResponse({ success: false, message: '找不到「姓名」欄位' });
   
-  // 如果沒有 LINE_ID 欄位，自動新增
   if (lineIdCol === -1) {
-    const newCol = sheet.getLastColumn() + 1;
-    sheet.getRange(1, newCol).setValue('LINE_ID');
-    // 重新取得 headers
-    return handleAddVolunteer(payload); // retry
+    sheet.getRange(1, lastCol + 1).setValue('user_id');
+    return handleAddVolunteer(payload);
   }
   
-  // 檢查 LINE_ID 是否已存在
-  const allData = sheet.getRange(2, 1, Math.max(sheet.getLastRow() - 1, 1), sheet.getLastColumn()).getValues();
-  
-  for (var i = 0; i < allData.length; i++) {
-    if (allData[i][lineIdCol] === payload.lineId) {
-      // 已存在，回傳既有資料
-      return jsonResponse({ 
-        success: true, 
-        message: '此 LINE 帳號已在名單中',
-        existingName: allData[i][nameCol]
-      });
+  const lastRow = sheet.getLastRow();
+  if (lastRow > 1) {
+    const allData = sheet.getRange(2, 1, lastRow - 1, sheet.getLastColumn()).getValues();
+    for (var i = 0; i < allData.length; i++) {
+      if (allData[i][lineIdCol] === payload.lineId) {
+        return jsonResponse({ success: true, message: '此 LINE 帳號已在名單中', existingName: allData[i][nameCol] });
+      }
     }
   }
   
-  // 新增一列
   const newRow = new Array(headers.length).fill('');
   newRow[nameCol] = payload.name || payload.lineName || '未知';
   newRow[lineIdCol] = payload.lineId;
-  if (roleCol !== -1) {
-    newRow[roleCol] = 'user';
-  }
+  if (roleCol !== -1) newRow[roleCol] = 'user';
   
   sheet.appendRow(newRow);
   
-  return jsonResponse({ 
-    success: true, 
-    message: '新義工已加入名單',
-    name: newRow[nameCol]
-  });
+  return jsonResponse({ success: true, message: '新義工已加入名單', name: newRow[nameCol] });
+}
+
+/**
+ * 更新既有義工的 user_id
+ */
+function handleUpdateLineId(payload) {
+  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  const sheet = ss.getSheetByName(SHEET_NAME);
+  if (!sheet) return jsonResponse({ success: false, message: '找不到工作表' });
+
+  const lastCol = sheet.getLastColumn();
+  const lastRow = sheet.getLastRow();
+  if (lastCol === 0 || lastRow <= 1) return jsonResponse({ success: false, message: '無資料可更新' });
+
+  const headers = sheet.getRange(1, 1, 1, lastCol).getValues()[0];
+  const nameCol = headers.indexOf('姓名');
+  const lineIdCol = headers.indexOf('user_id');
+
+  if (nameCol === -1) return jsonResponse({ success: false, message: '找不到「姓名」欄位' });
+  
+  // 如果沒有 user_id 欄位，就建一個
+  if (lineIdCol === -1) {
+    sheet.getRange(1, lastCol + 1).setValue('user_id');
+    return handleUpdateLineId(payload);
+  }
+
+  const allData = sheet.getRange(2, 1, lastRow - 1, lastCol).getValues();
+  for (var i = 0; i < allData.length; i++) {
+    if (allData[i][nameCol] === payload.name) {
+      sheet.getRange(i + 2, lineIdCol + 1).setValue(payload.lineId);
+      return jsonResponse({ success: true, message: '已成功綁定 LINE 帳號' });
+    }
+  }
+
+  return jsonResponse({ success: false, message: '找不到符合姓名的義工' });
 }
 
 /**

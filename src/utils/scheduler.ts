@@ -101,7 +101,7 @@ export function parseSkillTreeData(data: any[]): Record<string, Volunteer> {
     skills['信息版']   = roles.some((r: string) => ['山莊導播', '宣教導播', '導播', 'HOST', 'CCU'].includes(r)) ? 10 : 0;
 
     const userRole = row['role']?.trim().toLowerCase() === 'admin' ? 'admin' : 'user';
-    const lineId = (row['LINE_ID'] || '').trim() || undefined;
+    const lineId = (row['user_id'] || row['LINE_ID'] || '').trim() || undefined;
 
     volunteers[name] = { name, role: userRole, roles, skills, lineId };
   }
