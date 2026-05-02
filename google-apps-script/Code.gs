@@ -172,14 +172,7 @@ function handleFetchSchedule(payload) {
     return jsonResponse({ success: false, message: '工作表為空', data: null });
   }
   
-  var data = sheet.getRange(1, 1, lastRow, lastCol).getValues();
-  
-  // Convert all values to strings
-  for (var i = 0; i < data.length; i++) {
-    for (var j = 0; j < data[i].length; j++) {
-      data[i][j] = String(data[i][j]);
-    }
-  }
+  var data = sheet.getRange(1, 1, lastRow, lastCol).getDisplayValues();
   
   return jsonResponse({ success: true, message: '讀取成功', data: data });
 }
