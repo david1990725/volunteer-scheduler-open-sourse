@@ -308,7 +308,7 @@ export const HomePage: React.FC<HomePageProps> = ({
             style={{
               position: 'fixed', right: 0, top: '50%', transform: 'translateY(-50%)',
               zIndex: 9000, cursor: 'pointer',
-              writingMode: 'vertical-rl', textOrientation: 'mixed',
+              writingMode: 'vertical-rl', WebkitWritingMode: 'vertical-rl', textOrientation: 'mixed',
               background: 'linear-gradient(180deg, #eab308, #d97706)',
               color: '#fff', fontWeight: 700, fontSize: '0.95rem',
               padding: '18px 10px', borderRadius: '12px 0 0 12px',

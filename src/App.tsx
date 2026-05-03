@@ -227,51 +227,43 @@ function App() {
     }
   }, [responseFile]);
 
-  // --- Import from Cloud ---
-  const handleImportFromCloud = async () => {
-    setLoading(true);
+  const loadCloudApprovedVersion = async (): Promise<ApprovedVersion | null> => {
     try {
       const { targetMonths } = getCycleDates();
       const year = new Date().getFullYear();
       const sheetNamePrefix = `${year}年 ${targetMonths[0]}-${targetMonths[1]}月排班表`;
 
-      // Try fetching both locations
-      const shanzhuangResult = await fetchScheduleFromCloud(`${sheetNamePrefix} - 山莊`);
-      const xuanjiaoResult = await fetchScheduleFromCloud(`${sheetNamePrefix} - 宣教`);
+      const [shanzhuangResult, xuanjiaoResult] = await Promise.all([
+        fetchScheduleFromCloud(`${sheetNamePrefix} - 山莊`),
+        fetchScheduleFromCloud(`${sheetNamePrefix} - 宣教`)
+      ]);
 
       if (!shanzhuangResult.success && !xuanjiaoResult.success) {
-        alert(`在雲端找不到本期排班資料。\n\n嘗試搜尋的工作表名稱：\n• ${sheetNamePrefix} - 山莊\n• ${sheetNamePrefix} - 宣教\n\n請確認雲端試算表中是否已有對應的工作表。`);
-        return;
+        return null;
       }
 
-      // Convert 2D array back to Shift[] objects
       const importedShifts: Shift[] = [];
+      const importedEdits: Record<string, string> = {};
 
-      /** 將日期字串正規化為 MM/DD 格式 */
       const normalizeDate = (raw: string): string => {
         const trimmed = raw.trim();
-        // 已經是 MM/DD 格式
         if (/^\d{2}\/\d{2}$/.test(trimmed)) return trimmed;
-        // M/D 或 M/DD 或 MM/D → 補零
         const slashMatch = trimmed.match(/^(\d{1,2})\/(\d{1,2})$/);
         if (slashMatch) {
           return `${slashMatch[1].padStart(2, '0')}/${slashMatch[2].padStart(2, '0')}`;
         }
-        // 嘗試解析其他日期格式（如 YYYY/MM/DD 或 YYYY-MM-DD）
         const d = new Date(trimmed);
         if (!isNaN(d.getTime())) {
           return `${String(d.getMonth() + 1).padStart(2, '0')}/${String(d.getDate()).padStart(2, '0')}`;
         }
-        return trimmed; // 無法解析就原樣回傳
+        return trimmed;
       };
 
-      // Extra fields stored in manualEdits (燈控, 備用, 餐點)
       const EXTRA_FIELDS = ['燈控', '備用1', '備用2', '山莊早餐數量', '宣教早餐數量', '宣教午餐數量'];
-      const importedEdits: Record<string, string> = {};
 
       const parseSheetToShifts = (data: string[][], locationName: string, roles: readonly string[]) => {
         if (!data || data.length < 2) return;
-        const header = data[0]; // first row: '職務 / 日期', date1, date2...
+        const header = data[0];
         const rawDates = header.slice(1);
         const dates = rawDates.map(normalizeDate);
 
@@ -290,11 +282,8 @@ function App() {
             const value = (data[rowIdx][dateIdx + 1] || '').trim();
 
             if (roles.includes(rowLabel)) {
-              // 職位欄位 → assignments
               shift.assignments[rowLabel] = value || '缺';
             } else if (EXTRA_FIELDS.includes(rowLabel) && value) {
-              // 燈控、備用、餐點 → manualEdits
-              // 餐點數量移除「份」字尾
               const cleanVal = value.replace(/\s*份$/, '');
               let fieldKey = rowLabel;
               if (rowLabel === '山莊早餐數量' || rowLabel === '宣教早餐數量') fieldKey = '早餐';
@@ -303,7 +292,6 @@ function App() {
               importedEdits[editKey(locationName, date, fieldKey)] = cleanVal;
             }
           }
-
           importedShifts.push(shift);
         }
       };
@@ -315,14 +303,44 @@ function App() {
         parseSheetToShifts(xuanjiaoResult.data, '宣教大樓', XUAN_JIAO_ROLES);
       }
 
-      if (importedShifts.length === 0) {
-        alert('從雲端讀取的資料為空，請確認工作表內容。');
+      if (importedShifts.length > 0) {
+        return {
+          timestamp: new Date().toISOString(),
+          label: '雲端同步版本',
+          shifts: importedShifts,
+          edits: importedEdits
+        };
+      }
+      return null;
+    } catch (err) {
+      console.error(err);
+      return null;
+    }
+  };
+
+  useEffect(() => {
+    // 當使用者登入且在首頁時，如果沒有本地 approvedVersion 或想強制更新，背景默默拉取最新排班
+    if (currentUser && view === 'home') {
+      loadCloudApprovedVersion().then(version => {
+        if (version) {
+          setApprovedVersion(version);
+        }
+      });
+    }
+  }, [currentUser, view]);
+
+  // --- Import from Cloud ---
+  const handleImportFromCloud = async () => {
+    setLoading(true);
+    try {
+      const version = await loadCloudApprovedVersion();
+      if (!version) {
+        alert('在雲端找不到本期排班資料。\n請確認雲端試算表中是否已有對應的工作表。');
         return;
       }
-
-      setShifts(importedShifts);
-      setManualEdits(importedEdits);
-      alert(`成功從雲端匯入 ${importedShifts.length} 筆排班資料！`);
+      setShifts(version.shifts);
+      setManualEdits(version.edits);
+      alert(`成功從雲端匯入 ${version.shifts.length} 筆排班資料！`);
     } catch (err) {
       console.error('Cloud import failed:', err);
       alert('從雲端匯入失敗，請稍後再試。');
