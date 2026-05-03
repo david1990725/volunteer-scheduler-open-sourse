@@ -1,7 +1,8 @@
-import React, { useMemo } from 'react';
-import { Calendar, MapPin, Clock, ChevronRight, Sparkles, Video, Camera } from 'lucide-react';
+import React, { useState, useMemo } from 'react';
+import { Calendar, MapPin, Clock, ChevronRight, Sparkles, Video, Camera, X } from 'lucide-react';
 import type { Volunteer, Shift } from '../utils/scheduler';
 import { SHAN_ZHUANG_ROLES, XUAN_JIAO_ROLES } from '../utils/scheduler';
+import { getCycleDates } from '../utils/dateUtils';
 
 interface HomePageProps {
   currentUser: Volunteer;
@@ -52,6 +53,8 @@ export const HomePage: React.FC<HomePageProps> = ({
   const days = daysUntilSunday();
   const nextSunday = getNextSunday();
   const nextSundayStr = formatMMDD(nextSunday);
+  const [showFullSchedule, setShowFullSchedule] = useState(false);
+  const { targetMonths } = getCycleDates();
 
   // 找到使用者在最近主日的排班
   const myAssignments = useMemo(() => {
@@ -294,6 +297,187 @@ export const HomePage: React.FC<HomePageProps> = ({
           })}
         </div>
       )}
+
+      {/* === 右側固定頁籤 === */}
+      {approvedShifts && approvedShifts.length > 0 && (
+        <div
+          onClick={() => setShowFullSchedule(true)}
+          style={{
+            position: 'fixed', right: 0, top: '50%', transform: 'translateY(-50%)',
+            zIndex: 900, cursor: 'pointer',
+            writingMode: 'vertical-rl', textOrientation: 'mixed',
+            background: 'linear-gradient(180deg, #eab308, #d97706)',
+            color: '#fff', fontWeight: 700, fontSize: '0.95rem',
+            padding: '18px 10px', borderRadius: '12px 0 0 12px',
+            boxShadow: '-4px 0 20px rgba(234, 179, 8, 0.35)',
+            letterSpacing: '0.05em',
+            transition: 'all 0.3s',
+          }}
+          onMouseEnter={e => { (e.currentTarget as HTMLElement).style.paddingRight = '16px'; }}
+          onMouseLeave={e => { (e.currentTarget as HTMLElement).style.paddingRight = '10px'; }}
+        >
+          {targetMonths[0]}月~{targetMonths[1]}月班表
+        </div>
+      )}
+
+      {/* === 完整班表 Overlay === */}
+      {showFullSchedule && approvedShifts && (
+        <div style={{
+          position: 'fixed', inset: 0, zIndex: 9999,
+          background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(8px)',
+          display: 'flex', flexDirection: 'column',
+          animation: 'morphAppear 0.3s ease forwards',
+        }}>
+          {/* Header */}
+          <div style={{
+            display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+            padding: '20px 24px', flexShrink: 0,
+            borderBottom: '1px solid rgba(255,255,255,0.1)',
+          }}>
+            <h2 style={{
+              margin: 0, fontSize: '1.4rem', fontWeight: 800,
+              background: 'linear-gradient(135deg, #eab308, #d97706)',
+              WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
+            }}>
+              {targetMonths[0]}月~{targetMonths[1]}月 完整排班表
+            </h2>
+            <button onClick={() => setShowFullSchedule(false)} style={{
+              background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.15)',
+              borderRadius: '10px', padding: '8px', cursor: 'pointer',
+              color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center',
+            }}>
+              <X size={22} />
+            </button>
+          </div>
+
+          {/* Scrollable content */}
+          <div style={{ flex: 1, overflow: 'auto', padding: '24px' }}>
+            {renderFullScheduleTable('山莊大堂', SHAN_ZHUANG_ROLES, approvedShifts, approvedEdits, currentUser.name)}
+            <div style={{ height: '24px' }} />
+            {renderFullScheduleTable('宣教大樓', XUAN_JIAO_ROLES, approvedShifts, approvedEdits, currentUser.name)}
+          </div>
+        </div>
+      )}
     </div>
   );
 };
+
+/** 渲染完整排班表格 */
+function renderFullScheduleTable(
+  locationName: string,
+  roles: readonly string[],
+  shifts: Shift[],
+  edits: Record<string, string> | null,
+  myName: string,
+) {
+  const locationShifts = shifts.filter(s => s.location === locationName);
+  if (locationShifts.length === 0) return null;
+  const tagClass = locationName === '山莊大堂' ? 'shanzhuang' : 'xuanjiao';
+
+  const getCellVal = (date: string, role: string, fallback: string) => {
+    const key = `${locationName}|${date}|${role}`;
+    if (edits && key in edits) return edits[key];
+    return fallback;
+  };
+
+  const extras = ['燈控', ...(locationName === '山莊大堂' ? ['備用1', '備用2'] : ['備用1'])];
+
+  return (
+    <div style={{
+      background: 'var(--bg-card)', border: '1px solid var(--bg-card-border)',
+      borderRadius: '16px', padding: '20px', overflow: 'hidden',
+      boxShadow: 'var(--shadow-card)',
+    }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px' }}>
+        <span className={`location location-${tagClass}`}
+          style={{ padding: '4px 12px', borderRadius: '20px', fontSize: '0.85rem' }}>
+          {locationName}
+        </span>
+      </div>
+
+      <div style={{ overflowX: 'auto' }}>
+        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
+          <thead>
+            <tr>
+              <th style={{
+                position: 'sticky', left: 0, zIndex: 20, background: 'var(--bg-sticky)',
+                padding: '10px 14px', textAlign: 'left', borderBottom: '2px solid var(--bg-table-border)',
+                minWidth: '100px', fontWeight: 700, color: 'var(--text-primary)',
+              }}>職務 \ 日期</th>
+              {locationShifts.map(s => (
+                <th key={s.date} style={{
+                  padding: '10px 14px', textAlign: 'center', minWidth: '80px',
+                  borderBottom: '2px solid var(--bg-table-border)',
+                  fontWeight: 700, color: 'var(--text-primary)',
+                  background: s.date === formatMMDD(getNextSunday()) ? 'rgba(234, 179, 8, 0.1)' : undefined,
+                }}>{s.date}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {roles.map(role => (
+              <tr key={role}>
+                <td style={{
+                  position: 'sticky', left: 0, zIndex: 10, background: 'var(--bg-sticky)',
+                  padding: '8px 14px', fontWeight: 600, color: 'var(--text-secondary)',
+                  borderBottom: '1px solid var(--bg-table-border)',
+                }}>{role}</td>
+                {locationShifts.map(s => {
+                  const val = getCellVal(s.date, role, s.assignments[role] || '缺');
+                  const isMissing = val === '缺';
+                  const isMe = val === myName;
+                  return (
+                    <td key={s.date} style={{
+                      padding: '8px 14px', textAlign: 'center',
+                      borderBottom: '1px solid var(--bg-table-border)',
+                      fontWeight: isMe ? 800 : 600,
+                      color: isMissing ? 'var(--text-missing)' : isMe ? 'var(--icon-accent)' : 'var(--text-primary)',
+                      background: isMe ? 'rgba(234, 179, 8, 0.06)' : s.date === formatMMDD(getNextSunday()) ? 'rgba(234, 179, 8, 0.04)' : undefined,
+                    }}>
+                      {val}{isMe && ' ⭐'}
+                    </td>
+                  );
+                })}
+              </tr>
+            ))}
+
+            {/* Extra rows: 燈控、備用 */}
+            {extras.map(field => {
+              const hasAny = locationShifts.some(s => {
+                const key = `${locationName}|${s.date}|${field}`;
+                return edits?.[key];
+              });
+              if (!hasAny) return null;
+              return (
+                <tr key={field}>
+                  <td style={{
+                    position: 'sticky', left: 0, zIndex: 10, background: 'var(--bg-sticky)',
+                    padding: '8px 14px', fontWeight: 600,
+                    color: field === '燈控' ? 'var(--text-lighting)' : 'var(--text-muted)',
+                    borderBottom: '1px solid var(--bg-table-border)',
+                  }}>{field}</td>
+                  {locationShifts.map(s => {
+                    const key = `${locationName}|${s.date}|${field}`;
+                    const val = edits?.[key] || '—';
+                    const isMe = val === myName;
+                    return (
+                      <td key={s.date} style={{
+                        padding: '8px 14px', textAlign: 'center',
+                        borderBottom: '1px solid var(--bg-table-border)',
+                        fontWeight: isMe ? 800 : 600,
+                        color: field === '燈控' ? 'var(--text-lighting)' : isMe ? 'var(--icon-accent)' : 'var(--text-secondary)',
+                        background: isMe ? 'rgba(234, 179, 8, 0.06)' : undefined,
+                      }}>
+                        {val}{isMe && ' ⭐'}
+                      </td>
+                    );
+                  })}
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
