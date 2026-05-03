@@ -1,5 +1,5 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
-import { Menu, X, Download, Users, RefreshCw, FileSpreadsheet, RotateCcw, Image, FileText, History, Sun, Moon, ChevronDown, CloudUpload, CloudDownload, ArrowRight, ArrowLeft } from 'lucide-react';
+import { Menu, X, Download, Users, RefreshCw, FileSpreadsheet, RotateCcw, Image, FileText, Sun, Moon, ChevronDown, CloudUpload, CloudDownload, ArrowRight, ArrowLeft, ShieldCheck, ArchiveRestore } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import html2canvas from 'html2canvas';
 import { jsPDF } from 'jspdf';
@@ -10,7 +10,7 @@ import {
   XUAN_JIAO_ROLES,
 } from './utils/scheduler';
 import type { Shift, Volunteer } from './utils/scheduler';
-import { parseSpreadsheetFile, fetchCSVAsJson, triggerDownload } from './utils/fileUtils';
+import { parseSpreadsheetFile, fetchCSVAsJson } from './utils/fileUtils';
 import { getCycleDates } from './utils/dateUtils';
 import { useInteractiveLighting } from './hooks/useInteractiveLighting';
 import { useLiff } from './hooks/useLiff';
@@ -18,6 +18,7 @@ import { syncSchedule, fetchScheduleFromCloud } from './utils/googleSheets';
 import { Login } from './components/Login';
 import { FrontendForm } from './components/FrontendForm';
 import { AdminRawData } from './components/AdminRawData';
+import { HomePage } from './components/HomePage';
 
 // =============================================================================
 // Constants
@@ -62,10 +63,9 @@ const mealRowBg: React.CSSProperties = {
 // Types
 // =============================================================================
 
-interface ScheduleVersion {
-  id: number;
+interface ApprovedVersion {
   timestamp: string;
-  filename: string;
+  label: string;
   shifts: Shift[];
   edits: Record<string, string>;
 }
@@ -75,7 +75,7 @@ interface ScheduleVersion {
 // =============================================================================
 
 function App() {
-  const [view, setView] = useState<'login' | 'loading' | 'frontend' | 'admin'>('login');
+  const [view, setView] = useState<'login' | 'loading' | 'home' | 'frontend' | 'admin'>('login');
   const [adminTab, setAdminTab] = useState<'home' | 'raw' | 'scheduler'>('home');
   const [scheduleStep, setScheduleStep] = useState<1 | 2 | 3>(1);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -98,16 +98,15 @@ function App() {
   const [manualEdits, setManualEdits] = useState<Record<string, string>>({});
   const [editMode, setEditMode] = useState(false);
   const [uploadedFileName, setUploadedFileName] = useState('');
-  const [versions, setVersions] = useState<ScheduleVersion[]>(() => {
+  const [approvedVersion, setApprovedVersion] = useState<ApprovedVersion | null>(() => {
     try {
-      const saved = localStorage.getItem('volunteer_scheduler_versions');
+      const saved = localStorage.getItem('volunteer_scheduler_approved');
       if (saved) return JSON.parse(saved);
     } catch (e) {
-      console.error('Failed to load versions from localStorage', e);
+      console.error('Failed to load approved version from localStorage', e);
     }
-    return [];
+    return null;
   });
-  const [activeVersionId, setActiveVersionId] = useState<number | null>(null);
   const [darkMode, setDarkMode] = useState(true);
   const [showExportMenu, setShowExportMenu] = useState(false);
   const responseFileInputRef = useRef<HTMLInputElement>(null);
@@ -119,8 +118,10 @@ function App() {
   }, [darkMode]);
 
   useEffect(() => {
-    localStorage.setItem('volunteer_scheduler_versions', JSON.stringify(versions));
-  }, [versions]);
+    if (approvedVersion) {
+      localStorage.setItem('volunteer_scheduler_approved', JSON.stringify(approvedVersion));
+    }
+  }, [approvedVersion]);
 
   // 互動光影效果（桌面滑鼠 + 行動加速度計）
   useInteractiveLighting();
@@ -151,28 +152,29 @@ function App() {
     return fallback;
   };
 
-  const pushVersion = (s: Shift[], e: Record<string, string>, filename?: string) => {
-    const id = Date.now();
+  /** 設定為審定版本 */
+  const setAsApproved = () => {
     const ts = new Date().toLocaleString('zh-TW', { hour12: false });
-
-    // Inherit filename from active version if not provided, or fallback
-    const currentActive = versions.find(v => v.id === activeVersionId);
-    const fname = filename || (currentActive?.filename ?? '已編輯版本');
-
-    const v: ScheduleVersion = { id, timestamp: ts, filename: fname, shifts: JSON.parse(JSON.stringify(s)), edits: { ...e } };
-    setVersions(prev => [v, ...prev].slice(0, 5)); // Keep latest 5
-    setActiveVersionId(id);
+    const { targetMonths } = getCycleDates();
+    const label = `${targetMonths[0]}-${targetMonths[1]}月 審定版 (${ts})`;
+    const v: ApprovedVersion = {
+      timestamp: ts,
+      label,
+      shifts: JSON.parse(JSON.stringify(shifts)),
+      edits: { ...manualEdits },
+    };
+    setApprovedVersion(v);
+    alert(`已設定為審定版本！\n${label}`);
   };
 
-  const restoreVersion = (v: ScheduleVersion) => {
-    setShifts(JSON.parse(JSON.stringify(v.shifts)));
-    setManualEdits({ ...v.edits });
-    setActiveVersionId(v.id);
-    setEditMode(false);
-  };
-
-  const saveEdits = () => {
-    pushVersion(shifts, manualEdits);
+  /** 帶入上次審定版本 */
+  const loadApprovedVersion = () => {
+    if (!approvedVersion) {
+      alert('尚無審定版本。');
+      return;
+    }
+    setShifts(JSON.parse(JSON.stringify(approvedVersion.shifts)));
+    setManualEdits({ ...approvedVersion.edits });
     setEditMode(false);
   };
 
@@ -190,8 +192,6 @@ function App() {
     setShifts([]);
     setResponseFile(null);
     setManualEdits({});
-    setVersions([]);
-    setActiveVersionId(null);
     setEditMode(false);
     setScheduleStep(1);
     setUploadedFileName('');
@@ -219,9 +219,6 @@ function App() {
       const newShifts = parseScheduleResponsesData(responseData, volunteers);
       setShifts(newShifts);
       setManualEdits({});
-
-      const filename = responseFile ? responseFile.name : '預設測試表單';
-      pushVersion(newShifts, {}, filename);
     } catch (err) {
       console.error('Failed to generate schedule:', err);
       alert('解析檔案失敗，請確定上傳的是有效的 Excel 或 CSV 檔案。');
@@ -325,7 +322,6 @@ function App() {
 
       setShifts(importedShifts);
       setManualEdits(importedEdits);
-      pushVersion(importedShifts, importedEdits, `雲端匯入 ${targetMonths[0]}-${targetMonths[1]}月`);
       alert(`成功從雲端匯入 ${importedShifts.length} 筆排班資料！`);
     } catch (err) {
       console.error('Cloud import failed:', err);
@@ -423,8 +419,23 @@ function App() {
         alert('沒有可匯出的資料');
         return;
       }
-      
-      XLSX.writeFile(workbook, 'schedule_report.xlsx');
+
+      const wbout = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
+      const blob = new Blob([wbout], {
+        type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'schedule_report.xlsx';
+      a.style.display = 'none';
+      document.body.appendChild(a);
+      a.click();
+      // Delay cleanup to give the browser time to trigger the download
+      setTimeout(() => {
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      }, 200);
     } catch (err: any) {
       console.error('Excel export failed:', err);
       alert('匯出 Excel 失敗: ' + (err.message || String(err)));
@@ -477,9 +488,14 @@ function App() {
     try {
       const canvas = await captureSchedule();
       if (!canvas) return;
-      canvas.toBlob(blob => {
-        if (blob) triggerDownload(blob, 'schedule_report.png');
-      }, 'image/png');
+      const dataUrl = canvas.toDataURL('image/png');
+      const a = document.createElement('a');
+      a.href = dataUrl;
+      a.download = 'schedule_report.png';
+      a.style.display = 'none';
+      document.body.appendChild(a);
+      a.click();
+      setTimeout(() => document.body.removeChild(a), 200);
     } catch (err) {
       console.error('PNG export failed:', err);
       alert('匯出 PNG 失敗');
@@ -751,14 +767,38 @@ function App() {
             setView('loading');
             setTimeout(() => {
               setCurrentUser(user);
+              setView('home');
               if (user.role === 'admin') {
                 setAdminTab('home');
-                setView('admin');
-              } else {
-                setView('frontend');
               }
             }, 3500);
           }} />
+        )}
+
+        {view === 'home' && currentUser && (
+          <>
+            {/* Home navigation bar */}
+            <div style={{ display: 'flex', justifyContent: 'center', gap: '12px', marginBottom: '10px', flexWrap: 'wrap' }}>
+              {currentUser.role === 'admin' && (
+                <button className="btn-primary" onClick={() => setView('admin')}>
+                  進入後台管理
+                </button>
+              )}
+              <button className="btn-secondary" onClick={() => setView('frontend')}>
+                填寫個人表單
+              </button>
+              <button className="btn-danger" onClick={handleLogout}>
+                登出
+              </button>
+            </div>
+            <HomePage
+              currentUser={currentUser}
+              approvedShifts={approvedVersion?.shifts ?? null}
+              approvedEdits={approvedVersion?.edits ?? null}
+              onGoToForm={() => setView('frontend')}
+              onGoToAdmin={currentUser.role === 'admin' ? () => setView('admin') : undefined}
+            />
+          </>
         )}
 
         {view === 'frontend' && (
@@ -766,18 +806,20 @@ function App() {
             currentUser={currentUser!}
             onLogout={handleLogout}
             onBackToAdmin={currentUser?.role === 'admin' ? () => setView('admin') : undefined}
+            onBackToHome={() => setView('home')}
           />
         )}
 
         {view === 'admin' && (
           <>
             {adminTab === 'home' && (
-              <div className="glass-card animate-morph stagger-2" style={{ padding: '60px 20px', textAlign: 'center', maxWidth: '600px', margin: '40px auto' }}>
-                <h2 style={{ fontSize: '1.8rem', marginBottom: '20px', color: 'var(--text-primary)' }}>歡迎進入主日轉播排班後台，請點選需要使用的功能！</h2>
-                <p style={{ color: 'var(--text-secondary)', lineHeight: '1.6' }}>
-                  請透過上方功能選單，切換至 RAW 資料表單管理義工，或使用自動排班系統。
-                </p>
-              </div>
+              <HomePage
+                currentUser={currentUser!}
+                approvedShifts={approvedVersion?.shifts ?? null}
+                approvedEdits={approvedVersion?.edits ?? null}
+                onGoToForm={() => setView('frontend')}
+                onGoToAdmin={() => setAdminTab('scheduler')}
+              />
             )}
 
             {adminTab === 'raw' && (
@@ -820,6 +862,10 @@ function App() {
                         <RefreshCw size={20} className={loading ? 'animate-spin' : ''} /> {loading ? '生成中...' : '自動生成排班'}
                       </button>
 
+                      <button className="btn-secondary" onClick={() => { if (approvedVersion) { loadApprovedVersion(); } else { alert('尚無審定版本可帶入。'); } }} disabled={!approvedVersion || loading} style={{ height: '48px' }}>
+                        <ArchiveRestore size={20} /> 帶入審定版本
+                      </button>
+
                       <button className="btn-secondary" onClick={resetAll} disabled={!hasShifts} style={{ height: '48px' }}>
                         <RotateCcw size={20} /> 清除
                       </button>
@@ -830,6 +876,13 @@ function App() {
                         </button>
                       )}
                     </div>
+
+                    {approvedVersion && (
+                      <div style={{ marginTop: '12px', padding: '10px 14px', background: 'var(--bg-hover)', borderRadius: '8px', fontSize: '0.85rem', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <ShieldCheck size={16} color="var(--icon-accent)" />
+                        目前審定版本：{approvedVersion.label}
+                      </div>
+                    )}
                   </div>
                 )}
 
@@ -840,7 +893,7 @@ function App() {
                       <button className="btn-secondary" onClick={() => { setScheduleStep(1); setEditMode(false); }}>
                         <ArrowLeft size={18} /> 上一步
                       </button>
-                      <button className="btn-primary" onClick={() => { saveEdits(); setScheduleStep(3); setEditMode(false); }}>
+                      <button className="btn-primary" onClick={() => { setScheduleStep(3); setEditMode(false); }}>
                         完成微調 <ArrowRight size={18} />
                       </button>
                     </div>
@@ -849,13 +902,17 @@ function App() {
 
                 {/* Step 3 Actions */}
                 {scheduleStep === 3 && (
-                  <div className="glass-card animate-morph stagger-2" style={{ padding: '16px 24px', marginBottom: '24px', zIndex: 10, position: 'relative' }}>
+                  <div className="glass-card animate-morph stagger-2" style={{ padding: '16px 24px', marginBottom: '24px', zIndex: 50, position: 'relative' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '12px', justifyContent: 'space-between', flexWrap: 'wrap' }}>
                       <button className="btn-secondary" onClick={() => { setScheduleStep(2); setEditMode(true); }}>
                         <ArrowLeft size={18} /> 返回微調
                       </button>
                       
-                      <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+                      <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', alignItems: 'center' }}>
+                        <button className="btn-primary" onClick={setAsApproved}>
+                          <ShieldCheck size={18} /> 設定為審定版本
+                        </button>
+
                         <button className="btn-primary" onClick={handleSyncToCloud} disabled={loading}>
                           <CloudUpload size={18} /> {loading ? '同步中...' : '同步寫入雲端'}
                         </button>
@@ -881,38 +938,6 @@ function App() {
                         </div>
                       </div>
                     </div>
-                    
-                    {versions.length > 0 && (
-                      <div style={{ marginTop: '20px' }}>
-                        <h3 style={{ margin: '0 0 12px 0', fontSize: '1rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                          <History size={18} color="var(--icon-accent)" /> 歷史版本 (紀錄近 5 次)
-                        </h3>
-                        <select
-                          onChange={(e) => {
-                            const id = Number(e.target.value);
-                            const v = versions.find(x => x.id === id);
-                            if (v) {
-                               restoreVersion(v);
-                               setScheduleStep(3); // ensures they stay on step 3 to view or go back
-                            }
-                            e.target.value = '';
-                          }}
-                          style={{
-                            width: '100%', padding: '10px', borderRadius: '8px',
-                            background: 'var(--bg-input)', border: '1px solid var(--bg-input-border)',
-                            color: 'var(--text-primary)', fontSize: '0.9rem', cursor: 'pointer'
-                          }}
-                          value=""
-                        >
-                          <option value="" disabled>選擇版本以切換 ({versions.length} 個紀錄)...</option>
-                          {versions.map(v => (
-                            <option key={v.id} value={v.id}>
-                              {v.filename} ({new Date(v.timestamp).toLocaleString()} - {v.shifts.length} 班次)
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-                    )}
                   </div>
                 )}
 

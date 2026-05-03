@@ -7,9 +7,10 @@ interface FrontendFormProps {
   currentUser: Volunteer;
   onLogout: () => void;
   onBackToAdmin?: () => void;
+  onBackToHome?: () => void;
 }
 
-export const FrontendForm: React.FC<FrontendFormProps> = ({ currentUser, onLogout, onBackToAdmin }) => {
+export const FrontendForm: React.FC<FrontendFormProps> = ({ currentUser, onLogout, onBackToAdmin, onBackToHome }) => {
   const { isOpen, sundays, targetMonths } = getCycleDates();
   const [group, setGroup] = useState<string>('');
   const [availability, setAvailability] = useState<Record<string, string[]>>({});
@@ -69,6 +70,8 @@ export const FrontendForm: React.FC<FrontendFormProps> = ({ currentUser, onLogou
         </p>
         {onBackToAdmin ? (
           <button className="btn-secondary" onClick={onBackToAdmin} style={{ margin: '30px auto 0' }}>返回後台</button>
+        ) : onBackToHome ? (
+          <button className="btn-secondary" onClick={onBackToHome} style={{ margin: '30px auto 0' }}>返回首頁</button>
         ) : (
           <button className="btn-secondary" onClick={onLogout} style={{ margin: '30px auto 0' }}>返回登入</button>
         )}
@@ -88,6 +91,8 @@ export const FrontendForm: React.FC<FrontendFormProps> = ({ currentUser, onLogou
           <button className="btn-primary" onClick={() => setSubmitted(false)}>提交另一份表單</button>
           {onBackToAdmin ? (
             <button className="btn-secondary" onClick={onBackToAdmin}>返回後台</button>
+          ) : onBackToHome ? (
+            <button className="btn-secondary" onClick={onBackToHome}>返回首頁</button>
           ) : (
             <button className="btn-danger" onClick={onLogout}>登出</button>
           )}
@@ -110,6 +115,8 @@ export const FrontendForm: React.FC<FrontendFormProps> = ({ currentUser, onLogou
           </div>
           {onBackToAdmin ? (
             <button className="btn-secondary" onClick={onBackToAdmin}>返回後台</button>
+          ) : onBackToHome ? (
+            <button className="btn-secondary" onClick={onBackToHome}>返回首頁</button>
           ) : (
             <button className="btn-danger" onClick={onLogout}>登出</button>
           )}
