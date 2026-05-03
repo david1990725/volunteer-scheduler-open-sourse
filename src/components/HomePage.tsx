@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import { Calendar, MapPin, Clock, ChevronRight, Sparkles, Video, Camera, X } from 'lucide-react';
 import type { Volunteer, Shift } from '../utils/scheduler';
 import { SHAN_ZHUANG_ROLES, XUAN_JIAO_ROLES } from '../utils/scheduler';
@@ -298,65 +299,72 @@ export const HomePage: React.FC<HomePageProps> = ({
         </div>
       )}
 
-      {/* === 右側固定頁籤 === */}
-      {approvedShifts && approvedShifts.length > 0 && (
-        <div
-          onClick={() => setShowFullSchedule(true)}
-          style={{
-            position: 'fixed', right: 0, top: '50%', transform: 'translateY(-50%)',
-            zIndex: 900, cursor: 'pointer',
-            writingMode: 'vertical-rl', textOrientation: 'mixed',
-            background: 'linear-gradient(180deg, #eab308, #d97706)',
-            color: '#fff', fontWeight: 700, fontSize: '0.95rem',
-            padding: '18px 10px', borderRadius: '12px 0 0 12px',
-            boxShadow: '-4px 0 20px rgba(234, 179, 8, 0.35)',
-            letterSpacing: '0.05em',
-            transition: 'all 0.3s',
-          }}
-          onMouseEnter={e => { (e.currentTarget as HTMLElement).style.paddingRight = '16px'; }}
-          onMouseLeave={e => { (e.currentTarget as HTMLElement).style.paddingRight = '10px'; }}
-        >
-          {targetMonths[0]}月~{targetMonths[1]}月班表
-        </div>
-      )}
-
-      {/* === 完整班表 Overlay === */}
-      {showFullSchedule && approvedShifts && (
-        <div style={{
-          position: 'fixed', inset: 0, zIndex: 9999,
-          background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(8px)',
-          display: 'flex', flexDirection: 'column',
-          animation: 'morphAppear 0.3s ease forwards',
-        }}>
-          {/* Header */}
-          <div style={{
-            display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-            padding: '20px 24px', flexShrink: 0,
-            borderBottom: '1px solid rgba(255,255,255,0.1)',
-          }}>
-            <h2 style={{
-              margin: 0, fontSize: '1.4rem', fontWeight: 800,
-              background: 'linear-gradient(135deg, #eab308, #d97706)',
-              WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
-            }}>
-              {targetMonths[0]}月~{targetMonths[1]}月 完整排班表
-            </h2>
-            <button onClick={() => setShowFullSchedule(false)} style={{
-              background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.15)',
-              borderRadius: '10px', padding: '8px', cursor: 'pointer',
-              color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center',
-            }}>
-              <X size={22} />
-            </button>
+      {/* === 右側固定頁籤 & 完整班表 Overlay (Portaled to body to escape parent transform) === */}
+      {approvedShifts && approvedShifts.length > 0 && createPortal(
+        <>
+          {/* 右側固定頁籤 */}
+          <div
+            onClick={() => setShowFullSchedule(true)}
+            style={{
+              position: 'fixed', right: 0, top: '50%', transform: 'translateY(-50%)',
+              zIndex: 9000, cursor: 'pointer',
+              writingMode: 'vertical-rl', textOrientation: 'mixed',
+              background: 'linear-gradient(180deg, #eab308, #d97706)',
+              color: '#fff', fontWeight: 700, fontSize: '0.95rem',
+              padding: '18px 10px', borderRadius: '12px 0 0 12px',
+              boxShadow: '-4px 0 20px rgba(234, 179, 8, 0.35)',
+              letterSpacing: '0.05em',
+              transition: 'all 0.3s',
+            }}
+            onMouseEnter={e => { (e.currentTarget as HTMLElement).style.paddingRight = '16px'; }}
+            onMouseLeave={e => { (e.currentTarget as HTMLElement).style.paddingRight = '10px'; }}
+          >
+            {targetMonths[0]}月~{targetMonths[1]}月班表
           </div>
 
-          {/* Scrollable content */}
-          <div style={{ flex: 1, overflow: 'auto', padding: '24px' }}>
-            {renderFullScheduleTable('山莊大堂', SHAN_ZHUANG_ROLES, approvedShifts, approvedEdits, currentUser.name)}
-            <div style={{ height: '24px' }} />
-            {renderFullScheduleTable('宣教大樓', XUAN_JIAO_ROLES, approvedShifts, approvedEdits, currentUser.name)}
-          </div>
-        </div>
+          {/* 完整班表 Overlay */}
+          {showFullSchedule && (
+            <div style={{
+              position: 'fixed', inset: 0, zIndex: 9999,
+              background: 'var(--bg-primary)',
+              display: 'flex', flexDirection: 'column',
+              animation: 'morphAppear 0.3s ease forwards',
+            }}>
+              {/* Header */}
+              <div style={{
+                display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                padding: '20px 24px', flexShrink: 0,
+                borderBottom: '1px solid var(--bg-card-border)',
+                background: 'var(--bg-card)',
+              }}>
+                <h2 style={{
+                  margin: 0, fontSize: '1.4rem', fontWeight: 800,
+                  background: 'linear-gradient(135deg, #eab308, #d97706)',
+                  WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
+                }}>
+                  {targetMonths[0]}月~{targetMonths[1]}月 完整排班表
+                </h2>
+                <button onClick={() => setShowFullSchedule(false)} style={{
+                  background: 'var(--bg-input)', border: '1px solid var(--bg-input-border)',
+                  borderRadius: '10px', padding: '8px', cursor: 'pointer',
+                  color: 'var(--text-primary)', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                }}>
+                  <X size={22} />
+                </button>
+              </div>
+
+              {/* Scrollable content */}
+              <div style={{ flex: 1, overflow: 'auto', padding: '24px' }}>
+                <div style={{ maxWidth: '1400px', margin: '0 auto' }}>
+                  {renderFullScheduleTable('山莊大堂', SHAN_ZHUANG_ROLES, approvedShifts, approvedEdits, currentUser.name)}
+                  <div style={{ height: '24px' }} />
+                  {renderFullScheduleTable('宣教大樓', XUAN_JIAO_ROLES, approvedShifts, approvedEdits, currentUser.name)}
+                </div>
+              </div>
+            </div>
+          )}
+        </>,
+        document.body
       )}
     </div>
   );
