@@ -55,7 +55,7 @@ export const HomePage: React.FC<HomePageProps> = ({
   const nextSunday = getNextSunday();
   const nextSundayStr = formatMMDD(nextSunday);
   const [showFullSchedule, setShowFullSchedule] = useState(false);
-  const { targetMonths } = getCycleDates();
+  const { currentMonths } = getCycleDates();
 
   /**
    * 取得使用者在最近主日的排班資料
@@ -317,7 +317,7 @@ export const HomePage: React.FC<HomePageProps> = ({
             onMouseEnter={e => { (e.currentTarget as HTMLElement).style.paddingRight = '16px'; }}
             onMouseLeave={e => { (e.currentTarget as HTMLElement).style.paddingRight = '10px'; }}
           >
-            {targetMonths[0]}月~{targetMonths[1]}月班表
+            {currentMonths[0]}月~{currentMonths[1]}月班表
           </div>
 
           {/* 完整班表 Overlay */}
@@ -340,7 +340,7 @@ export const HomePage: React.FC<HomePageProps> = ({
                   background: 'linear-gradient(135deg, #eab308, #d97706)',
                   WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
                 }}>
-                  {targetMonths[0]}月~{targetMonths[1]}月 完整排班表
+                  {currentMonths[0]}月~{currentMonths[1]}月 完整排班表
                 </h2>
                 <button onClick={() => setShowFullSchedule(false)} style={{
                   background: 'var(--bg-input)', border: '1px solid var(--bg-input-border)',

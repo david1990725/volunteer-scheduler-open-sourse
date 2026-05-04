@@ -155,8 +155,8 @@ function App() {
   /** 設定為審定版本 */
   const setAsApproved = () => {
     const ts = new Date().toLocaleString('zh-TW', { hour12: false });
-    const { targetMonths } = getCycleDates();
-    const label = `${targetMonths[0]}-${targetMonths[1]}月 審定版 (${ts})`;
+    const { currentMonths } = getCycleDates();
+    const label = `${currentMonths[0]}-${currentMonths[1]}月 審定版 (${ts})`;
     const v: ApprovedVersion = {
       timestamp: ts,
       label,
@@ -234,9 +234,9 @@ function App() {
 
   const loadCloudApprovedVersion = async (): Promise<ApprovedVersion | null> => {
     try {
-      const { targetMonths } = getCycleDates();
+      const { currentMonths } = getCycleDates();
       const year = new Date().getFullYear();
-      const sheetNamePrefix = `${year}年 ${targetMonths[0]}-${targetMonths[1]}月排班表`;
+      const sheetNamePrefix = `${year}年 ${currentMonths[0]}-${currentMonths[1]}月排班表`;
 
       const cloudResult = await fetchScheduleFromCloud(sheetNamePrefix);
 
@@ -424,9 +424,9 @@ function App() {
     setLoading(true);
     
     // Generate sheet name
-    const { targetMonths } = getCycleDates();
+    const { currentMonths } = getCycleDates();
     const year = new Date().getFullYear();
-    const sheetNamePrefix = `${year}年 ${targetMonths[0]}-${targetMonths[1]}月排班表`;
+    const sheetNamePrefix = `${year}年 ${currentMonths[0]}-${currentMonths[1]}月排班表`;
 
     try {
       const shanzhuangData = getSheetData('山莊大堂', SHAN_ZHUANG_ROLES);

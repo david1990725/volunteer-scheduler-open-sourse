@@ -1,6 +1,7 @@
 export function getCycleDates(): {
   isOpen: boolean;
-  targetMonths: [number, number];
+  currentMonths: [number, number];
+  nextMonths: [number, number];
   sundays: string[]; // e.g. "05/05", "05/12"
 } {
   const now = new Date();
@@ -11,7 +12,8 @@ export function getCycleDates(): {
 
   // 計算當前所在的雙數月週期結尾 (例如 5月、6月皆屬於 6月結尾的週期)
   let currentCycleEndMonth = isEvenMonth ? month : month + 1;
-
+  let currentCycleStartMonth = currentCycleEndMonth - 1;
+  
   // 目標週期為下一個雙數月份週期
   let targetMonth1 = currentCycleEndMonth + 1;
   let targetMonth2 = currentCycleEndMonth + 2;
@@ -50,7 +52,8 @@ export function getCycleDates(): {
 
   return {
     isOpen: true, // 預設全時開啟
-    targetMonths: [targetMonth1, targetMonth2],
+    currentMonths: [currentCycleStartMonth, currentCycleEndMonth],
+    nextMonths: [targetMonth1, targetMonth2],
     sundays
   };
 }

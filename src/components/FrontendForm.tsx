@@ -12,7 +12,7 @@ interface FrontendFormProps {
 }
 
 export const FrontendForm: React.FC<FrontendFormProps> = ({ currentUser, onLogout, onBackToAdmin, onBackToHome }) => {
-  const { isOpen, sundays, targetMonths } = getCycleDates();
+  const { isOpen, sundays, nextMonths } = getCycleDates();
   const [groups, setGroups] = useState<string[]>([]);
   const [availability, setAvailability] = useState<Record<string, string[]>>({});
   const [submitted, setSubmitted] = useState(false);
@@ -110,7 +110,7 @@ export const FrontendForm: React.FC<FrontendFormProps> = ({ currentUser, onLogou
         <CheckCircle color="var(--icon-accent)" size={64} style={{ margin: '0 auto 20px' }} />
         <h2 style={{ fontSize: '1.8rem', marginBottom: '20px' }}>提交成功！</h2>
         <p style={{ color: 'var(--text-secondary)' }}>
-          感謝 {currentUser.name} 填寫 {targetMonths[0]}、{targetMonths[1]} 月份的服事排班表單。
+          感謝 {currentUser.name} 填寫 {nextMonths[0]}、{nextMonths[1]} 月份的服事排班表單。
         </p>
         <div style={{ display: 'flex', justifyContent: 'center', gap: '15px', marginTop: '30px' }}>
           <button className="btn-primary" onClick={resetForm}>再次提交表單</button>
@@ -134,7 +134,7 @@ export const FrontendForm: React.FC<FrontendFormProps> = ({ currentUser, onLogou
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
           <div>
             <h2 style={{ margin: 0, fontSize: '2rem', background: 'linear-gradient(135deg, var(--text-title-from) 0%, var(--text-title-to) 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
-              {targetMonths[0]}、{targetMonths[1]} 月份服事排班表
+              {nextMonths[0]}、{nextMonths[1]} 月份服事排班表
             </h2>
             <p style={{ color: 'var(--text-secondary)', marginTop: '10px' }}>哈囉 {currentUser.name}，請填寫您的排班資訊。</p>
           </div>
