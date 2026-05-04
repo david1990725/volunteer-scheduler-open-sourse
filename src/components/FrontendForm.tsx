@@ -13,7 +13,7 @@ interface FrontendFormProps {
 
 export const FrontendForm: React.FC<FrontendFormProps> = ({ currentUser, onLogout, onBackToAdmin, onBackToHome }) => {
   const { isOpen, sundays, targetMonths } = getCycleDates();
-  const [group, setGroup] = useState<string>('');
+  const [groups, setGroups] = useState<string[]>([]);
   const [availability, setAvailability] = useState<Record<string, string[]>>({});
   const [submitted, setSubmitted] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -39,8 +39,8 @@ export const FrontendForm: React.FC<FrontendFormProps> = ({ currentUser, onLogou
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!group) {
-      alert('請選擇所屬組別');
+    if (groups.length === 0) {
+      alert('請至少選擇一個所屬組別');
       return;
     }
 
@@ -49,7 +49,7 @@ export const FrontendForm: React.FC<FrontendFormProps> = ({ currentUser, onLogou
       const responseRow: any = {
         '時間戳記': new Date().toISOString(),
         '姓名': currentUser.name,
-        '組別': group,
+        '組別': groups.join(', '),
       };
 
       sundays.forEach(date => {
@@ -99,7 +99,7 @@ export const FrontendForm: React.FC<FrontendFormProps> = ({ currentUser, onLogou
   }
 
   const resetForm = () => {
-    setGroup('');
+    setGroups([]);
     setAvailability({});
     setSubmitted(false);
   };
@@ -152,20 +152,29 @@ export const FrontendForm: React.FC<FrontendFormProps> = ({ currentUser, onLogou
         
         {/* 區塊 2: 所屬組別 */}
         <div className="glass-card animate-morph stagger-2" style={{ padding: '30px', marginBottom: '20px' }}>
-          <label style={{ display: 'block', fontSize: '1.2rem', fontWeight: 700, marginBottom: '20px', color: 'var(--text-primary)' }}>所屬組別 <span style={{ color: 'var(--text-missing)' }}>*</span></label>
+          <label style={{ display: 'block', fontSize: '1.2rem', fontWeight: 700, marginBottom: '20px', color: 'var(--text-primary)' }}>所屬組別 (可複選) <span style={{ color: 'var(--text-missing)' }}>*</span></label>
           <div style={{ display: 'flex', gap: '15px', flexWrap: 'wrap' }}>
-            {['動態攝影組', '平面拍照組', '舞台燈光組'].map(g => (
-              <label key={g} style={{ 
-                display: 'flex', alignItems: 'center', gap: '10px', 
-                background: group === g ? 'var(--icon-bg)' : 'var(--bg-input)',
-                border: `1px solid ${group === g ? 'var(--icon-accent)' : 'var(--bg-input-border)'}`,
-                padding: '14px 24px', borderRadius: '12px', cursor: 'pointer',
-                transition: 'all 0.2s', flex: 1, minWidth: '150px', justifyContent: 'center'
-              }}>
-                <input type="radio" name="group" value={g} checked={group === g} onChange={(e) => setGroup(e.target.value)} style={{ accentColor: 'var(--icon-accent)', width: '18px', height: '18px' }} />
-                <span style={{ fontWeight: group === g ? 600 : 400, fontSize: '1.1rem' }}>{g}</span>
-              </label>
-            ))}
+            {['動態攝影組', '平面拍照組', '舞台燈光組'].map(g => {
+              const isChecked = groups.includes(g);
+              return (
+                <label key={g} style={{ 
+                  display: 'flex', alignItems: 'center', gap: '10px', 
+                  background: isChecked ? 'var(--icon-bg)' : 'var(--bg-input)',
+                  border: `1px solid ${isChecked ? 'var(--icon-accent)' : 'var(--bg-input-border)'}`,
+                  padding: '14px 24px', borderRadius: '12px', cursor: 'pointer',
+                  transition: 'all 0.2s', flex: 1, minWidth: '150px', justifyContent: 'center'
+                }}>
+                  <input type="checkbox" name="group" value={g} checked={isChecked} onChange={(e) => {
+                    if (e.target.checked) {
+                      setGroups([...groups, g]);
+                    } else {
+                      setGroups(groups.filter(item => item !== g));
+                    }
+                  }} style={{ accentColor: 'var(--icon-accent)', width: '20px', height: '20px' }} />
+                  <span style={{ fontWeight: isChecked ? 600 : 400, fontSize: '1.1rem' }}>{g}</span>
+                </label>
+              );
+            })}
           </div>
         </div>
 

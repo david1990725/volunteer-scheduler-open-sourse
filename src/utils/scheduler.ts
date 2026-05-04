@@ -167,15 +167,15 @@ export function parseScheduleResponsesData(
 
     // Preference detection
     const category = categoryKey ? String(row[categoryKey] || '').trim() : '';
-    const prefType = detectPrefType(category);
+    const prefTypes = detectPrefTypes(category);
 
     for (const field of dates) {
       const avail = String(row[field] || '');
       if (avail.includes('山莊')) {
         locationAvailability[field]['山莊'].push(name);
-        if (prefType) {
+        if (prefTypes.length > 0) {
           (rolePreferences[name] ??= {})[field] ??= new Set();
-          rolePreferences[name][field].add(prefType);
+          prefTypes.forEach(pt => rolePreferences[name][field].add(pt));
         }
       }
       if (avail.includes('宣教')) {
@@ -341,11 +341,12 @@ function detectCategoryColumn(data: any[]): string {
   return '';
 }
 
-/** 將表單組別轉換為偏好類型 */
-function detectPrefType(category: string): string {
-  if (category.includes('平面') || category.includes('拍照') || category.includes('Photo')) return '平面';
-  if (category.includes('動態') || category.includes('攝影')) return '攝影';
-  return '';
+/** 將表單組別轉換為偏好類型陣列，支援多選 */
+function detectPrefTypes(category: string): string[] {
+  const prefs: string[] = [];
+  if (category.includes('平面') || category.includes('拍照') || category.includes('Photo')) prefs.push('平面');
+  if (category.includes('動態') || category.includes('攝影')) prefs.push('攝影');
+  return prefs;
 }
 
 /** 模糊比對表單姓名 → 技能樹姓名 */
