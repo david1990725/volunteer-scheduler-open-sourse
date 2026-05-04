@@ -141,9 +141,55 @@ export async function submitVolunteerForm(payload: { data: Record<string, string
 
     const result = await res.json();
     return { success: result.success ?? true, message: result.message ?? '提交成功' };
-  } catch (err) {
-    console.error('Failed to submit form to cloud:', err);
-    return { success: false, message: '提交表單至雲端失敗，請稍後再試。' };
+  } catch (err: any) {
+    console.error('Failed to submit form to cloud, saving to offline queue:', err);
+    // 網路錯誤時，將資料存入離線佇列
+    const offlineQueue = JSON.parse(localStorage.getItem('offline_form_responses') || '[]');
+    offlineQueue.push(payload.data);
+    localStorage.setItem('offline_form_responses', JSON.stringify(offlineQueue));
+    return { success: true, message: '目前處於離線狀態，資料已安全儲存於您的裝置。將於網路恢復時自動同步。' };
+  }
+}
+
+/**
+ * 檢查並同步離線表單資料
+ */
+export async function syncOfflineForms() {
+  if (!navigator.onLine) return;
+  
+  const offlineQueue = JSON.parse(localStorage.getItem('offline_form_responses') || '[]');
+  if (offlineQueue.length === 0) return;
+
+  const remainingQueue = [];
+  let successCount = 0;
+
+  for (const data of offlineQueue) {
+    try {
+      if (APPS_SCRIPT_URL) {
+        const res = await fetch(APPS_SCRIPT_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'text/plain' },
+          body: JSON.stringify({ action: 'submitForm', data }),
+        });
+        const result = await res.json();
+        if (result.success) {
+          successCount++;
+        } else {
+          remainingQueue.push(data); // 提交失敗，保留在佇列中
+        }
+      }
+    } catch (err) {
+      console.error('Offline sync failed for an item:', err);
+      remainingQueue.push(data); // 網路再度中斷，保留在佇列中
+    }
+  }
+
+  localStorage.setItem('offline_form_responses', JSON.stringify(remainingQueue));
+  
+  if (successCount > 0) {
+    console.log(`成功同步了 ${successCount} 筆離線表單資料。`);
+    // 可選：如果需要通知使用者，可以在這裡觸發一個 CustomEvent
+    window.dispatchEvent(new CustomEvent('offline-sync-complete', { detail: successCount }));
   }
 }
 

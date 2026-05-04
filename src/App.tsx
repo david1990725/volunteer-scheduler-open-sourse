@@ -14,7 +14,7 @@ import { parseSpreadsheetFile, fetchCSVAsJson } from './utils/fileUtils';
 import { getCycleDates } from './utils/dateUtils';
 import { useInteractiveLighting } from './hooks/useInteractiveLighting';
 import { useLiff } from './hooks/useLiff';
-import { syncSchedule, fetchScheduleFromCloud, fetchFormResponsesFromCloud } from './utils/googleSheets';
+import { syncSchedule, fetchScheduleFromCloud, fetchFormResponsesFromCloud, syncOfflineForms } from './utils/googleSheets';
 import { Login } from './components/Login';
 import { FrontendForm } from './components/FrontendForm';
 import { AdminRawData } from './components/AdminRawData';
@@ -356,6 +356,32 @@ function App() {
   }, [currentUser, view]);
 
 
+
+  // --- Offline Sync ---
+  useEffect(() => {
+    // 嘗試在應用程式載入時同步
+    syncOfflineForms();
+
+    // 監聽網路恢復事件
+    const handleOnline = () => {
+      console.log('Network is back online. Syncing offline forms...');
+      syncOfflineForms();
+    };
+
+    // 監聽同步完成的自訂事件，跳出通知
+    const handleSyncComplete = ((e: CustomEvent) => {
+      const count = e.detail;
+      alert(`網路已恢復！已成功為您將 ${count} 筆離線儲存的表單資料同步至雲端。`);
+    }) as EventListener;
+
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline-sync-complete', handleSyncComplete);
+
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline-sync-complete', handleSyncComplete);
+    };
+  }, []);
 
   // --- Helper for generating 2D Data Array ---
   const getSheetData = useCallback((locationName: string, roles: readonly string[]): string[][] | null => {
