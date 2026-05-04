@@ -384,6 +384,24 @@ function App() {
     };
   }, []);
 
+  // --- Helper for calculating default meals ---
+  const calculateDefaultMeal = useCallback((locationName: string, shift: Shift, field: string, roles: readonly string[]) => {
+    const hasRole = (roleName: string) => (shift.assignments[roleName] && shift.assignments[roleName] !== '缺' ? 1 : 0);
+    const hasEdit = (editField: string) => {
+      const v = manualEdits[editKey(locationName, shift.date, editField)];
+      return v && v.trim() !== '' ? 1 : 0;
+    };
+
+    if (locationName === '宣教大樓' && field === '早餐') {
+      return hasRole('導播') + hasEdit('燈控') + hasEdit('備用1');
+    } else if (locationName === '宣教大樓' && field === '午餐') {
+      return hasRole('導播') + hasRole('信息版') + hasEdit('燈控');
+    } else if (locationName === '山莊大堂' && field === '早餐') {
+      return countAssigned(shift, roles) + hasEdit('備用1') + hasEdit('備用2') + hasEdit('燈控');
+    }
+    return countAssigned(shift, roles);
+  }, [manualEdits]);
+
   // --- Helper for generating 2D Data Array ---
   const getSheetData = useCallback((locationName: string, roles: readonly string[]): string[][] | null => {
     const locationShifts = shifts.filter(s => s.location === locationName);
@@ -405,7 +423,7 @@ function App() {
 
     const mealVal = (s: Shift, field: string) => {
       const valKey = editKey(locationName, s.date, field);
-      const baseNum = countAssigned(s, roles) + (field === '早餐' ? 1 : 0);
+      const baseNum = calculateDefaultMeal(locationName, s, field, roles);
       const v = valKey in manualEdits ? manualEdits[valKey] : String(baseNum);
       return `${v} 份`;
     };
@@ -610,7 +628,7 @@ function App() {
     <tr style={mealRowBg}>
       <td style={mealLabelStyle}>{label}</td>
       {locationShifts.map(shift => {
-        const defaultNum = countAssigned(shift, roles) + (field === '早餐' ? 1 : 0);
+        const defaultNum = calculateDefaultMeal(locationName, shift, field, roles);
         const valKey = editKey(locationName, shift.date, field);
         const val = valKey in manualEdits ? manualEdits[valKey] : String(defaultNum);
         return (
