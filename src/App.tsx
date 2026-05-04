@@ -880,7 +880,6 @@ function App() {
               currentUser={currentUser}
               approvedShifts={approvedVersion?.shifts ?? null}
               approvedEdits={approvedVersion?.edits ?? null}
-              onGoToForm={() => setView('frontend')}
               onGoToAdmin={currentUser.role === 'admin' ? () => setView('admin') : undefined}
             />
           </>
@@ -902,7 +901,6 @@ function App() {
                 currentUser={currentUser!}
                 approvedShifts={approvedVersion?.shifts ?? null}
                 approvedEdits={approvedVersion?.edits ?? null}
-                onGoToForm={() => setView('frontend')}
                 onGoToAdmin={() => setAdminTab('scheduler')}
               />
             )}

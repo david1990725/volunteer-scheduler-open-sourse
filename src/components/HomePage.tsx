@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { createPortal } from 'react-dom';
-import { Calendar, MapPin, Clock, ChevronRight, Sparkles, Video, Camera, X } from 'lucide-react';
+import { Calendar, MapPin, Clock, Sparkles, Video, Camera, X } from 'lucide-react';
 import type { Volunteer, Shift } from '../utils/scheduler';
 import { SHAN_ZHUANG_ROLES, XUAN_JIAO_ROLES } from '../utils/scheduler';
 import { getCycleDates } from '../utils/dateUtils';
@@ -9,7 +9,6 @@ interface HomePageProps {
   currentUser: Volunteer;
   approvedShifts: Shift[] | null;
   approvedEdits: Record<string, string> | null;
-  onGoToForm: () => void;
   onGoToAdmin?: () => void;
 }
 
@@ -48,7 +47,6 @@ export const HomePage: React.FC<HomePageProps> = ({
   currentUser,
   approvedShifts,
   approvedEdits,
-  onGoToForm,
 }) => {
   const isAdmin = currentUser.role === 'admin';
   const days = daysUntilSunday();
