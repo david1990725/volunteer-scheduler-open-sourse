@@ -1,13 +1,31 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import * as XLSX from 'xlsx';
-import { Download } from 'lucide-react';
+import { Download, Loader2 } from 'lucide-react';
+import { fetchFormResponsesFromCloud, clearFormResponsesInCloud } from '../utils/googleSheets';
 
 interface AdminRawDataProps {
   onStartAutoSchedule: () => void;
 }
 
 export const AdminRawData: React.FC<AdminRawDataProps> = ({ onStartAutoSchedule }) => {
-  const [data] = useState<any[]>(() => JSON.parse(localStorage.getItem('volunteer_form_responses') || '[]'));
+  const [data, setData] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const loadData = async () => {
+      setLoading(true);
+      const res = await fetchFormResponsesFromCloud();
+      if (res.success && res.data) {
+        setData(res.data);
+      } else {
+        // Fallback to localStorage if cloud fails or is empty
+        const localData = JSON.parse(localStorage.getItem('volunteer_form_responses') || '[]');
+        setData(localData);
+      }
+      setLoading(false);
+    };
+    loadData();
+  }, []);
 
   const exportCSV = () => {
     if (data.length === 0) return;
@@ -26,12 +44,27 @@ export const AdminRawData: React.FC<AdminRawDataProps> = ({ onStartAutoSchedule 
     URL.revokeObjectURL(url);
   };
 
-  const clearData = () => {
-    if (confirm('確定要清空所有 RAW 資料嗎？這將無法復原。')) {
-      localStorage.removeItem('volunteer_form_responses');
-      window.location.reload();
+  const clearData = async () => {
+    if (confirm('確定要清空所有 RAW 資料嗎？這將會同步清空雲端與本地端資料，且無法復原。')) {
+      const res = await clearFormResponsesInCloud();
+      if (res.success) {
+        localStorage.removeItem('volunteer_form_responses');
+        setData([]);
+        alert('已成功清空資料。');
+      } else {
+        alert(res.message);
+      }
     }
   };
+
+  if (loading) {
+    return (
+      <div className="glass-card animate-morph stagger-2" style={{ padding: '60px', textAlign: 'center' }}>
+        <Loader2 className="animate-spin" size={32} style={{ color: 'var(--icon-accent)', margin: '0 auto 16px' }} />
+        <p style={{ color: 'var(--text-secondary)' }}>正在從雲端載入表單資料...</p>
+      </div>
+    );
+  }
 
   if (data.length === 0) {
     return (

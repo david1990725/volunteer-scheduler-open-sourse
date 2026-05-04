@@ -14,7 +14,7 @@ import { parseSpreadsheetFile, fetchCSVAsJson } from './utils/fileUtils';
 import { getCycleDates } from './utils/dateUtils';
 import { useInteractiveLighting } from './hooks/useInteractiveLighting';
 import { useLiff } from './hooks/useLiff';
-import { syncSchedule, fetchScheduleFromCloud } from './utils/googleSheets';
+import { syncSchedule, fetchScheduleFromCloud, fetchFormResponsesFromCloud } from './utils/googleSheets';
 import { Login } from './components/Login';
 import { FrontendForm } from './components/FrontendForm';
 import { AdminRawData } from './components/AdminRawData';
@@ -205,11 +205,16 @@ function App() {
       if (responseFile) {
         responseData = await parseSpreadsheetFile(responseFile);
       } else {
-        const localData = JSON.parse(localStorage.getItem('volunteer_form_responses') || '[]');
-        if (localData.length > 0) {
-          responseData = localData;
+        const cloudRes = await fetchFormResponsesFromCloud();
+        if (cloudRes.success && cloudRes.data && cloudRes.data.length > 0) {
+          responseData = cloudRes.data;
         } else {
-          responseData = await fetchCSVAsJson(FALLBACK_RESPONSES_PATH);
+          const localData = JSON.parse(localStorage.getItem('volunteer_form_responses') || '[]');
+          if (localData.length > 0) {
+            responseData = localData;
+          } else {
+            responseData = await fetchCSVAsJson(FALLBACK_RESPONSES_PATH);
+          }
         }
       }
 
@@ -233,12 +238,9 @@ function App() {
       const year = new Date().getFullYear();
       const sheetNamePrefix = `${year}年 ${targetMonths[0]}-${targetMonths[1]}月排班表`;
 
-      const [shanzhuangResult, xuanjiaoResult] = await Promise.all([
-        fetchScheduleFromCloud(`${sheetNamePrefix} - 山莊`),
-        fetchScheduleFromCloud(`${sheetNamePrefix} - 宣教`)
-      ]);
+      const cloudResult = await fetchScheduleFromCloud(sheetNamePrefix);
 
-      if (!shanzhuangResult.success && !xuanjiaoResult.success) {
+      if (!cloudResult.success || !cloudResult.data) {
         return null;
       }
 
@@ -296,11 +298,33 @@ function App() {
         }
       };
 
-      if (shanzhuangResult.success && shanzhuangResult.data) {
-        parseSheetToShifts(shanzhuangResult.data, '山莊大堂', SHAN_ZHUANG_ROLES);
+      // Split combined data into ShanZhuang and XuanJiao arrays based on headers
+      const shanzhuangRows: string[][] = [];
+      const xuanjiaoRows: string[][] = [];
+      let currentLocation = '';
+
+      for (const row of cloudResult.data) {
+        const firstCell = (row[0] || '').trim();
+        if (firstCell === '【山莊大堂】') {
+          currentLocation = '山莊大堂';
+          continue;
+        } else if (firstCell === '【宣教大樓】') {
+          currentLocation = '宣教大樓';
+          continue;
+        }
+
+        if (currentLocation === '山莊大堂') {
+          shanzhuangRows.push(row);
+        } else if (currentLocation === '宣教大樓') {
+          xuanjiaoRows.push(row);
+        }
       }
-      if (xuanjiaoResult.success && xuanjiaoResult.data) {
-        parseSheetToShifts(xuanjiaoResult.data, '宣教大樓', XUAN_JIAO_ROLES);
+
+      if (shanzhuangRows.length > 0) {
+        parseSheetToShifts(shanzhuangRows, '山莊大堂', SHAN_ZHUANG_ROLES);
+      }
+      if (xuanjiaoRows.length > 0) {
+        parseSheetToShifts(xuanjiaoRows, '宣教大樓', XUAN_JIAO_ROLES);
       }
 
       if (importedShifts.length > 0) {
@@ -396,13 +420,23 @@ function App() {
 
     try {
       const shanzhuangData = getSheetData('山莊大堂', SHAN_ZHUANG_ROLES);
-      if (shanzhuangData) {
-        await syncSchedule({ sheetName: `${sheetNamePrefix} - 山莊`, data: shanzhuangData });
+      const xuanjiaoData = getSheetData('宣教大樓', XUAN_JIAO_ROLES);
+
+      const combinedData: string[][] = [];
+      
+      if (shanzhuangData && shanzhuangData.length > 0) {
+        combinedData.push(['【山莊大堂】']);
+        combinedData.push(...shanzhuangData);
+      }
+      
+      if (xuanjiaoData && xuanjiaoData.length > 0) {
+        if (combinedData.length > 0) combinedData.push([]); // 空行分隔
+        combinedData.push(['【宣教大樓】']);
+        combinedData.push(...xuanjiaoData);
       }
 
-      const xuanjiaoData = getSheetData('宣教大樓', XUAN_JIAO_ROLES);
-      if (xuanjiaoData) {
-        await syncSchedule({ sheetName: `${sheetNamePrefix} - 宣教`, data: xuanjiaoData });
+      if (combinedData.length > 0) {
+        await syncSchedule({ sheetName: sheetNamePrefix, data: combinedData });
       }
 
       alert('排班資料已成功同步到 Google 雲端試算表！');

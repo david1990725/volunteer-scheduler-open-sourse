@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { getCycleDates } from '../utils/dateUtils';
 import type { Volunteer } from '../utils/scheduler';
-import { Save, CheckCircle } from 'lucide-react';
+import { Save, CheckCircle, Loader2 } from 'lucide-react';
+import { submitVolunteerForm } from '../utils/googleSheets';
 
 interface FrontendFormProps {
   currentUser: Volunteer;
@@ -15,6 +16,7 @@ export const FrontendForm: React.FC<FrontendFormProps> = ({ currentUser, onLogou
   const [group, setGroup] = useState<string>('');
   const [availability, setAvailability] = useState<Record<string, string[]>>({});
   const [submitted, setSubmitted] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Group sundays by month
   const sundaysByMonth = sundays.reduce((acc, date) => {
@@ -35,29 +37,45 @@ export const FrontendForm: React.FC<FrontendFormProps> = ({ currentUser, onLogou
     });
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!group) {
       alert('請選擇所屬組別');
       return;
     }
 
-    const responseRow: any = {
-      '時間戳記': new Date().toISOString(),
-      '姓名': currentUser.name,
-      '組別': group,
-    };
+    setIsSubmitting(true);
+    try {
+      const responseRow: any = {
+        '時間戳記': new Date().toISOString(),
+        '姓名': currentUser.name,
+        '組別': group,
+      };
 
-    sundays.forEach(date => {
-      const locs = availability[date] || [];
-      responseRow[`[${date}]`] = locs.join(', ');
-    });
+      sundays.forEach(date => {
+        const locs = availability[date] || [];
+        responseRow[`[${date}]`] = locs.join(', ');
+      });
 
-    const existingData = JSON.parse(localStorage.getItem('volunteer_form_responses') || '[]');
-    existingData.push(responseRow);
-    
-    localStorage.setItem('volunteer_form_responses', JSON.stringify(existingData));
-    setSubmitted(true);
+      // Submit to Google Sheets (Cloud)
+      const res = await submitVolunteerForm({ data: responseRow });
+      
+      if (!res.success) {
+        throw new Error(res.message);
+      }
+
+      // Also save to localStorage as a local backup
+      const existingData = JSON.parse(localStorage.getItem('volunteer_form_responses') || '[]');
+      existingData.push(responseRow);
+      localStorage.setItem('volunteer_form_responses', JSON.stringify(existingData));
+      
+      setSubmitted(true);
+    } catch (err: any) {
+      console.error(err);
+      alert(err.message || '提交失敗，請稍後再試');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   if (!isOpen) {
@@ -180,8 +198,16 @@ export const FrontendForm: React.FC<FrontendFormProps> = ({ currentUser, onLogou
           </div>
         ))}
 
-        <button type="submit" className="btn-primary animate-morph stagger-5" style={{ width: '100%', justifyContent: 'center', padding: '18px', fontSize: '1.3rem', borderRadius: '16px', marginBottom: '40px', boxShadow: 'var(--shadow-card)' }}>
-          <Save size={24} /> 提交表單
+        <button type="submit" className="btn-primary animate-morph stagger-5" style={{ width: '100%', justifyContent: 'center', padding: '18px', fontSize: '1.3rem', borderRadius: '16px', marginBottom: '40px', boxShadow: 'var(--shadow-card)' }} disabled={isSubmitting}>
+          {isSubmitting ? (
+            <>
+              <Loader2 className="animate-spin" size={24} /> 提交中...
+            </>
+          ) : (
+            <>
+              <Save size={24} /> 提交表單
+            </>
+          )}
         </button>
       </form>
     </div>

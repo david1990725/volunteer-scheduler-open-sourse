@@ -119,3 +119,82 @@ export async function fetchScheduleFromCloud(sheetName: string): Promise<{ succe
     return { success: false, message: '從雲端讀取排班資料失敗，請稍後再試。', data: null };
   }
 }
+
+/**
+ * 透過 Google Apps Script 將個人排班表單資料提交到雲端 (Google Sheets)
+ */
+export async function submitVolunteerForm(payload: { data: Record<string, string> }): Promise<{ success: boolean; message: string }> {
+  if (!APPS_SCRIPT_URL) {
+    console.error('VITE_APPS_SCRIPT_URL is not configured');
+    return { success: false, message: 'Apps Script URL 尚未設定，請聯繫管理員。' };
+  }
+
+  try {
+    const res = await fetch(APPS_SCRIPT_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain' },
+      body: JSON.stringify({
+        action: 'submitForm',
+        data: payload.data,
+      }),
+    });
+
+    const result = await res.json();
+    return { success: result.success ?? true, message: result.message ?? '提交成功' };
+  } catch (err) {
+    console.error('Failed to submit form to cloud:', err);
+    return { success: false, message: '提交表單至雲端失敗，請稍後再試。' };
+  }
+}
+
+/**
+ * 透過 Google Apps Script 從雲端讀取所有排班表單回覆
+ */
+export async function fetchFormResponsesFromCloud(): Promise<{ success: boolean; message: string; data: Record<string, string>[] | null }> {
+  if (!APPS_SCRIPT_URL) {
+    console.error('VITE_APPS_SCRIPT_URL is not configured');
+    return { success: false, message: 'Apps Script URL 尚未設定，請聯繫管理員。', data: null };
+  }
+
+  try {
+    const res = await fetch(APPS_SCRIPT_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain' },
+      body: JSON.stringify({
+        action: 'fetchFormResponses',
+      }),
+    });
+
+    const result = await res.json();
+    return { success: result.success ?? false, message: result.message ?? '讀取失敗', data: result.data ?? null };
+  } catch (err) {
+    console.error('Failed to fetch form responses from cloud:', err);
+    return { success: false, message: '從雲端讀取表單回覆失敗，請稍後再試。', data: null };
+  }
+}
+
+/**
+ * 透過 Google Apps Script 清空雲端的所有表單回覆
+ */
+export async function clearFormResponsesInCloud(): Promise<{ success: boolean; message: string }> {
+  if (!APPS_SCRIPT_URL) {
+    console.error('VITE_APPS_SCRIPT_URL is not configured');
+    return { success: false, message: 'Apps Script URL 尚未設定，請聯繫管理員。' };
+  }
+
+  try {
+    const res = await fetch(APPS_SCRIPT_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain' },
+      body: JSON.stringify({
+        action: 'clearFormResponses',
+      }),
+    });
+
+    const result = await res.json();
+    return { success: result.success ?? false, message: result.message ?? '清空失敗' };
+  } catch (err) {
+    console.error('Failed to clear form responses in cloud:', err);
+    return { success: false, message: '清空雲端表單回覆失敗，請稍後再試。' };
+  }
+}
