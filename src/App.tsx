@@ -270,6 +270,8 @@ function App() {
         const dates = rawDates.map(normalizeDate);
 
         for (const date of dates) {
+          if (!date) continue; // 略過因資料矩陣補齊而產生的空白欄位
+
           const shift: Shift = {
             date,
             location: locationName,
@@ -436,7 +438,15 @@ function App() {
       }
 
       if (combinedData.length > 0) {
-        await syncSchedule({ sheetName: sheetNamePrefix, data: combinedData });
+        // Ensure data is rectangular for Google Apps Script setValues()
+        const maxCols = Math.max(...combinedData.map(r => r.length));
+        const rectangularData = combinedData.map(r => {
+          const newRow = [...r];
+          while (newRow.length < maxCols) newRow.push('');
+          return newRow;
+        });
+
+        await syncSchedule({ sheetName: sheetNamePrefix, data: rectangularData });
       }
 
       alert('排班資料已成功同步到 Google 雲端試算表！');
