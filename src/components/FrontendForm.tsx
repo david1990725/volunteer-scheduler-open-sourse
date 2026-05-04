@@ -98,6 +98,12 @@ export const FrontendForm: React.FC<FrontendFormProps> = ({ currentUser, onLogou
     );
   }
 
+  const resetForm = () => {
+    setGroup('');
+    setAvailability({});
+    setSubmitted(false);
+  };
+
   if (submitted) {
     return (
       <div className="glass-card" style={{ padding: '60px 20px', textAlign: 'center', maxWidth: '600px', margin: '100px auto' }}>
@@ -107,7 +113,7 @@ export const FrontendForm: React.FC<FrontendFormProps> = ({ currentUser, onLogou
           感謝 {currentUser.name} 填寫 {targetMonths[0]}、{targetMonths[1]} 月份的服事排班表單。
         </p>
         <div style={{ display: 'flex', justifyContent: 'center', gap: '15px', marginTop: '30px' }}>
-          <button className="btn-primary" onClick={() => setSubmitted(false)}>提交另一份表單</button>
+          <button className="btn-primary" onClick={resetForm}>再次提交表單</button>
           {onBackToAdmin ? (
             <button className="btn-secondary" onClick={onBackToAdmin}>返回後台</button>
           ) : onBackToHome ? (

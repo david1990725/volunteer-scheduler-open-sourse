@@ -57,69 +57,67 @@ export const HomePage: React.FC<HomePageProps> = ({
   const [showFullSchedule, setShowFullSchedule] = useState(false);
   const { targetMonths } = getCycleDates();
 
-  // 找到使用者在最近主日的排班
+  /**
+   * 取得使用者在最近主日的排班資料
+   * @returns 包含地點與職位的陣列
+   */
   const myAssignments = useMemo(() => {
     if (!approvedShifts) return [];
 
-    const results: { location: string; role: string }[] = [];
+    return approvedShifts
+      .filter((shift) => shift.date === nextSundayStr)
+      .flatMap((shift) => {
+        const baseRoles = shift.location === '山莊大堂' ? SHAN_ZHUANG_ROLES : XUAN_JIAO_ROLES;
+        const extraRoles = ['燈控', '備用1', '備用2'];
+        const allRoles = [...baseRoles, ...extraRoles];
 
-    for (const shift of approvedShifts) {
-      if (shift.date !== nextSundayStr) continue;
-
-      const roles = shift.location === '山莊大堂' ? SHAN_ZHUANG_ROLES : XUAN_JIAO_ROLES;
-      for (const role of roles) {
-        const editKey = `${shift.location}|${shift.date}|${role}`;
-        const value = approvedEdits?.[editKey] ?? shift.assignments[role];
-        if (value === currentUser.name) {
-          results.push({ location: shift.location, role });
-        }
-      }
-
-      // 也檢查備用和燈控
-      const extras = ['燈控', '備用1', '備用2'];
-      for (const field of extras) {
-        const editKey = `${shift.location}|${shift.date}|${field}`;
-        const value = approvedEdits?.[editKey];
-        if (value === currentUser.name) {
-          results.push({ location: shift.location, role: field });
-        }
-      }
-    }
-
-    return results;
+        return allRoles
+          .map((role) => {
+            const editKey = `${shift.location}|${shift.date}|${role}`;
+            const isExtra = extraRoles.includes(role);
+            // 優先讀取手動調整(approvedEdits)，若無且為基本職位則讀取原始排班(assignments)
+            const assignedPerson = approvedEdits?.[editKey] ?? (!isExtra ? shift.assignments[role] : undefined);
+            
+            return { role, location: shift.location, person: assignedPerson };
+          })
+          .filter((assignment) => assignment.person === currentUser.name)
+          .map(({ location, role }) => ({ location, role }));
+      });
   }, [approvedShifts, approvedEdits, nextSundayStr, currentUser.name]);
 
-  // 取得該主日所有地點的排班摘要
+  /**
+   * 取得該主日所有地點的排班摘要
+   * @returns 依地點分組的排班角色列表
+   */
   const sundaySummary = useMemo(() => {
     if (!approvedShifts) return null;
 
-    const locationSummaries: { location: string; roles: { role: string; person: string }[] }[] = [];
+    const buildSummary = (locationName: string, baseRoles: readonly string[]) => {
+      const shift = approvedShifts.find((s) => s.date === nextSundayStr && s.location === locationName);
+      if (!shift) return null;
 
-    const buildSummary = (locationName: string, roles: readonly string[]) => {
-      const shift = approvedShifts.find(s => s.date === nextSundayStr && s.location === locationName);
-      if (!shift) return;
-
-      const roleList: { role: string; person: string }[] = [];
-      for (const role of roles) {
+      const roleList = baseRoles.map((role) => {
         const editKey = `${locationName}|${shift.date}|${role}`;
-        const value = approvedEdits?.[editKey] ?? shift.assignments[role] ?? '缺';
-        roleList.push({ role, person: value });
-      }
+        const person = approvedEdits?.[editKey] ?? shift.assignments[role] ?? '缺';
+        return { role, person };
+      });
 
-      // 燈控
+      // 附加燈控資訊
       const lightKey = `${locationName}|${shift.date}|燈控`;
-      const lightVal = approvedEdits?.[lightKey] || '';
-      if (lightVal) {
-        roleList.push({ role: '燈控', person: lightVal });
+      const lightPerson = approvedEdits?.[lightKey];
+      if (lightPerson) {
+        roleList.push({ role: '燈控', person: lightPerson });
       }
 
-      locationSummaries.push({ location: locationName, roles: roleList });
+      return { location: locationName, roles: roleList };
     };
 
-    buildSummary('山莊大堂', SHAN_ZHUANG_ROLES);
-    buildSummary('宣教大樓', XUAN_JIAO_ROLES);
+    const summaries = [
+      buildSummary('山莊大堂', SHAN_ZHUANG_ROLES),
+      buildSummary('宣教大樓', XUAN_JIAO_ROLES)
+    ].filter(Boolean) as { location: string; roles: { role: string; person: string }[] }[];
 
-    return locationSummaries.length > 0 ? locationSummaries : null;
+    return summaries.length > 0 ? summaries : null;
   }, [approvedShifts, approvedEdits, nextSundayStr]);
 
   // 星期幾的中文

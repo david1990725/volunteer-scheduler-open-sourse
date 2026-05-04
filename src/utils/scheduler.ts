@@ -24,17 +24,17 @@ export interface Shift {
 // --- Constants ---------------------------------------------------------------
 
 export const SHAN_ZHUANG_ROLES = ['導播', 'HOST/CCU', 'CAM1', 'CAM2', 'CAM3', 'CAM4', '平面'];
-export const XUAN_JIAO_ROLES  = ['導播', '信息版'];
+export const XUAN_JIAO_ROLES = ['導播', '信息版'];
 
-const CAM_ROLES   = ['CAM1', 'CAM2', 'CAM3', 'CAM4'];
+const CAM_ROLES = ['CAM1', 'CAM2', 'CAM3', 'CAM4'];
 const FULL_TIMERS = ['蔡佳翰', '夏翊剛'];
-const LIAO_NAME   = '廖亦東';
+const LIAO_NAME = '廖亦東';
 
 /** 缺口嚴重度權重（導播最重要 → HOST/CCU 相對可調度） */
 const ROLE_PRIORITY: Record<string, number> = {
   '導播': 10, '平面': 8,
-  'CAM1': 6,  'CAM2': 5,
-  'CAM3': 4,  'CAM4': 3,
+  'CAM1': 6, 'CAM2': 5,
+  'CAM3': 4, 'CAM4': 3,
   'HOST/CCU': 2,
 };
 
@@ -99,7 +99,7 @@ export function parseSkillTreeData(data: any[]): Record<string, Volunteer> {
     skills['山莊導播'] = roles.includes('山莊導播') || roles.includes('導播') ? 10 : 0;
     skills['宣教導播'] = roles.includes('宣教導播') || roles.includes('導播') ? 10 : 0;
     skills['HOST/CCU'] = roles.some((r: string) => r === 'HOST' || r === 'CCU') ? 10 : 0;
-    skills['信息版']   = roles.some((r: string) => ['山莊導播', '宣教導播', '導播', 'HOST', 'CCU'].includes(r)) ? 10 : 0;
+    skills['信息版'] = roles.some((r: string) => ['山莊導播', '宣教導播', '導播', 'HOST', 'CCU'].includes(r)) ? 10 : 0;
 
     const userRole = row['role']?.trim().toLowerCase() === 'admin' ? 'admin' : 'user';
     const lineId = (row['user_id'] || '').trim() || undefined;
@@ -149,11 +149,20 @@ export function parseScheduleResponsesData(
   // Dynamically detect the category column (可能叫「職能」「組別」等)
   const categoryKey = detectCategoryColumn(data);
 
+  // 確保同一志工多次提交時，只保留最新的一筆紀錄
+  const latestDataMap = new Map<string, any>();
   for (const row of data) {
     const rawName = row['姓名']?.trim();
-    if (!rawName) continue;
+    if (rawName) {
+      const resolvedName = resolveName(rawName, volunteers);
+      if (resolvedName) {
+        latestDataMap.set(resolvedName, { ...row, resolvedName });
+      }
+    }
+  }
 
-    const name = resolveName(rawName, volunteers);
+  for (const row of latestDataMap.values()) {
+    const name = row.resolvedName;
     if (!name) continue;
 
     // Preference detection
