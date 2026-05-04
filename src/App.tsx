@@ -220,8 +220,9 @@ function App() {
 
       const skillData = await fetchCSVAsJson(SKILL_TREE_URL);
       const volunteers = parseSkillTreeData(skillData);
-
-      const newShifts = parseScheduleResponsesData(responseData, volunteers);
+      
+      const { sundays } = getCycleDates();
+      const newShifts = parseScheduleResponsesData(responseData, volunteers, sundays);
       setShifts(newShifts);
       setManualEdits({});
     } catch (err) {

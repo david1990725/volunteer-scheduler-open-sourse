@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import * as XLSX from 'xlsx';
 import { Download, Loader2 } from 'lucide-react';
 import { fetchFormResponsesFromCloud, clearFormResponsesInCloud } from '../utils/googleSheets';
+import { getCycleDates } from '../utils/dateUtils';
 
 interface AdminRawDataProps {
   onStartAutoSchedule: () => void;
@@ -77,12 +78,27 @@ export const AdminRawData: React.FC<AdminRawDataProps> = ({ onStartAutoSchedule 
     );
   }
 
-  const columns = Array.from(new Set(data.flatMap(d => Object.keys(d))));
+  const { sundays } = getCycleDates();
+  const validDateColumns = sundays.map(s => `[${s}]`);
+
+  // 取出所有的 keys (欄位名稱)
+  const allColumns = Array.from(new Set(data.flatMap(d => Object.keys(d))));
+  
+  // 過濾欄位：只保留「基本資訊欄位（不含中括號）」與「屬於當前表單目標週期（sundays）的日期欄位」
+  const columns = allColumns.filter(col => {
+    if (!col.includes('[')) return true;
+    return validDateColumns.includes(col);
+  });
+
+  // 過濾資料列：只顯示「在目標日期欄位中有任何填寫紀錄」的資料
+  const filteredData = data.filter(row => {
+    return validDateColumns.some(col => !!row[col]);
+  });
 
   return (
     <div className="glass-card animate-morph stagger-2" style={{ padding: '24px' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '20px' }}>
-        <h2 style={{ margin: 0, color: 'var(--text-primary)' }}>表單 RAW 資料 ({data.length} 筆)</h2>
+        <h2 style={{ margin: 0, color: 'var(--text-primary)' }}>本期表單 RAW 資料 ({filteredData.length} 筆)</h2>
         <div style={{ display: 'flex', gap: '10px' }}>
           <button className="btn-primary" onClick={onStartAutoSchedule}>
             開始自動排班
@@ -104,7 +120,7 @@ export const AdminRawData: React.FC<AdminRawDataProps> = ({ onStartAutoSchedule 
             </tr>
           </thead>
           <tbody>
-            {data.map((row, i) => (
+            {filteredData.map((row, i) => (
               <tr key={i}>
                 {columns.map(col => <td key={col} style={{ color: 'var(--text-primary)' }}>{row[col] || ''}</td>)}
               </tr>

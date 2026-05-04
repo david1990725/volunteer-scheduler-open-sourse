@@ -132,6 +132,7 @@ export function buildLineIdMap(volunteers: Record<string, Volunteer>): Record<st
 export function parseScheduleResponsesData(
   data: any[],
   volunteers: Record<string, Volunteer>,
+  targetDates?: string[], // 傳入格式如 ["07/07", "07/14"] 的目標排班日期
 ): Shift[] {
   if (data.length === 0) return [];
 
@@ -139,7 +140,14 @@ export function parseScheduleResponsesData(
   // Phase 0: Parse form data
   // -------------------------------------------------------------------------
 
-  const dates = Object.keys(data[0]).filter(f => f.includes('['));
+  // 找出所有帶有中括號的日期欄位
+  let dates = Object.keys(data[0]).filter(f => f.includes('['));
+  
+  // 如果有提供目標日期，則只排班這些目標日期
+  if (targetDates && targetDates.length > 0) {
+    const validDateColumns = targetDates.map(d => `[${d}]`);
+    dates = dates.filter(f => validDateColumns.includes(f));
+  }
   const locationAvailability: Record<string, Record<string, string[]>> = {};
   dates.forEach(field => (locationAvailability[field] = { '山莊': [], '宣教': [] }));
 
