@@ -193,7 +193,22 @@ export const FrontendForm: React.FC<FrontendFormProps> = ({ currentUser, onLogou
                 }}>
                   <div style={{ fontSize: '1.2rem', fontWeight: 700, width: '80px', color: 'var(--text-primary)' }}>{date}</div>
                   <div style={{ display: 'flex', gap: '20px', flex: 1 }}>
-                    {['山莊', '宣教'].map(loc => {
+                    {(() => {
+                      const options: string[] = [];
+                      const hasVideo = groups.includes('動態攝影組');
+                      const hasPhoto = groups.includes('平面拍照組');
+                      
+                      if (hasPhoto && hasVideo) {
+                        options.push('山莊(動態)', '山莊(平面)', '宣教');
+                      } else if (hasPhoto && !hasVideo) {
+                        options.push('山莊(平面)', '宣教');
+                      } else if (!hasPhoto && hasVideo) {
+                        options.push('山莊(動態)', '宣教');
+                      } else {
+                        options.push('山莊', '宣教');
+                      }
+                      return options;
+                    })().map(loc => {
                       const checked = (availability[date] || []).includes(loc);
                       return (
                         <label key={loc} style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', background: checked ? 'rgba(234, 179, 8, 0.1)' : 'transparent', padding: '8px 16px', borderRadius: '8px', border: checked ? '1px solid var(--icon-accent)' : '1px solid transparent' }}>

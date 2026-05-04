@@ -171,10 +171,21 @@ export function parseScheduleResponsesData(
 
     for (const field of dates) {
       const avail = String(row[field] || '');
+      
       if (avail.includes('山莊')) {
         locationAvailability[field]['山莊'].push(name);
-        if (prefTypes.length > 0) {
-          (rolePreferences[name] ??= {})[field] ??= new Set();
+        
+        // 擷取特定日期的偏好 (例如 "山莊(平面)")
+        const specificPrefs = new Set<string>();
+        if (avail.includes('山莊(平面)')) specificPrefs.add('平面');
+        if (avail.includes('山莊(動態)')) specificPrefs.add('攝影');
+
+        (rolePreferences[name] ??= {})[field] ??= new Set();
+        
+        if (specificPrefs.size > 0) {
+          specificPrefs.forEach(pt => rolePreferences[name][field].add(pt));
+        } else if (prefTypes.length > 0) {
+          // 降級使用全域偏好
           prefTypes.forEach(pt => rolePreferences[name][field].add(pt));
         }
       }
