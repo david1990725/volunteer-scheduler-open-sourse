@@ -848,19 +848,33 @@ function App() {
 
         {view === 'home' && currentUser && (
           <>
-            {/* Home navigation bar */}
-            <div style={{ display: 'flex', justifyContent: 'center', gap: '12px', marginBottom: '10px', flexWrap: 'wrap' }}>
+            <div className="desktop-nav" style={{ marginBottom: '24px' }}>
               {currentUser.role === 'admin' && (
-                <button className="btn-primary" onClick={() => setView('admin')}>
-                  進入後台管理
-                </button>
+                <button className="btn-primary" onClick={() => setView('admin')}>進入後台管理</button>
               )}
-              <button className="btn-secondary" onClick={() => setView('frontend')}>
+              <button className="btn-secondary" onClick={() => setView('frontend')} style={{ borderColor: 'var(--icon-accent)', color: 'var(--text-primary)' }}>
                 填寫個人表單
               </button>
-              <button className="btn-danger" onClick={handleLogout}>
-                登出
+              <button className="btn-danger" onClick={handleLogout}>登出</button>
+            </div>
+
+            <div className="mobile-nav-container" style={{ marginBottom: '24px' }}>
+              <button className="mobile-menu-btn" onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}>
+                {isMobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
+                功能選單
               </button>
+
+              {isMobileMenuOpen && (
+                <div className="mobile-nav-menu animate-morph stagger-1">
+                  {currentUser.role === 'admin' && (
+                    <button className="btn-primary" onClick={() => { setView('admin'); setIsMobileMenuOpen(false); }}>進入後台管理</button>
+                  )}
+                  <button className="btn-secondary" onClick={() => { setView('frontend'); setIsMobileMenuOpen(false); }} style={{ borderColor: 'var(--icon-accent)', color: 'var(--text-primary)' }}>
+                    填寫個人表單
+                  </button>
+                  <button className="btn-danger" onClick={() => { handleLogout(); setIsMobileMenuOpen(false); }}>登出</button>
+                </div>
+              )}
             </div>
             <HomePage
               currentUser={currentUser}

@@ -142,12 +142,6 @@ export const HomePage: React.FC<HomePageProps> = ({
           }
         </p>
 
-        {!isAdmin && (
-          <button className="btn-primary" onClick={onGoToForm}
-            style={{ padding: '14px 32px', fontSize: '1.1rem', borderRadius: '14px' }}>
-            <ChevronRight size={20} /> 填寫個人表單
-          </button>
-        )}
       </div>
 
       {/* 倒數計時卡片 */}
