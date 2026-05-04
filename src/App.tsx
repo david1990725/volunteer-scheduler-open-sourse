@@ -1,5 +1,5 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
-import { Menu, X, Download, Users, RefreshCw, FileSpreadsheet, RotateCcw, Image, FileText, Sun, Moon, ChevronDown, CloudUpload, CloudDownload, ArrowRight, ArrowLeft, ShieldCheck, ArchiveRestore } from 'lucide-react';
+import { Menu, X, Download, Users, RefreshCw, FileSpreadsheet, RotateCcw, Image, FileText, Sun, Moon, ChevronDown, CloudUpload, ArrowRight, ArrowLeft, ShieldCheck, ArchiveRestore } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import html2canvas from 'html2canvas';
 import { jsPDF } from 'jspdf';
@@ -355,25 +355,7 @@ function App() {
     }
   }, [currentUser, view]);
 
-  // --- Import from Cloud ---
-  const handleImportFromCloud = async () => {
-    setLoading(true);
-    try {
-      const version = await loadCloudApprovedVersion();
-      if (!version) {
-        alert('在雲端找不到本期排班資料。\n請確認雲端試算表中是否已有對應的工作表。');
-        return;
-      }
-      setShifts(version.shifts);
-      setManualEdits(version.edits);
-      alert(`成功從雲端匯入 ${version.shifts.length} 筆排班資料！`);
-    } catch (err) {
-      console.error('Cloud import failed:', err);
-      alert('從雲端匯入失敗，請稍後再試。');
-    } finally {
-      setLoading(false);
-    }
-  };
+
 
   // --- Helper for generating 2D Data Array ---
   const getSheetData = useCallback((locationName: string, roles: readonly string[]): string[][] | null => {
@@ -915,17 +897,13 @@ function App() {
                       </div>
 
                       <div style={{ flex: 1, minWidth: '200px' }}>
-                        <button className="btn-secondary" onClick={handleImportFromCloud} disabled={loading} style={{ width: '100%', justifyContent: 'center', height: '48px' }}>
-                          <CloudDownload size={20} /> {loading ? '匯入中...' : '從雲端匯入'}
+                        <button className="btn-secondary" onClick={() => { if (approvedVersion) { loadApprovedVersion(); } else { alert('尚無審定版本可帶入。'); } }} disabled={!approvedVersion || loading} style={{ width: '100%', justifyContent: 'center', height: '48px' }}>
+                          <ArchiveRestore size={20} /> 帶入審定版本
                         </button>
                       </div>
 
                       <button className="btn-primary" onClick={() => generateSchedule()} disabled={loading} style={{ height: '48px', padding: '0 32px' }}>
                         <RefreshCw size={20} className={loading ? 'animate-spin' : ''} /> {loading ? '生成中...' : '自動生成排班'}
-                      </button>
-
-                      <button className="btn-secondary" onClick={() => { if (approvedVersion) { loadApprovedVersion(); } else { alert('尚無審定版本可帶入。'); } }} disabled={!approvedVersion || loading} style={{ height: '48px' }}>
-                        <ArchiveRestore size={20} /> 帶入審定版本
                       </button>
 
                       <button className="btn-secondary" onClick={resetAll} disabled={!hasShifts} style={{ height: '48px' }}>
