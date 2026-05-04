@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Loader2, ExternalLink, Users, AlertCircle, Save, Settings } from 'lucide-react';
+import { Loader2, ExternalLink, Users, AlertCircle, Save, Shield, Sword, Camera, Video, Zap } from 'lucide-react';
 import { fetchCSVAsJson } from '../utils/fileUtils';
 import { parseSkillTreeData } from '../utils/scheduler';
 import type { Volunteer } from '../utils/scheduler';
@@ -37,9 +37,8 @@ export const AdminSkillTree: React.FC = () => {
     }
   };
 
-  const handleEditClick = (vol: Volunteer) => {
+  const handleSelectVol = (vol: Volunteer) => {
     setSelectedVol(vol);
-    // 只保留可調整數值的技能
     const editable = ['平面', 'CAM1', 'CAM2', 'CAM3', 'CAM4'];
     const currentSkills: Record<string, number> = {};
     editable.forEach(s => {
@@ -62,15 +61,17 @@ export const AdminSkillTree: React.FC = () => {
         skills: editingSkills
       });
       if (result.success) {
-        alert('技能儲存成功！將重新載入最新資料。');
-        setSelectedVol(null);
+        alert('角色屬性已升級！');
         await loadData();
+        // 更新當前選取的角色狀態
+        const updatedVol = { ...selectedVol, skills: { ...selectedVol.skills, ...editingSkills } };
+        setSelectedVol(updatedVol);
       } else {
         alert(result.message);
       }
     } catch (err) {
       console.error(err);
-      alert('儲存發生錯誤。');
+      alert('升級失敗，請重試。');
     } finally {
       setSaving(false);
     }
@@ -83,11 +84,24 @@ export const AdminSkillTree: React.FC = () => {
     fullMark: 10,
   })) : [];
 
+  // 判斷角色主要職業 (Icon)
+  const getRoleIcon = (vol: Volunteer) => {
+    if (vol.roles.includes('導播') || vol.roles.includes('山莊導播') || vol.roles.includes('宣教導播')) return <Video size={18} />;
+    if (vol.skills['CAM1'] > 0 || vol.skills['CAM2'] > 0 || vol.skills['CAM3'] > 0 || vol.skills['CAM4'] > 0) return <Camera size={18} />;
+    if (vol.roles.includes('HOST') || vol.roles.includes('CCU')) return <Shield size={18} />;
+    return <Sword size={18} />;
+  };
+
+  // 總戰鬥力計算 (總技能點)
+  const getTotalPower = (skills: Record<string, number>) => {
+    return Object.values(skills).reduce((sum, val) => sum + val, 0);
+  };
+
   if (loading) {
     return (
       <div className="glass-card animate-morph stagger-2" style={{ padding: '60px', textAlign: 'center' }}>
         <Loader2 className="animate-spin" size={32} style={{ color: 'var(--icon-accent)', margin: '0 auto 16px' }} />
-        <p style={{ color: 'var(--text-secondary)' }}>正在載入技能樹資料...</p>
+        <p style={{ color: 'var(--text-secondary)' }}>正在載入冒險者公會名冊...</p>
       </div>
     );
   }
@@ -98,145 +112,197 @@ export const AdminSkillTree: React.FC = () => {
         <AlertCircle size={48} style={{ color: 'var(--text-missing)', margin: '0 auto 16px' }} />
         <p style={{ color: 'var(--text-primary)', marginBottom: '16px' }}>{error}</p>
         <a href={GOOGLE_SHEET_URL} target="_blank" rel="noreferrer" className="btn-primary" style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', textDecoration: 'none' }}>
-          前往檢查 Google Sheets <ExternalLink size={16} />
+          前往檢查公會卷軸 (Google Sheets) <ExternalLink size={16} />
         </a>
       </div>
     );
   }
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-      {/* 編輯面版 (若有選取義工) */}
-      {selectedVol && (
-        <div className="glass-card animate-morph" style={{ padding: '24px', border: '2px solid var(--icon-accent)' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '20px', flexWrap: 'wrap', gap: '20px' }}>
-            <div>
-              <h3 style={{ margin: 0, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <Settings size={20} color="var(--icon-accent)" /> 調整技能 - {selectedVol.name}
-              </h3>
-              <p style={{ margin: '8px 0 0', color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
-                調整技能值 (0-10)。儲存後會同步更新至 Google Sheets。
-              </p>
-            </div>
-            <div style={{ display: 'flex', gap: '12px' }}>
-              <button className="btn-secondary" onClick={() => setSelectedVol(null)} disabled={saving}>取消</button>
-              <button className="btn-primary" onClick={handleSave} disabled={saving} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                {saving ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
-                儲存設定
-              </button>
-            </div>
+    <div className="rpg-layout animate-morph stagger-1">
+      {/* 標題區塊 */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '16px' }}>
+        <h2 style={{ 
+          margin: 0, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '12px',
+          textShadow: '0 2px 10px rgba(234, 179, 8, 0.3)'
+        }}>
+          <Users size={28} color="var(--icon-accent)" /> 冒險者公會名冊 ({volunteers.length} 人)
+        </h2>
+        <a href={GOOGLE_SHEET_URL} target="_blank" rel="noreferrer" className="btn-secondary" style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', textDecoration: 'none' }}>
+          <ExternalLink size={16} /> 開啟公會卷軸 (Google Sheets)
+        </a>
+      </div>
+
+      <div style={{ 
+        display: 'grid', 
+        gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', 
+        gap: '24px',
+        alignItems: 'start'
+      }}>
+        {/* 左側：角色選單 (RPG Roster) */}
+        <div className="glass-card" style={{ 
+          padding: '16px', 
+          maxHeight: '70vh', 
+          overflowY: 'auto',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '10px'
+        }}>
+          <div style={{ padding: '0 8px 12px', borderBottom: '1px solid var(--bg-input-border)', marginBottom: '8px', color: 'var(--text-muted)', fontSize: '0.9rem', fontWeight: 600 }}>
+            選擇冒險者
           </div>
-
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '24px' }}>
-            {/* 雷達圖 */}
-            <div style={{ flex: '1 1 300px', height: '300px', minWidth: '300px' }}>
-              <ResponsiveContainer width="100%" height="100%">
-                <RadarChart cx="50%" cy="50%" outerRadius="70%" data={radarData}>
-                  <PolarGrid stroke="var(--text-muted)" opacity={0.3} />
-                  <PolarAngleAxis dataKey="subject" tick={{ fill: 'var(--text-primary)', fontSize: 12 }} />
-                  <PolarRadiusAxis angle={30} domain={[0, 10]} tick={{ fill: 'var(--text-muted)', fontSize: 10 }} />
-                  <Radar name="技能值" dataKey="A" stroke="var(--icon-accent)" fill="var(--icon-accent)" fillOpacity={0.5} isAnimationActive={false} />
-                </RadarChart>
-              </ResponsiveContainer>
-            </div>
-
-            {/* 調整桿 */}
-            <div style={{ flex: '1 1 300px', display: 'flex', flexDirection: 'column', gap: '16px', justifyContent: 'center' }}>
-              {Object.keys(editingSkills).map(skill => (
-                <div key={skill} style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                  <div style={{ width: '60px', color: 'var(--text-primary)', fontWeight: 600 }}>{skill}</div>
-                  <input 
-                    type="range" 
-                    min="0" max="10" 
-                    value={editingSkills[skill]} 
-                    onChange={e => handleSkillChange(skill, e.target.value)}
-                    style={{ flex: 1, accentColor: 'var(--icon-accent)' }}
-                  />
-                  <div style={{ width: '30px', textAlign: 'right', color: 'var(--icon-accent)', fontWeight: 700 }}>
-                    {editingSkills[skill]}
-                  </div>
+          {volunteers.map((vol) => (
+            <div 
+              key={vol.name}
+              onClick={() => handleSelectVol(vol)}
+              style={{
+                display: 'flex', alignItems: 'center', gap: '12px',
+                padding: '12px 16px',
+                borderRadius: '12px',
+                cursor: 'pointer',
+                background: selectedVol?.name === vol.name 
+                  ? 'linear-gradient(135deg, rgba(234, 179, 8, 0.2) 0%, rgba(245, 158, 11, 0.05) 100%)' 
+                  : 'var(--bg-input)',
+                border: selectedVol?.name === vol.name 
+                  ? '1px solid var(--icon-accent)' 
+                  : '1px solid transparent',
+                transition: 'all 0.2s',
+                transform: selectedVol?.name === vol.name ? 'scale(1.02)' : 'scale(1)',
+                boxShadow: selectedVol?.name === vol.name ? '0 4px 15px rgba(234, 179, 8, 0.15)' : 'none'
+              }}
+              className={selectedVol?.name !== vol.name ? 'hover-lift' : ''}
+            >
+              <div style={{
+                width: '40px', height: '40px', borderRadius: '50%',
+                background: 'linear-gradient(135deg, #374151, #1f2937)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                color: selectedVol?.name === vol.name ? 'var(--icon-accent)' : 'var(--text-muted)',
+                boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.5)'
+              }}>
+                {getRoleIcon(vol)}
+              </div>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontWeight: 700, color: 'var(--text-primary)', fontSize: '1.1rem' }}>{vol.name}</div>
+                <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '2px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <Zap size={12} color="var(--icon-accent)" /> 戰鬥力 {getTotalPower(vol.skills)}
                 </div>
-              ))}
+              </div>
+              <div>
+                {vol.lineId ? (
+                  <div style={{ width: '10px', height: '10px', borderRadius: '50%', background: '#4ade80', boxShadow: '0 0 8px #4ade80' }} title="已綁定通訊石 (LINE)" />
+                ) : (
+                  <div style={{ width: '10px', height: '10px', borderRadius: '50%', background: '#f87171', opacity: 0.5 }} title="未綁定通訊石 (LINE)" />
+                )}
+              </div>
             </div>
-          </div>
+          ))}
         </div>
-      )}
 
-      {/* 列表 */}
-      <div className="glass-card animate-morph stagger-2" style={{ padding: '24px' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '20px', flexWrap: 'wrap', gap: '16px' }}>
-          <div>
-            <h2 style={{ margin: 0, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <Users size={24} color="var(--icon-accent)" /> 義工技能樹 ({volunteers.length} 人)
-            </h2>
-            <p style={{ color: 'var(--text-secondary)', margin: '8px 0 0 0', fontSize: '0.9rem' }}>
-              點擊「調整」可以修改該名義工的攝影及平面技能數值。
-            </p>
-          </div>
-          <div>
-            <a href={GOOGLE_SHEET_URL} target="_blank" rel="noreferrer" className="btn-secondary" style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', textDecoration: 'none' }}>
-              <ExternalLink size={16} /> 前往 Google Sheets
-            </a>
-          </div>
-        </div>
-        
-        <div className="table-container animate-morph stagger-3">
-          <table>
-            <thead>
-              <tr>
-                <th style={{ width: '120px' }}>姓名</th>
-                <th>LINE 綁定狀態</th>
-                <th>擁有技能 (等級)</th>
-                <th style={{ width: '100px', textAlign: 'center' }}>操作</th>
-              </tr>
-            </thead>
-            <tbody>
-              {volunteers.map((vol, i) => (
-                <tr key={i} style={selectedVol?.name === vol.name ? { backgroundColor: 'var(--bg-hover)' } : {}}>
-                  <td style={{ color: 'var(--text-primary)', fontWeight: 600 }}>{vol.name}</td>
-                  <td>
-                    {vol.lineId ? (
-                      <span style={{ display: 'inline-block', padding: '4px 8px', borderRadius: '4px', background: 'rgba(34, 197, 94, 0.15)', color: '#4ade80', fontSize: '0.85rem', fontWeight: 600 }}>
-                        已綁定
+        {/* 右側：角色狀態與技能樹 (RPG Status Screen) */}
+        <div className="glass-card" style={{ padding: '30px', minHeight: '60vh', position: 'relative', overflow: 'hidden' }}>
+          {selectedVol ? (
+            <div className="animate-morph">
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', borderBottom: '1px solid var(--bg-input-border)', paddingBottom: '20px', marginBottom: '24px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
+                  <div style={{
+                    width: '72px', height: '72px', borderRadius: '16px',
+                    background: 'linear-gradient(135deg, var(--icon-accent), #d97706)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    boxShadow: '0 8px 25px rgba(234, 179, 8, 0.4)',
+                    color: '#fff'
+                  }}>
+                    {getRoleIcon(selectedVol)}
+                  </div>
+                  <div>
+                    <h2 style={{ margin: '0 0 4px', fontSize: '2rem', color: 'var(--text-primary)', letterSpacing: '2px' }}>{selectedVol.name}</h2>
+                    <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                      <span style={{ 
+                        padding: '4px 10px', borderRadius: '20px', fontSize: '0.8rem', fontWeight: 700,
+                        background: 'rgba(234, 179, 8, 0.1)', color: 'var(--icon-accent)', border: '1px solid rgba(234, 179, 8, 0.3)'
+                      }}>
+                        總戰力 Lv.{getTotalPower(selectedVol.skills)}
                       </span>
-                    ) : (
-                      <span style={{ display: 'inline-block', padding: '4px 8px', borderRadius: '4px', background: 'rgba(239, 68, 68, 0.15)', color: '#f87171', fontSize: '0.85rem', fontWeight: 600 }}>
-                        未綁定
-                      </span>
-                    )}
-                  </td>
-                  <td>
-                    <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                      {Object.entries(vol.skills).filter(([_, lvl]) => lvl > 0).map(([skill, level]) => (
-                        <span key={skill} style={{ 
-                          padding: '4px 10px', 
-                          borderRadius: '16px', 
-                          fontSize: '0.85rem',
-                          background: 'var(--bg-input)',
-                          border: '1px solid var(--bg-input-border)',
-                          color: 'var(--text-primary)'
+                      {selectedVol.lineId && (
+                        <span style={{ 
+                          padding: '4px 10px', borderRadius: '20px', fontSize: '0.8rem', fontWeight: 700,
+                          background: 'rgba(34, 197, 94, 0.1)', color: '#4ade80', border: '1px solid rgba(34, 197, 94, 0.3)'
                         }}>
-                          {skill} <span style={{ color: 'var(--icon-accent)', fontWeight: 700, marginLeft: '4px' }}>Lv.{level}</span>
+                          已綁定通訊石
                         </span>
-                      ))}
-                      {Object.values(vol.skills).every(lvl => lvl === 0) && (
-                        <span style={{ color: 'var(--text-muted)' }}>無特定技能</span>
                       )}
                     </div>
-                  </td>
-                  <td style={{ textAlign: 'center' }}>
-                    <button 
-                      className="btn-secondary" 
-                      style={{ padding: '6px 12px', fontSize: '0.85rem', borderColor: 'var(--icon-accent)', color: 'var(--text-primary)' }}
-                      onClick={() => handleEditClick(vol)}
-                    >
-                      調整
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+                  </div>
+                </div>
+                
+                <button className="btn-primary" onClick={handleSave} disabled={saving} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '12px 24px', borderRadius: '30px' }}>
+                  {saving ? <Loader2 size={18} className="animate-spin" /> : <Save size={18} />}
+                  升級儲存
+                </button>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '30px' }}>
+                {/* 雷達圖 (狀態面板) */}
+                <div style={{ height: '350px', background: 'var(--bg-input)', borderRadius: '20px', padding: '10px', position: 'relative' }}>
+                  <div style={{ position: 'absolute', top: '15px', left: '20px', color: 'var(--text-muted)', fontWeight: 700, letterSpacing: '1px' }}>
+                    屬性雷達圖
+                  </div>
+                  <ResponsiveContainer width="100%" height="100%">
+                    <RadarChart cx="50%" cy="50%" outerRadius="65%" data={radarData}>
+                      <PolarGrid stroke="var(--text-muted)" opacity={0.2} />
+                      <PolarAngleAxis dataKey="subject" tick={{ fill: 'var(--icon-accent)', fontSize: 13, fontWeight: 600 }} />
+                      <PolarRadiusAxis angle={30} domain={[0, 10]} tick={false} axisLine={false} />
+                      <Radar name="技能值" dataKey="A" stroke="var(--icon-accent)" strokeWidth={2} fill="var(--icon-accent)" fillOpacity={0.4} isAnimationActive={true} />
+                    </RadarChart>
+                  </ResponsiveContainer>
+                </div>
+
+                {/* 技能配點 (分配面板) */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', justifyContent: 'center' }}>
+                  <div style={{ color: 'var(--text-secondary)', fontWeight: 600, fontSize: '1.1rem', marginBottom: '10px', borderBottom: '1px solid var(--bg-input-border)', paddingBottom: '10px' }}>
+                    分配屬性點數 (0-10)
+                  </div>
+                  {Object.keys(editingSkills).map(skill => (
+                    <div key={skill} style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                      <div style={{ width: '70px', color: 'var(--text-primary)', fontWeight: 700, fontSize: '1.1rem' }}>
+                        {skill}
+                      </div>
+                      <input 
+                        type="range" 
+                        min="0" max="10" 
+                        value={editingSkills[skill]} 
+                        onChange={e => handleSkillChange(skill, e.target.value)}
+                        style={{ 
+                          flex: 1, 
+                          accentColor: 'var(--icon-accent)',
+                          height: '6px',
+                          borderRadius: '3px',
+                          background: 'var(--bg-input-border)',
+                          outline: 'none',
+                          cursor: 'pointer'
+                        }}
+                      />
+                      <div style={{ 
+                        width: '40px', height: '40px', 
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        background: 'var(--bg-input)', borderRadius: '8px',
+                        color: 'var(--icon-accent)', fontWeight: 800, fontSize: '1.2rem',
+                        border: '1px solid var(--bg-input-border)',
+                        boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.2)'
+                      }}>
+                        {editingSkills[skill]}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div style={{ height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)' }}>
+              <Shield size={64} style={{ opacity: 0.2, marginBottom: '20px' }} />
+              <h3 style={{ margin: 0, fontSize: '1.5rem', letterSpacing: '1px' }}>等待選擇冒險者</h3>
+              <p style={{ marginTop: '10px' }}>請從左側名冊中點選一位角色以檢視狀態</p>
+            </div>
+          )}
         </div>
       </div>
     </div>
