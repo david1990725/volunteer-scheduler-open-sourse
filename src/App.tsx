@@ -18,6 +18,7 @@ import { syncSchedule, fetchScheduleFromCloud, fetchFormResponsesFromCloud, sync
 import { Login } from './components/Login';
 import { FrontendForm } from './components/FrontendForm';
 import { AdminRawData } from './components/AdminRawData';
+import { AdminSkillTree } from './components/AdminSkillTree';
 import { HomePage } from './components/HomePage';
 
 // =============================================================================
@@ -76,7 +77,7 @@ interface ApprovedVersion {
 
 function App() {
   const [view, setView] = useState<'login' | 'loading' | 'home' | 'frontend' | 'admin'>('login');
-  const [adminTab, setAdminTab] = useState<'home' | 'raw' | 'scheduler'>('home');
+  const [adminTab, setAdminTab] = useState<'home' | 'raw' | 'scheduler' | 'skills'>('home');
   const [scheduleStep, setScheduleStep] = useState<1 | 2 | 3>(1);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [currentUser, setCurrentUser] = useState<Volunteer | null>(null);
@@ -825,6 +826,7 @@ function App() {
           <div className="desktop-nav">
             <button className={adminTab === 'home' ? 'btn-primary' : 'btn-secondary'} onClick={() => setAdminTab('home')}>首頁</button>
             <button className={adminTab === 'raw' ? 'btn-primary' : 'btn-secondary'} onClick={() => setAdminTab('raw')}>RAW 資料表單</button>
+            <button className={adminTab === 'skills' ? 'btn-primary' : 'btn-secondary'} onClick={() => setAdminTab('skills')}>義工技能樹</button>
             <button className={adminTab === 'scheduler' ? 'btn-primary' : 'btn-secondary'} onClick={() => setAdminTab('scheduler')}>自動排班系統</button>
             <button className="btn-secondary" onClick={() => setView('frontend')} style={{ borderColor: 'var(--icon-accent)', color: 'var(--text-primary)' }}>填寫個人表單</button>
             <button className="btn-danger" onClick={handleLogout}>登出</button>
@@ -841,6 +843,7 @@ function App() {
               <div className="mobile-nav-menu animate-morph stagger-1">
                 <button className={adminTab === 'home' ? 'btn-primary' : 'btn-secondary'} onClick={() => { setAdminTab('home'); setIsMobileMenuOpen(false); }}>首頁</button>
                 <button className={adminTab === 'raw' ? 'btn-primary' : 'btn-secondary'} onClick={() => { setAdminTab('raw'); setIsMobileMenuOpen(false); }}>RAW 資料表單</button>
+                <button className={adminTab === 'skills' ? 'btn-primary' : 'btn-secondary'} onClick={() => { setAdminTab('skills'); setIsMobileMenuOpen(false); }}>義工技能樹</button>
                 <button className={adminTab === 'scheduler' ? 'btn-primary' : 'btn-secondary'} onClick={() => { setAdminTab('scheduler'); setIsMobileMenuOpen(false); }}>自動排班系統</button>
                 <button className="btn-secondary" onClick={() => { setView('frontend'); setIsMobileMenuOpen(false); }} style={{ borderColor: 'var(--icon-accent)', color: 'var(--text-primary)' }}>填寫個人表單</button>
                 <button className="btn-danger" onClick={() => { handleLogout(); setIsMobileMenuOpen(false); }}>登出</button>
@@ -929,6 +932,8 @@ function App() {
                 generateSchedule();
               }} />
             )}
+
+            {adminTab === 'skills' && <AdminSkillTree />}
 
             {adminTab === 'scheduler' && (
               <>
