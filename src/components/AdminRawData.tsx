@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import * as XLSX from 'xlsx';
 import { Download, Loader2 } from 'lucide-react';
 import { fetchFormResponsesFromCloud, clearFormResponsesInCloud } from '../utils/googleSheets';
-import { getCycleDates } from '../utils/dateUtils';
 
 interface AdminRawDataProps {
   onStartAutoSchedule: () => void;
@@ -78,22 +77,16 @@ export const AdminRawData: React.FC<AdminRawDataProps> = ({ onStartAutoSchedule 
     );
   }
 
-  const { sundays } = getCycleDates();
-  const validDateColumns = sundays.map(s => `[${s}]`);
-
   // 取出所有的 keys (欄位名稱)
   const allColumns = Array.from(new Set(data.flatMap(d => Object.keys(d))));
   
-  // 過濾欄位：只保留「基本資訊欄位（不含中括號）」與「屬於當前表單目標週期（sundays）的日期欄位」
-  const columns = allColumns.filter(col => {
-    if (!col.includes('[')) return true;
-    return validDateColumns.includes(col);
-  });
+  // 將欄位分為「基本資訊欄位」與「日期欄位」
+  const infoColumns = allColumns.filter(col => !col.includes('['));
+  const dateColumns = allColumns.filter(col => col.includes('['));
+  const columns = [...infoColumns, ...dateColumns];
 
-  // 過濾資料列：只顯示「在目標日期欄位中有任何填寫紀錄」的資料
-  const filteredData = data.filter(row => {
-    return validDateColumns.some(col => !!row[col]);
-  });
+  // 顯示所有資料，不再過濾（避免遺漏填報紀錄）
+  const filteredData = data;
 
   return (
     <div className="glass-card animate-morph stagger-2" style={{ padding: '24px' }}>

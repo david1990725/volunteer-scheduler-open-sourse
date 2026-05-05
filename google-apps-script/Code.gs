@@ -31,6 +31,12 @@ function doPost(e) {
       return handleSyncSchedule(payload);
     } else if (payload.action === 'fetchSchedule') {
       return handleFetchSchedule(payload);
+    } else if (payload.action === 'submitForm') {
+      return handleSubmitForm(payload);
+    } else if (payload.action === 'fetchFormResponses') {
+      return handleFetchFormResponses();
+    } else if (payload.action === 'clearFormResponses') {
+      return handleClearFormResponses();
     }
     
     return jsonResponse({ success: false, message: '未知的操作' });
@@ -196,6 +202,99 @@ function handleFetchSchedule(payload) {
   var data = sheet.getRange(1, 1, lastRow, lastCol).getDisplayValues();
   
   return jsonResponse({ success: true, message: '讀取成功', data: data });
+}
+/**
+ * 處理義工填報表單提交
+ * 將資料寫入「表單回覆」工作表
+ */
+function handleSubmitForm(payload) {
+  var ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  var sheetName = '表單回覆';
+  var sheet = ss.getSheetByName(sheetName);
+  
+  if (!sheet) {
+    sheet = ss.insertSheet(sheetName);
+  }
+  
+  var formData = payload.data;
+  if (!formData) {
+    return jsonResponse({ success: false, message: '沒有收到表單資料' });
+  }
+  
+  // 取得所有欄位 key
+  var keys = Object.keys(formData);
+  
+  // 若工作表是空的，先寫入標題列
+  if (sheet.getLastRow() === 0) {
+    sheet.appendRow(keys);
+  } else {
+    // 確保標題列包含所有欄位（新欄位會自動擴充）
+    var existingHeaders = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0].map(function(h) { return String(h).trim(); });
+    var newKeys = keys.filter(function(k) { return existingHeaders.indexOf(k) === -1; });
+    if (newKeys.length > 0) {
+      var startCol = sheet.getLastColumn() + 1;
+      for (var i = 0; i < newKeys.length; i++) {
+        sheet.getRange(1, startCol + i).setValue(newKeys[i]);
+      }
+    }
+    // 重新讀取標題列
+    keys = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0].map(function(h) { return String(h).trim(); });
+  }
+  
+  // 依標題列順序組裝新行
+  var newRow = keys.map(function(k) { return formData[k] || ''; });
+  sheet.appendRow(newRow);
+  
+  return jsonResponse({ success: true, message: '表單已成功提交' });
+}
+
+/**
+ * 讀取「表單回覆」工作表所有資料
+ */
+function handleFetchFormResponses() {
+  var ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  var sheet = ss.getSheetByName('表單回覆');
+  
+  if (!sheet || sheet.getLastRow() <= 1) {
+    return jsonResponse({ success: true, message: '目前沒有表單資料', data: [] });
+  }
+  
+  var lastRow = sheet.getLastRow();
+  var lastCol = sheet.getLastColumn();
+  var headers = sheet.getRange(1, 1, 1, lastCol).getValues()[0].map(function(h) { return String(h).trim(); });
+  var rows = sheet.getRange(2, 1, lastRow - 1, lastCol).getValues();
+  
+  var result = [];
+  for (var i = 0; i < rows.length; i++) {
+    var obj = {};
+    for (var j = 0; j < headers.length; j++) {
+      if (headers[j]) {
+        obj[headers[j]] = rows[i][j] !== undefined && rows[i][j] !== null ? String(rows[i][j]) : '';
+      }
+    }
+    result.push(obj);
+  }
+  
+  return jsonResponse({ success: true, message: '讀取成功', data: result });
+}
+
+/**
+ * 清空「表單回覆」工作表（保留標題列）
+ */
+function handleClearFormResponses() {
+  var ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  var sheet = ss.getSheetByName('表單回覆');
+  
+  if (!sheet) {
+    return jsonResponse({ success: true, message: '工作表不存在，無需清空' });
+  }
+  
+  var lastRow = sheet.getLastRow();
+  if (lastRow > 1) {
+    sheet.deleteRows(2, lastRow - 1);
+  }
+  
+  return jsonResponse({ success: true, message: '已成功清空所有表單回覆' });
 }
 
 /**

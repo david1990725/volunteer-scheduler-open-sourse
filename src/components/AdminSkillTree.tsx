@@ -168,10 +168,11 @@ export const AdminSkillTree: React.FC = () => {
                 background: 'linear-gradient(135deg, #374151, #1f2937)',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                 color: selectedVol?.name === vol.name ? 'var(--icon-accent)' : 'var(--text-muted)',
-                boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.5)'
+                boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.5)',
+                overflow: 'hidden', flexShrink: 0
               }}>
                 {vol.pictureUrl ? (
-                  <img src={vol.pictureUrl} alt={vol.name} style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }} />
+                  <img src={vol.pictureUrl} alt={vol.name} referrerPolicy="no-referrer" style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }} />
                 ) : (
                   <Camera size={18} />
                 )}
@@ -188,16 +189,16 @@ export const AdminSkillTree: React.FC = () => {
                     {isFullTimer ? '同工' : '義工'}
                   </span>
                 </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0 }}>
                   {vol.lineId ? (
                     <>
                       <span className="hide-on-mobile" style={{ fontSize: '0.8rem', color: '#4ade80', fontWeight: 600 }}>已綁定 LINE</span>
-                      <div style={{ width: '10px', height: '10px', borderRadius: '50%', background: '#4ade80', boxShadow: '0 0 8px #4ade80' }} />
+                      <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#4ade80', boxShadow: '0 0 6px #4ade80' }} />
                     </>
                   ) : (
                     <>
                       <span className="hide-on-mobile" style={{ fontSize: '0.8rem', color: '#f87171', fontWeight: 600, opacity: 0.8 }}>未綁定 LINE</span>
-                      <div style={{ width: '10px', height: '10px', borderRadius: '50%', background: '#f87171', opacity: 0.5 }} />
+                      <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#f87171', opacity: 0.5 }} />
                     </>
                   )}
                 </div>
@@ -235,10 +236,10 @@ export const AdminSkillTree: React.FC = () => {
                     background: 'linear-gradient(135deg, var(--icon-accent), #d97706)',
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
                     boxShadow: '0 8px 25px rgba(234, 179, 8, 0.4)',
-                    color: '#fff'
+                    color: '#fff', overflow: 'hidden'
                   }}>
                     {selectedVol.pictureUrl ? (
-                      <img src={selectedVol.pictureUrl} alt={selectedVol.name} style={{ width: '100%', height: '100%', borderRadius: '16px', objectFit: 'cover' }} />
+                      <img src={selectedVol.pictureUrl} alt={selectedVol.name} referrerPolicy="no-referrer" style={{ width: '100%', height: '100%', borderRadius: '16px', objectFit: 'cover' }} />
                     ) : (
                       <Camera size={32} />
                     )}
