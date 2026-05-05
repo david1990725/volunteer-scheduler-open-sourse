@@ -79,16 +79,24 @@ export const Login: React.FC<LoginProps> = ({ onLogin }) => {
       }
 
       if (matchedName && volunteers[matchedName]) {
-        const user = volunteers[matchedName];
+        const user = { ...volunteers[matchedName] };
         
-        // 只要是 LINE 登入，就嘗試更新/同步最新的 metadata (LINE ID, 名稱, 大頭照)
-        // 這樣即使是舊義工，也能自動補上大頭照或更新 LINE 名稱
+        // 將 LINE 大頭照注入到當前 session 的義工資料中（不需等待雲端寫入完成）
+        if (profile.pictureUrl) {
+          user.pictureUrl = profile.pictureUrl;
+          // 同步更新 volunteers 物件，讓其他頁面也能看到
+          volunteers[matchedName] = user;
+        }
+
+        // 背景同步最新的 metadata (LINE ID, 名稱, 大頭照) 到雲端試算表
         updateVolunteerLineId({ 
           name: matchedName, 
           lineId: lineUserId, 
           lineName: displayName,
           pictureUrl: profile.pictureUrl 
-        }).catch(err => console.error('[Login] Metadata 同步失敗:', err));
+        })
+          .then(res => console.log('[Login] Metadata 同步結果:', res.message))
+          .catch(err => console.error('[Login] Metadata 同步失敗:', err));
 
         onLogin(user, volunteers);
         return;

@@ -189,7 +189,7 @@ export const AdminSkillTree: React.FC = () => {
                     {isFullTimer ? '同工' : '義工'}
                   </span>
                 </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0, marginRight: '5px' }}>
                   {vol.lineId ? (
                     <>
                       <span className="hide-on-mobile" style={{ fontSize: '0.8rem', color: '#4ade80', fontWeight: 600 }}>已綁定 LINE</span>

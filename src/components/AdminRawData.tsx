@@ -14,14 +14,26 @@ export const AdminRawData: React.FC<AdminRawDataProps> = ({ onStartAutoSchedule 
   useEffect(() => {
     const loadData = async () => {
       setLoading(true);
-      const res = await fetchFormResponsesFromCloud();
-      if (res.success && res.data) {
-        setData(res.data);
-      } else {
-        // Fallback to localStorage if cloud fails or is empty
-        const localData = JSON.parse(localStorage.getItem('volunteer_form_responses') || '[]');
+
+      // 從 localStorage 讀取本地端資料
+      const localData: any[] = JSON.parse(localStorage.getItem('volunteer_form_responses') || '[]');
+
+      try {
+        const res = await fetchFormResponsesFromCloud();
+        if (res.success && res.data && res.data.length > 0) {
+          // 雲端有資料 → 以雲端為主
+          setData(res.data);
+        } else if (localData.length > 0) {
+          // 雲端為空但本地有資料 → 顯示本地資料
+          setData(localData);
+        } else {
+          setData([]);
+        }
+      } catch {
+        // 雲端讀取失敗 → 回退至本地資料
         setData(localData);
       }
+
       setLoading(false);
     };
     loadData();
