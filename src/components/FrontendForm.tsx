@@ -192,7 +192,7 @@ export const FrontendForm: React.FC<FrontendFormProps> = ({ currentUser, onLogou
                   borderRadius: '12px', gap: '20px', flexWrap: 'wrap'
                 }}>
                   <div style={{ fontSize: '1.2rem', fontWeight: 700, width: '80px', color: 'var(--text-primary)' }}>{date}</div>
-                  <div style={{ display: 'flex', gap: '20px', flex: 1 }}>
+                  <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', flex: 1 }}>
                     {(() => {
                       const options: string[] = [];
                       const hasVideo = groups.includes('動態攝影組');
@@ -211,14 +211,22 @@ export const FrontendForm: React.FC<FrontendFormProps> = ({ currentUser, onLogou
                     })().map(loc => {
                       const checked = (availability[date] || []).includes(loc);
                       return (
-                        <label key={loc} style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', background: checked ? 'rgba(234, 179, 8, 0.1)' : 'transparent', padding: '8px 16px', borderRadius: '8px', border: checked ? '1px solid var(--icon-accent)' : '1px solid transparent' }}>
+                        <label key={loc} style={{ 
+                          display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', 
+                          background: checked ? 'var(--icon-bg)' : 'var(--bg-card)', 
+                          padding: '12px 16px', borderRadius: '12px', 
+                          border: checked ? '1px solid var(--icon-accent)' : '1px solid var(--bg-input-border)', 
+                          whiteSpace: 'nowrap', flex: 1, minWidth: '120px', justifyContent: 'center',
+                          boxShadow: checked ? '0 4px 12px rgba(234, 179, 8, 0.1)' : 'none',
+                          transition: 'all 0.2s'
+                        }}>
                           <input 
                             type="checkbox" 
                             checked={checked}
                             onChange={() => toggleAvailability(date, loc)}
                             style={{ accentColor: 'var(--icon-accent)', width: '22px', height: '22px' }}
                           />
-                          <span style={{ fontSize: '1.1rem', color: checked ? 'var(--text-primary)' : 'var(--text-secondary)' }}>{loc}</span>
+                          <span style={{ fontSize: '1.05rem', fontWeight: checked ? 600 : 400, color: checked ? 'var(--text-primary)' : 'var(--text-secondary)' }}>{loc}</span>
                         </label>
                       );
                     })}
