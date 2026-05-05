@@ -134,8 +134,6 @@ export const AdminSkillTree: React.FC = () => {
         {/* 左側：角色選單 (RPG Roster) */}
         <div className="glass-card" style={{
           padding: '16px',
-          maxHeight: '70vh',
-          overflowY: 'auto',
           display: 'flex',
           flexDirection: 'column',
           gap: '10px'
@@ -202,7 +200,7 @@ export const AdminSkillTree: React.FC = () => {
         </div>
 
         {/* 右側：角色狀態與技能樹 (RPG Status Screen) */}
-        <div className="glass-card" style={{ padding: '30px', minHeight: '60vh', position: 'relative', overflow: 'hidden' }}>
+        <div className="glass-card" style={{ padding: '30px', minHeight: '60vh', position: 'sticky', top: '24px', overflow: 'hidden' }}>
           {selectedVol ? (
             <div className="animate-morph">
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', borderBottom: '1px solid var(--bg-input-border)', paddingBottom: '20px', marginBottom: '24px' }}>
