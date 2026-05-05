@@ -61,7 +61,7 @@ export const AdminSkillTree: React.FC = () => {
         skills: editingSkills
       });
       if (result.success) {
-        alert('角色屬性已升級！');
+        alert('角色技能已變更！');
         await loadData();
         // 更新當前選取的角色狀態
         const updatedVol = { ...selectedVol, skills: { ...selectedVol.skills, ...editingSkills } };
@@ -71,7 +71,7 @@ export const AdminSkillTree: React.FC = () => {
       }
     } catch (err) {
       console.error(err);
-      alert('升級失敗，請重試。');
+      alert('變更失敗，請重試。');
     } finally {
       setSaving(false);
     }
@@ -220,7 +220,7 @@ export const AdminSkillTree: React.FC = () => {
                         padding: '4px 10px', borderRadius: '20px', fontSize: '0.8rem', fontWeight: 700,
                         background: 'rgba(234, 179, 8, 0.1)', color: 'var(--icon-accent)', border: '1px solid rgba(234, 179, 8, 0.3)'
                       }}>
-                        總職能 Lv.{getTotalPower(selectedVol.skills)}
+                        總技能 Lv.{getTotalPower(selectedVol.skills)}
                       </span>
                       {selectedVol.lineId && (
                         <span style={{
