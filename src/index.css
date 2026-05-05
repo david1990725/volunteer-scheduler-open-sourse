@@ -671,3 +671,48 @@ tr:hover td {
   font-size: 1.6rem !important;
   padding: 10px 24px !important;
 }
+/* RPG Status Panel Modal on Mobile */
+@media (max-width: 768px) {
+  .mobile-modal-active {
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    z-index: 9999;
+    height: 100dvh !important;
+    min-height: 100dvh !important;
+    border-radius: 0 !important;
+    overflow-y: auto !important;
+    background: rgba(10, 14, 26, 0.95) !important;
+    backdrop-filter: blur(25px) !important;
+    -webkit-backdrop-filter: blur(25px) !important;
+  }
+  
+  .mobile-close-btn {
+    display: flex !important;
+  }
+}
+
+.mobile-close-btn {
+  display: none;
+  background: var(--bg-input);
+  border: 1px solid var(--bg-input-border);
+  color: var(--text-primary);
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  z-index: 10;
+}
+
+@media (max-width: 768px) {
+  .hide-on-mobile {
+    display: none !important;
+  }
+}

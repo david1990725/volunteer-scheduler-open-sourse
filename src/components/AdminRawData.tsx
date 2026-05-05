@@ -97,9 +97,9 @@ export const AdminRawData: React.FC<AdminRawDataProps> = ({ onStartAutoSchedule 
 
   return (
     <div className="glass-card animate-morph stagger-2" style={{ padding: '24px' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '20px' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '16px' }}>
         <h2 style={{ margin: 0, color: 'var(--text-primary)' }}>本期表單 RAW 資料 ({filteredData.length} 筆)</h2>
-        <div style={{ display: 'flex', gap: '10px' }}>
+        <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
           <button className="btn-primary" onClick={onStartAutoSchedule}>
             開始自動排班
           </button>
@@ -116,13 +116,13 @@ export const AdminRawData: React.FC<AdminRawDataProps> = ({ onStartAutoSchedule 
         <table>
           <thead>
             <tr>
-              {columns.map(col => <th key={col}>{col}</th>)}
+              {columns.map(col => <th key={col} style={{ whiteSpace: 'nowrap', padding: '12px 16px' }}>{col}</th>)}
             </tr>
           </thead>
           <tbody>
             {filteredData.map((row, i) => (
               <tr key={i}>
-                {columns.map(col => <td key={col} style={{ color: 'var(--text-primary)' }}>{row[col] || ''}</td>)}
+                {columns.map(col => <td key={col} style={{ color: 'var(--text-primary)', whiteSpace: 'nowrap', padding: '12px 16px' }}>{row[col] || ''}</td>)}
               </tr>
             ))}
           </tbody>

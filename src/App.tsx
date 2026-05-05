@@ -50,6 +50,7 @@ const mealLabelStyle: React.CSSProperties = {
   fontWeight: 600, color: 'var(--text-meal)',
   position: 'sticky', left: 0, zIndex: 10,
   background: 'var(--bg-sticky)',
+  whiteSpace: 'nowrap',
 };
 
 const mealValueStyle: React.CSSProperties = {
@@ -694,14 +695,14 @@ function App() {
           <table>
             <thead>
               <tr>
-                <th style={{ width: '150px', background: 'rgba(0,0,0,0.5)', zIndex: 20 }}>職務 \ 日期</th>
-                {locationShifts.map(s => (<th key={s.date} style={{ minWidth: '100px' }}>{s.date}</th>))}
+                <th style={{ minWidth: '120px', background: 'rgba(0,0,0,0.5)', zIndex: 20, whiteSpace: 'nowrap' }}>職務 \ 日期</th>
+                {locationShifts.map(s => (<th key={s.date} style={{ minWidth: '100px', whiteSpace: 'nowrap' }}>{s.date}</th>))}
               </tr>
             </thead>
             <tbody>
               {roles.map(role => (
                 <tr key={role}>
-                  <td style={{ fontWeight: 600, color: 'var(--text-secondary)', background: 'var(--bg-sticky)', position: 'sticky', left: 0, zIndex: 10 }}>{role}</td>
+                  <td style={{ fontWeight: 600, color: 'var(--text-secondary)', background: 'var(--bg-sticky)', position: 'sticky', left: 0, zIndex: 10, whiteSpace: 'nowrap' }}>{role}</td>
                   {locationShifts.map(shift => {
                     const base = shift.assignments[role] || '缺';
                     const displayed = getCellValue(locationName, shift.date, role, base);
@@ -732,7 +733,7 @@ function App() {
 
               {editMode && (locationName === '山莊大堂' ? ['備用1', '備用2'] : ['備用1']).map(label => (
                 <tr key={label} style={mealRowBg}>
-                  <td style={{ fontWeight: 600, color: 'var(--text-muted)', background: 'var(--bg-sticky)', position: 'sticky', left: 0, zIndex: 10 }}>{label}</td>
+                  <td style={{ fontWeight: 600, color: 'var(--text-muted)', background: 'var(--bg-sticky)', position: 'sticky', left: 0, zIndex: 10, whiteSpace: 'nowrap' }}>{label}</td>
                   {locationShifts.map(shift => (
                     <td key={`${label}-${shift.date}`}>
                       <input
@@ -751,7 +752,7 @@ function App() {
                 if (!hasAny) return null;
                 return (
                   <tr key={label} style={mealRowBg}>
-                    <td style={{ fontWeight: 600, color: 'var(--text-muted)', background: 'var(--bg-sticky)', position: 'sticky', left: 0, zIndex: 10 }}>{label}</td>
+                    <td style={{ fontWeight: 600, color: 'var(--text-muted)', background: 'var(--bg-sticky)', position: 'sticky', left: 0, zIndex: 10, whiteSpace: 'nowrap' }}>{label}</td>
                     {locationShifts.map(shift => (
                       <td key={`${label}-${shift.date}`}>
                         <span style={{ fontWeight: 600, color: 'var(--text-secondary)' }}>{getEdit(locationName, shift.date, label) || '—'}</span>

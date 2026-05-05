@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Loader2, ExternalLink, Users, AlertCircle, Save, Shield, Camera } from 'lucide-react';
+import { Loader2, ExternalLink, Users, AlertCircle, Save, Shield, Camera, X } from 'lucide-react';
 import { fetchCSVAsJson } from '../utils/fileUtils';
 import { parseSkillTreeData, FULL_TIMERS } from '../utils/scheduler';
 import type { Volunteer } from '../utils/scheduler';
@@ -171,39 +171,46 @@ export const AdminSkillTree: React.FC = () => {
               }}>
                 {getRoleIcon()}
               </div>
-              <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <div style={{ fontWeight: 700, color: 'var(--text-primary)', fontSize: '1.1rem' }}>{vol.name}</div>
-                <span style={{
-                  padding: '2px 8px', borderRadius: '12px', fontSize: '0.75rem', fontWeight: 700,
-                  background: FULL_TIMERS.includes(vol.name) ? 'rgba(59, 130, 246, 0.15)' : 'rgba(107, 114, 128, 0.15)',
-                  color: FULL_TIMERS.includes(vol.name) ? '#60a5fa' : 'var(--text-muted)',
-                  border: `1px solid ${FULL_TIMERS.includes(vol.name) ? 'rgba(59, 130, 246, 0.3)' : 'rgba(107, 114, 128, 0.3)'}`
-                }}>
-                  {FULL_TIMERS.includes(vol.name) ? '同工' : '義工'}
-                </span>
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                {vol.lineId ? (
-                  <>
-                    <span style={{ fontSize: '0.8rem', color: '#4ade80', fontWeight: 600 }}>已綁定 LINE</span>
-                    <div style={{ width: '10px', height: '10px', borderRadius: '50%', background: '#4ade80', boxShadow: '0 0 8px #4ade80' }} />
-                  </>
-                ) : (
-                  <>
-                    <span style={{ fontSize: '0.8rem', color: '#f87171', fontWeight: 600, opacity: 0.8 }}>未綁定 LINE</span>
-                    <div style={{ width: '10px', height: '10px', borderRadius: '50%', background: '#f87171', opacity: 0.5 }} />
-                  </>
-                )}
+              <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <div style={{ fontWeight: 700, color: 'var(--text-primary)', fontSize: '1.1rem' }}>{vol.name}</div>
+                  <span style={{
+                    padding: '2px 8px', borderRadius: '12px', fontSize: '0.75rem', fontWeight: 700,
+                    background: FULL_TIMERS.includes(vol.name) ? 'rgba(59, 130, 246, 0.15)' : 'rgba(107, 114, 128, 0.15)',
+                    color: FULL_TIMERS.includes(vol.name) ? '#60a5fa' : 'var(--text-muted)',
+                    border: `1px solid ${FULL_TIMERS.includes(vol.name) ? 'rgba(59, 130, 246, 0.3)' : 'rgba(107, 114, 128, 0.3)'}`
+                  }}>
+                    {FULL_TIMERS.includes(vol.name) ? '同工' : '義工'}
+                  </span>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  {vol.lineId ? (
+                    <>
+                      <span className="hide-on-mobile" style={{ fontSize: '0.8rem', color: '#4ade80', fontWeight: 600 }}>已綁定 LINE</span>
+                      <div style={{ width: '10px', height: '10px', borderRadius: '50%', background: '#4ade80', boxShadow: '0 0 8px #4ade80' }} />
+                    </>
+                  ) : (
+                    <>
+                      <span className="hide-on-mobile" style={{ fontSize: '0.8rem', color: '#f87171', fontWeight: 600, opacity: 0.8 }}>未綁定 LINE</span>
+                      <div style={{ width: '10px', height: '10px', borderRadius: '50%', background: '#f87171', opacity: 0.5 }} />
+                    </>
+                  )}
+                </div>
               </div>
             </div>
           ))}
         </div>
 
         {/* 右側：角色狀態與技能樹 (RPG Status Screen) */}
-        <div className="glass-card" style={{ padding: '30px', minHeight: '60vh', position: 'sticky', top: '24px', overflow: 'hidden' }}>
+        <div className={`glass-card ${selectedVol ? 'mobile-modal-active' : ''}`} style={{ padding: '30px', minHeight: '60vh', position: 'sticky', top: '24px', overflow: 'hidden' }}>
+          {selectedVol && (
+            <button className="mobile-close-btn" onClick={() => setSelectedVol(null)}>
+              <X size={20} />
+            </button>
+          )}
           {selectedVol ? (
             <div className="animate-morph">
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', borderBottom: '1px solid var(--bg-input-border)', paddingBottom: '20px', marginBottom: '24px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', borderBottom: '1px solid var(--bg-input-border)', paddingBottom: '20px', marginBottom: '24px', marginTop: '10px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
                   <div style={{
                     width: '72px', height: '72px', borderRadius: '16px',
