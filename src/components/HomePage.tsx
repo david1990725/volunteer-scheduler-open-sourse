@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { createPortal } from 'react-dom';
-import { Calendar, MapPin, Clock, Sparkles, Video, Camera, X } from 'lucide-react';
+import { Calendar, MapPin, Clock, Sparkles, Video, Camera, X, Clapperboard, Bell } from 'lucide-react';
 import type { Volunteer, Shift } from '../utils/scheduler';
 import { SHAN_ZHUANG_ROLES, XUAN_JIAO_ROLES } from '../utils/scheduler';
 import { getCycleDates } from '../utils/dateUtils';
@@ -36,10 +36,10 @@ function formatMMDD(d: Date): string {
   return `${String(d.getMonth() + 1).padStart(2, '0')}/${String(d.getDate()).padStart(2, '0')}`;
 }
 
-/** 根據職位回傳 icon */
 function getRoleIcon(role: string) {
   if (role.includes('CAM') || role === '平面') return <Camera size={16} />;
-  if (role === '導播' || role === '信息版') return <Video size={16} />;
+  if (role === '信息版') return <Clapperboard size={16} />;
+  if (role === '導播') return <Video size={16} />;
   return <Sparkles size={16} />;
 }
 
@@ -139,7 +139,36 @@ export const HomePage: React.FC<HomePageProps> = ({
             : '感謝您參與 BOL Production 主日轉播事工，以下是您最近的排班資訊。'
           }
         </p>
+      </div>
 
+      {/* 聚會時間提醒 */}
+      <div className="glass-card animate-morph stagger-1" style={{ padding: '24px 30px', marginBottom: '24px' }}>
+        <h3 style={{ margin: '0 0 16px 0', fontSize: '1.1rem', color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <Bell size={18} color="var(--icon-accent)" /> 當週服事時間提醒
+        </h3>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '12px 16px', background: 'var(--bg-input)', borderRadius: '10px' }}>
+            <MapPin size={16} color="#3b82f6" />
+            <div style={{ flex: 1 }}>
+              <div style={{ fontWeight: 600, color: 'var(--text-primary)' }}>宣教聚會</div>
+              <div style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>08:00 ~ 09:30</div>
+            </div>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '12px 16px', background: 'var(--bg-input)', borderRadius: '10px' }}>
+            <MapPin size={16} color="#eab308" />
+            <div style={{ flex: 1 }}>
+              <div style={{ fontWeight: 600, color: 'var(--text-primary)' }}>山莊聚會</div>
+              <div style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>09:30 ~ 11:00</div>
+            </div>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '12px 16px', background: 'var(--bg-input)', borderRadius: '10px' }}>
+            <Clapperboard size={16} color="#ec4899" />
+            <div style={{ flex: 1 }}>
+              <div style={{ fontWeight: 600, color: 'var(--text-primary)' }}>信息版製作</div>
+              <div style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>11:30 ~ 12:30</div>
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* 倒數計時卡片 */}
@@ -208,7 +237,8 @@ export const HomePage: React.FC<HomePageProps> = ({
                     <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '6px' }}>
                       <MapPin size={12} /> {a.location}
                       <span style={{ margin: '0 4px', opacity: 0.3 }}>·</span>
-                      <Clock size={12} /> 09:30 - 11:00
+                      <Clock size={12} /> 
+                      {a.role === '信息版' ? '11:30 - 12:30' : a.location.includes('宣教') ? '08:00 - 09:30' : '09:30 - 11:00'}
                     </div>
                   </div>
                 </div>
