@@ -83,15 +83,14 @@ export const Login: React.FC<LoginProps> = ({ onLogin }) => {
       if (matchedName && volunteers[matchedName]) {
         const user = volunteers[matchedName];
         
-        // 若是透過模糊比對找到的，表示原本試算表中沒有 user_id，自動寫入幫他綁定
-        if (isFuzzyMatched) {
-           updateVolunteerLineId({ 
-             name: matchedName, 
-             lineId: lineUserId, 
-             lineName: displayName,
-             pictureUrl: profile.pictureUrl 
-           }).catch(console.error);
-        }
+        // 只要是 LINE 登入，就嘗試更新/同步最新的 metadata (LINE ID, 名稱, 大頭照)
+        // 這樣即使是舊義工，也能自動補上大頭照或更新 LINE 名稱
+        updateVolunteerLineId({ 
+          name: matchedName, 
+          lineId: lineUserId, 
+          lineName: displayName,
+          pictureUrl: profile.pictureUrl 
+        }).catch(err => console.error('[Login] Metadata 同步失敗:', err));
 
         onLogin(user, volunteers);
         return;

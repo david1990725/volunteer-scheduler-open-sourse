@@ -59,7 +59,7 @@ function handleAddVolunteer(payload) {
   let lastCol = sheet.getLastColumn();
   if (lastCol === 0) return jsonResponse({ success: false, message: '工作表為空' });
 
-  const headers = sheet.getRange(1, 1, 1, lastCol).getValues()[0];
+  const headers = sheet.getRange(1, 1, 1, lastCol).getValues()[0].map(h => String(h).trim());
   const nameCol = headers.indexOf('姓名');
   let lineIdCol = headers.indexOf('user_id');
   const roleCol = headers.indexOf('role');
@@ -86,7 +86,7 @@ function handleAddVolunteer(payload) {
   if (lastRow > 1) {
     const allData = sheet.getRange(2, 1, lastRow - 1, sheet.getLastColumn()).getValues();
     for (var i = 0; i < allData.length; i++) {
-      if (allData[i][lineIdCol] === payload.lineId) {
+      if (String(allData[i][lineIdCol]).trim() === String(payload.lineId).trim()) {
         return jsonResponse({ success: true, message: '此 LINE 帳號已在名單中', existingName: allData[i][nameCol] });
       }
     }
@@ -116,7 +116,7 @@ function handleUpdateLineId(payload) {
   const lastRow = sheet.getLastRow();
   if (lastCol === 0 || lastRow <= 1) return jsonResponse({ success: false, message: '無資料可更新' });
 
-  const headers = sheet.getRange(1, 1, 1, lastCol).getValues()[0];
+  const headers = sheet.getRange(1, 1, 1, lastCol).getValues()[0].map(h => String(h).trim());
   const nameCol = headers.indexOf('姓名');
   let lineIdCol = headers.indexOf('user_id');
   let photoCol = headers.indexOf('大頭照');
@@ -140,12 +140,12 @@ function handleUpdateLineId(payload) {
 
   const allData = sheet.getRange(2, 1, lastRow - 1, lastCol).getValues();
   for (var i = 0; i < allData.length; i++) {
-    if (allData[i][nameCol] === payload.name) {
+    if (String(allData[i][nameCol]).trim() === String(payload.name).trim()) {
       sheet.getRange(i + 2, lineIdCol + 1).setValue(payload.lineId);
       if (photoCol !== -1 && payload.pictureUrl) {
         sheet.getRange(i + 2, photoCol + 1).setValue(payload.pictureUrl);
       }
-      return jsonResponse({ success: true, message: '已成功綁定 LINE 帳號並更新大頭照' });
+      return jsonResponse({ success: true, message: '已成功更新 LINE 資訊與大頭照' });
     }
   }
 
