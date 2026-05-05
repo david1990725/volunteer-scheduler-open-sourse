@@ -310,28 +310,10 @@ export const AdminSkillTree: React.FC = () => {
 
       {/* Floating Save FAB */}
       {hasChanges && (
-        <div style={{
-          position: 'fixed',
-          bottom: '32px',
-          left: '32px',
-          zIndex: 10000,
-          pointerEvents: 'none'
-        }}>
-          <button className="animate-morph" onClick={handleSave} disabled={saving} style={{
-            pointerEvents: 'auto',
-            background: 'linear-gradient(135deg, var(--text-title-from), var(--text-title-to))',
-            border: 'none',
-            boxShadow: '0 8px 25px rgba(234, 179, 8, 0.5)',
-            width: '64px',
-            height: '64px',
-            borderRadius: '50%',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            color: '#fff',
-            cursor: 'pointer'
-          }}>
+        <div className="save-fab-container">
+          <button className="animate-morph save-fab" onClick={handleSave} disabled={saving}>
             {saving ? <Loader2 size={28} className="animate-spin" /> : <Save size={28} />}
+            <span className="save-fab-text">儲存變更</span>
           </button>
         </div>
       )}

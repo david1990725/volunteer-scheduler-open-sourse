@@ -772,3 +772,133 @@ tr:hover td {
 .gradient-slider::-webkit-slider-thumb:hover {
   transform: scale(1.2);
 }
+
+/* ---------------------------------------------------------------------------
+ * Floating Save FAB
+ * ------------------------------------------------------------------------ */
+
+.floating-save-container {
+  position: fixed;
+  bottom: 40px;
+  z-index: 10000;
+  pointer-events: none;
+}
+
+.floating-save-btn {
+  pointer-events: auto;
+  background: linear-gradient(135deg, var(--text-title-from), var(--text-title-to));
+  border: none;
+  box-shadow: 0 8px 30px rgba(234, 179, 8, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  color: #fff;
+  cursor: pointer;
+  transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.2s;
+}
+
+.floating-save-btn:hover {
+  transform: translateY(-4px) scale(1.02);
+  box-shadow: 0 12px 40px rgba(234, 179, 8, 0.6);
+}
+
+.floating-save-btn:active {
+  transform: translateY(0) scale(0.95);
+}
+
+.save-btn-text {
+  font-weight: 700;
+  font-size: 1.15rem;
+  letter-spacing: 1px;
+}
+
+/* Desktop: Centered Pill */
+@media (min-width: 769px) {
+  .floating-save-container {
+    left: 50%;
+    /* transform is handled inside or on the container, but since animate-morph is on the child, we can transform container safely */
+    transform: translateX(-50%);
+  }
+  .floating-save-btn {
+    padding: 16px 40px;
+    border-radius: 40px;
+  }
+}
+
+/* Mobile: Bottom Left Circle */
+@media (max-width: 768px) {
+  .floating-save-container {
+    left: 32px;
+  }
+  .floating-save-btn {
+    width: 64px;
+    height: 64px;
+    border-radius: 50%;
+    padding: 0;
+  }
+  .save-btn-text {
+    display: none;
+  }
+}
+
+/* Floating Save Action Button */
+.save-fab-container {
+  position: fixed;
+  bottom: 32px;
+  left: 0;
+  right: 0;
+  z-index: 10000;
+  pointer-events: none;
+  display: flex;
+}
+
+.save-fab {
+  pointer-events: auto;
+  background: linear-gradient(135deg, var(--text-title-from), var(--text-title-to));
+  border: none;
+  box-shadow: 0 8px 25px rgba(234, 179, 8, 0.5);
+  color: #fff;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Mobile: small circular FAB bottom left */
+@media (max-width: 768px) {
+  .save-fab-container {
+    justify-content: flex-start;
+    padding-left: 32px;
+  }
+  .save-fab {
+    width: 64px;
+    height: 64px;
+    border-radius: 50%;
+  }
+  .save-fab-text {
+    display: none;
+  }
+}
+
+/* Desktop: huge prominent pill button centered */
+@media (min-width: 769px) {
+  .save-fab-container {
+    justify-content: center;
+  }
+  .save-fab {
+    padding: 16px 48px;
+    border-radius: 40px;
+    font-size: 1.3rem;
+    font-weight: 700;
+    gap: 12px;
+  }
+  .save-fab:hover {
+    transform: translateY(-5px) scale(1.05);
+    box-shadow: 0 15px 35px rgba(234, 179, 8, 0.6);
+  }
+  .save-fab:active {
+    transform: translateY(0) scale(0.98);
+  }
+}
