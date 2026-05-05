@@ -12,6 +12,7 @@ export const AdminRawData: React.FC<AdminRawDataProps> = ({ onStartAutoSchedule 
   const [data, setData] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [source, setSource] = useState<'cloud' | 'local' | 'none'>('none');
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   const { sundays, nextMonths } = getCycleDates();
   const validDateColumns = sundays.map(s => `[${s}]`);
@@ -21,16 +22,23 @@ export const AdminRawData: React.FC<AdminRawDataProps> = ({ onStartAutoSchedule 
 
     try {
       const res = await fetchFormResponsesFromCloud();
-      if (res.success && res.data && res.data.length > 0) {
-        setData(res.data);
-        setSource('cloud');
+      if (res.success) {
+        if (res.data && res.data.length > 0) {
+          setData(res.data);
+          setSource('cloud');
+        } else {
+          setData([]);
+          setSource('none');
+        }
       } else {
         setData([]);
         setSource('none');
+        setErrorMsg(res.message || '抓取失敗');
       }
-    } catch {
+    } catch (err: any) {
       setData([]);
       setSource('none');
+      setErrorMsg(err.message || '發生未知錯誤');
     }
 
     setLoading(false);
@@ -75,6 +83,21 @@ export const AdminRawData: React.FC<AdminRawDataProps> = ({ onStartAutoSchedule 
       <div className="glass-card animate-morph stagger-2" style={{ padding: '60px', textAlign: 'center' }}>
         <Loader2 className="animate-spin" size={32} style={{ color: 'var(--icon-accent)', margin: '0 auto 16px' }} />
         <p style={{ color: 'var(--text-secondary)' }}>正在從雲端載入表單資料...</p>
+      </div>
+    );
+  }
+
+  if (errorMsg) {
+    return (
+      <div className="glass-card animate-morph stagger-2" style={{ padding: '40px', textAlign: 'center' }}>
+        <p style={{ color: 'var(--text-missing)', fontSize: '1.1rem', marginBottom: '10px' }}>⚠️ 資料抓取失敗</p>
+        <p style={{ color: 'var(--text-secondary)', marginBottom: '20px' }}>{errorMsg}</p>
+        <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', marginBottom: '20px' }}>
+          （提示：請確定 Google Apps Script 已經「重新部署為新版本」）
+        </p>
+        <button className="btn-secondary" onClick={loadData}>
+          <RefreshCw size={16} /> 重新嘗試
+        </button>
       </div>
     );
   }
