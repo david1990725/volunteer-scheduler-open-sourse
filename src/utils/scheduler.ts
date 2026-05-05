@@ -95,10 +95,14 @@ export function parseSkillTreeData(data: any[]): Record<string, Volunteer> {
       'CAM4': parseInt(row['Cam4技能值']) || 0,
     };
 
-    // 布林型技能（有 → 10, 無 → 0）
-    skills['山莊導播'] = roles.includes('山莊導播') || roles.includes('導播') ? 10 : 0;
-    skills['宣教導播'] = roles.includes('宣教導播') || roles.includes('導播') ? 10 : 0;
-    skills['HOST/CCU'] = roles.some((r: string) => r === 'HOST' || r === 'CCU') ? 10 : 0;
+    // 優先讀取數值，若無則依職能字串給予布林預設值（有 → 10, 無 → 0）
+    skills['導播'] = parseInt(row['導播技能值']) || (roles.includes('山莊導播') || roles.includes('宣教導播') || roles.includes('導播') ? 10 : 0);
+    skills['山莊導播'] = skills['導播']; // 相容舊版判斷
+    skills['宣教導播'] = skills['導播']; // 相容舊版判斷
+    
+    skills['CCU/HOST'] = parseInt(row['CCU/HOST技能值']) || parseInt(row['HOST/CCU技能值']) || (roles.some((r: string) => r === 'HOST' || r === 'CCU') ? 10 : 0);
+    skills['HOST/CCU'] = skills['CCU/HOST']; // 相容舊版判斷
+
     skills['信息版'] = roles.some((r: string) => ['山莊導播', '宣教導播', '導播', 'HOST', 'CCU'].includes(r)) ? 10 : 0;
 
     const userRole = row['role']?.trim().toLowerCase() === 'admin' ? 'admin' : 'user';

@@ -39,7 +39,7 @@ export const AdminSkillTree: React.FC = () => {
 
   const handleSelectVol = (vol: Volunteer) => {
     setSelectedVol(vol);
-    const editable = ['平面', 'CAM1', 'CAM2', 'CAM3', 'CAM4'];
+    const editable = ['導播', 'CCU/HOST', '平面', 'CAM1', 'CAM2', 'CAM3', 'CAM4'];
     const currentSkills: Record<string, number> = {};
     editable.forEach(s => {
       currentSkills[s] = vol.skills[s] || 0;
