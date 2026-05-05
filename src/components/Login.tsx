@@ -66,7 +66,6 @@ export const Login: React.FC<LoginProps> = ({ onLogin }) => {
       let matchedName = lineIdMap[lineUserId];
 
       // 2. 若找不到 user_id，嘗試以 LINE 顯示名稱與名單中的「LINE_ID」欄位進行比對
-      let isFuzzyMatched = false;
       if (!matchedName) {
         const match = Object.values(volunteers).find(v => {
           if (!v.lineDisplayName) return false;
@@ -76,7 +75,6 @@ export const Login: React.FC<LoginProps> = ({ onLogin }) => {
         });
         if (match) {
           matchedName = match.name;
-          isFuzzyMatched = true;
         }
       }
 
