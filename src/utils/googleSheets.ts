@@ -40,9 +40,9 @@ export async function registerNewVolunteer(payload: NewVolunteerPayload): Promis
 }
 
 /**
- * 透過 Google Apps Script Web App 將現有義工綁定 user_id
+ * 透過 Google Apps Script Web App 將現有義工綁定 user_id 與 LINE 名稱
  */
-export async function updateVolunteerLineId(payload: { name: string; lineId: string }): Promise<{ success: boolean; message: string }> {
+export async function updateVolunteerLineId(payload: { name: string; lineId: string; lineName?: string }): Promise<{ success: boolean; message: string }> {
   if (!APPS_SCRIPT_URL) {
     console.error('VITE_APPS_SCRIPT_URL is not configured');
     return { success: false, message: 'Apps Script URL 尚未設定，請聯繫管理員。' };

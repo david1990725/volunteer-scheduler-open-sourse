@@ -85,7 +85,7 @@ export const Login: React.FC<LoginProps> = ({ onLogin }) => {
         
         // 若是透過模糊比對找到的，表示原本試算表中沒有 user_id，自動寫入幫他綁定
         if (isFuzzyMatched) {
-           updateVolunteerLineId({ name: matchedName, lineId: lineUserId }).catch(console.error);
+           updateVolunteerLineId({ name: matchedName, lineId: lineUserId, lineName: displayName }).catch(console.error);
         }
 
         onLogin(user, volunteers);
