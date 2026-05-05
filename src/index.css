@@ -716,3 +716,9 @@ tr:hover td {
     display: none !important;
   }
 }
+
+@media (max-width: 768px) {
+  .mobile-modal-active {
+    transform: none !important;
+  }
+}

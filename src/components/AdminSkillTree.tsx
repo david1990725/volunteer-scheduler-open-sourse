@@ -141,6 +141,7 @@ export const AdminSkillTree: React.FC = () => {
           <div style={{ padding: '0 8px 12px', borderBottom: '1px solid var(--bg-input-border)', marginBottom: '8px', color: 'var(--text-muted)', fontSize: '0.9rem', fontWeight: 600 }}>
             選擇義工
           </div>
+          <div style={{ maxHeight: '480px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '10px', paddingRight: '4px' }}>
           {volunteers.map((vol) => (
             <div
               key={vol.name}
@@ -171,11 +172,11 @@ export const AdminSkillTree: React.FC = () => {
               }}>
                 {getRoleIcon()}
               </div>
-              <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <div style={{ fontWeight: 700, color: 'var(--text-primary)', fontSize: '1.1rem' }}>{vol.name}</div>
+              <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', overflow: 'hidden' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', overflow: 'hidden' }}>
+                  <div style={{ fontWeight: 700, color: 'var(--text-primary)', fontSize: '1.1rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{vol.name}</div>
                   <span style={{
-                    padding: '2px 8px', borderRadius: '12px', fontSize: '0.75rem', fontWeight: 700,
+                    padding: '2px 8px', borderRadius: '12px', fontSize: '0.75rem', fontWeight: 700, whiteSpace: 'nowrap', flexShrink: 0,
                     background: FULL_TIMERS.includes(vol.name) ? 'rgba(59, 130, 246, 0.15)' : 'rgba(107, 114, 128, 0.15)',
                     color: FULL_TIMERS.includes(vol.name) ? '#60a5fa' : 'var(--text-muted)',
                     border: `1px solid ${FULL_TIMERS.includes(vol.name) ? 'rgba(59, 130, 246, 0.3)' : 'rgba(107, 114, 128, 0.3)'}`
@@ -199,6 +200,7 @@ export const AdminSkillTree: React.FC = () => {
               </div>
             </div>
           ))}
+          </div>
         </div>
 
         {/* 右側：角色狀態與技能樹 (RPG Status Screen) */}
