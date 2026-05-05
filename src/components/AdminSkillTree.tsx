@@ -278,17 +278,10 @@ export const AdminSkillTree: React.FC = () => {
                       <input
                         type="range"
                         min="0" max="10"
-                        value={editingSkills[skill]}
-                        onChange={e => handleSkillChange(skill, e.target.value)}
-                        style={{
-                          flex: 1,
-                          accentColor: 'var(--icon-accent)',
-                          height: '6px',
-                          borderRadius: '3px',
-                          background: 'var(--bg-input-border)',
-                          outline: 'none',
-                          cursor: 'pointer'
-                        }}
+                        value={editingSkills[skill] || 0}
+                        onChange={(e) => handleSkillChange(skill, e.target.value)}
+                        className="gradient-slider"
+                        style={{ flex: 1 }}
                       />
                       <div style={{
                         width: '40px', height: '40px',
@@ -315,43 +308,31 @@ export const AdminSkillTree: React.FC = () => {
         </div>
       </div>
 
-      {/* Floating Save Prompt */}
+      {/* Floating Save FAB */}
       {hasChanges && (
         <div style={{
           position: 'fixed',
           bottom: '32px',
-          left: 0,
-          right: 0,
+          left: '32px',
           zIndex: 10000,
-          display: 'flex',
-          justifyContent: 'center',
-          pointerEvents: 'none',
-          padding: '0 20px'
+          pointerEvents: 'none'
         }}>
-          <div className="animate-morph" style={{
+          <button className="animate-morph" onClick={handleSave} disabled={saving} style={{
             pointerEvents: 'auto',
-            background: 'var(--bg-dropdown)',
-            border: '1px solid var(--icon-accent)',
-            boxShadow: '0 10px 40px rgba(234, 179, 8, 0.4)',
-            padding: '16px 24px',
-            borderRadius: '20px',
+            background: 'linear-gradient(135deg, var(--text-title-from), var(--text-title-to))',
+            border: 'none',
+            boxShadow: '0 8px 25px rgba(234, 179, 8, 0.5)',
+            width: '64px',
+            height: '64px',
+            borderRadius: '50%',
             display: 'flex',
             alignItems: 'center',
-            gap: '24px',
-            flexWrap: 'wrap',
             justifyContent: 'center',
-            backdropFilter: 'blur(25px)',
-            WebkitBackdropFilter: 'blur(25px)'
+            color: '#fff',
+            cursor: 'pointer'
           }}>
-            <div>
-              <div style={{ fontWeight: 700, color: 'var(--text-primary)', marginBottom: '4px' }}>尚未儲存技能變更</div>
-              <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>有 {Object.keys(editingSkills).filter(k => editingSkills[k] !== (selectedVol.skills[k] || 0)).length} 項技能點數已調整，請記得儲存</div>
-            </div>
-            <button className="btn-primary" onClick={handleSave} disabled={saving} style={{ padding: '12px 24px', borderRadius: '30px', height: 'auto' }}>
-              {saving ? <Loader2 size={18} className="animate-spin" /> : <Save size={18} />}
-              儲存變更
-            </button>
-          </div>
+            {saving ? <Loader2 size={28} className="animate-spin" /> : <Save size={28} />}
+          </button>
         </div>
       )}
     </div>

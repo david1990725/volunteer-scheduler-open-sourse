@@ -744,3 +744,31 @@ tr:hover td {
     z-index: 10;
   }
 }
+
+/* Gradient Slider for Skill Tree */
+.gradient-slider {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 8px;
+  border-radius: 4px;
+  background: var(--bg-card-border);
+  outline: none;
+  transition: all 0.2s;
+}
+
+.gradient-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--text-title-from) 0%, var(--text-title-to) 100%);
+  cursor: pointer;
+  box-shadow: 0 0 12px rgba(234, 179, 8, 0.6);
+  transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.gradient-slider::-webkit-slider-thumb:hover {
+  transform: scale(1.2);
+}
