@@ -89,6 +89,8 @@ export const AdminSkillTree: React.FC = () => {
     return <Camera size={18} />;
   };
 
+  const hasChanges = selectedVol && Object.keys(editingSkills).some(k => editingSkills[k] !== (selectedVol.skills[k] || 0));
+
   if (loading) {
     return (
       <div className="glass-card animate-morph stagger-2" style={{ padding: '60px', textAlign: 'center' }}>
@@ -214,15 +216,9 @@ export const AdminSkillTree: React.FC = () => {
           boxShadow: selectedVol ? '0 8px 32px rgba(234, 179, 8, 0.15)' : 'var(--shadow-card)'
         }}>
           {selectedVol && (
-            <>
-              <button className="mobile-close-btn" onClick={() => setSelectedVol(null)}>
-                <X size={20} />
-              </button>
-              <button className="btn-primary mobile-save-btn" onClick={handleSave} disabled={saving} style={{ padding: '0 16px', borderRadius: '18px', fontSize: '0.85rem' }}>
-                {saving ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
-                儲存
-              </button>
-            </>
+            <button className="mobile-close-btn" onClick={() => setSelectedVol(null)}>
+              <X size={20} />
+            </button>
           )}
           {selectedVol ? (
             <div className="animate-morph">
@@ -251,11 +247,6 @@ export const AdminSkillTree: React.FC = () => {
                     </h2>
                   </div>
                 </div>
-
-                <button className="btn-primary hide-on-mobile" onClick={handleSave} disabled={saving} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '12px 24px', borderRadius: '30px' }}>
-                  {saving ? <Loader2 size={18} className="animate-spin" /> : <Save size={18} />}
-                  儲存
-                </button>
               </div>
 
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '30px' }}>
@@ -323,6 +314,46 @@ export const AdminSkillTree: React.FC = () => {
           )}
         </div>
       </div>
+
+      {/* Floating Save Prompt */}
+      {hasChanges && (
+        <div style={{
+          position: 'fixed',
+          bottom: '32px',
+          left: 0,
+          right: 0,
+          zIndex: 10000,
+          display: 'flex',
+          justifyContent: 'center',
+          pointerEvents: 'none',
+          padding: '0 20px'
+        }}>
+          <div className="animate-morph" style={{
+            pointerEvents: 'auto',
+            background: 'var(--bg-dropdown)',
+            border: '1px solid var(--icon-accent)',
+            boxShadow: '0 10px 40px rgba(234, 179, 8, 0.4)',
+            padding: '16px 24px',
+            borderRadius: '20px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '24px',
+            flexWrap: 'wrap',
+            justifyContent: 'center',
+            backdropFilter: 'blur(25px)',
+            WebkitBackdropFilter: 'blur(25px)'
+          }}>
+            <div>
+              <div style={{ fontWeight: 700, color: 'var(--text-primary)', marginBottom: '4px' }}>尚未儲存技能變更</div>
+              <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>有 {Object.keys(editingSkills).filter(k => editingSkills[k] !== (selectedVol.skills[k] || 0)).length} 項技能點數已調整，請記得儲存</div>
+            </div>
+            <button className="btn-primary" onClick={handleSave} disabled={saving} style={{ padding: '12px 24px', borderRadius: '30px', height: 'auto' }}>
+              {saving ? <Loader2 size={18} className="animate-spin" /> : <Save size={18} />}
+              儲存變更
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
