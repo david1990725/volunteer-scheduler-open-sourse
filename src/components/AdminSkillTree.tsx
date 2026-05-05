@@ -84,10 +84,6 @@ export const AdminSkillTree: React.FC = () => {
     fullMark: 10,
   })) : [];
 
-  // 統一頭像為相機圖示
-  const getRoleIcon = () => {
-    return <Camera size={18} />;
-  };
 
   const hasChanges = selectedVol && Object.keys(editingSkills).some(k => editingSkills[k] !== (selectedVol.skills[k] || 0));
 
@@ -144,7 +140,9 @@ export const AdminSkillTree: React.FC = () => {
             選擇義工
           </div>
           <div style={{ maxHeight: '480px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '10px', paddingRight: '4px' }}>
-          {volunteers.map((vol) => (
+          {volunteers.map((vol) => {
+            const isFullTimer = FULL_TIMERS.includes(vol.name);
+            return (
             <div
               key={vol.name}
               onClick={() => handleSelectVol(vol)}
@@ -172,18 +170,18 @@ export const AdminSkillTree: React.FC = () => {
                 color: selectedVol?.name === vol.name ? 'var(--icon-accent)' : 'var(--text-muted)',
                 boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.5)'
               }}>
-                {getRoleIcon()}
+                <Camera size={18} />
               </div>
               <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', overflow: 'hidden' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px', overflow: 'hidden' }}>
                   <div style={{ fontWeight: 700, color: 'var(--text-primary)', fontSize: '1.1rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{vol.name}</div>
                   <span style={{
                     padding: '2px 8px', borderRadius: '12px', fontSize: '0.75rem', fontWeight: 700, whiteSpace: 'nowrap', flexShrink: 0,
-                    background: FULL_TIMERS.includes(vol.name) ? 'rgba(59, 130, 246, 0.15)' : 'rgba(107, 114, 128, 0.15)',
-                    color: FULL_TIMERS.includes(vol.name) ? '#60a5fa' : 'var(--text-muted)',
-                    border: `1px solid ${FULL_TIMERS.includes(vol.name) ? 'rgba(59, 130, 246, 0.3)' : 'rgba(107, 114, 128, 0.3)'}`
+                    background: isFullTimer ? 'rgba(59, 130, 246, 0.15)' : 'rgba(107, 114, 128, 0.15)',
+                    color: isFullTimer ? '#60a5fa' : 'var(--text-muted)',
+                    border: `1px solid ${isFullTimer ? 'rgba(59, 130, 246, 0.3)' : 'rgba(107, 114, 128, 0.3)'}`
                   }}>
-                    {FULL_TIMERS.includes(vol.name) ? '同工' : '義工'}
+                    {isFullTimer ? '同工' : '義工'}
                   </span>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
@@ -201,7 +199,8 @@ export const AdminSkillTree: React.FC = () => {
                 </div>
               </div>
             </div>
-          ))}
+            );
+          })}
           </div>
         </div>
 
@@ -223,6 +222,9 @@ export const AdminSkillTree: React.FC = () => {
           {selectedVol ? (
             <div className="animate-morph">
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--bg-input-border)', paddingBottom: '20px', marginBottom: '24px', marginTop: '10px', flexWrap: 'wrap', gap: '16px' }}>
+                {(() => {
+                  const isFullTimer = FULL_TIMERS.includes(selectedVol.name);
+                  return (
                 <div style={{ display: 'flex', alignItems: 'center', gap: '16px', flexWrap: 'wrap' }}>
                   <div style={{
                     width: '72px', height: '72px', borderRadius: '16px',
@@ -231,22 +233,24 @@ export const AdminSkillTree: React.FC = () => {
                     boxShadow: '0 8px 25px rgba(234, 179, 8, 0.4)',
                     color: '#fff'
                   }}>
-                    {getRoleIcon()}
+                    <Camera size={18} />
                   </div>
                   <div>
                     <h2 style={{ margin: '0 0 4px', fontSize: '2rem', color: 'var(--text-primary)', letterSpacing: '2px', display: 'flex', alignItems: 'center', gap: '12px' }}>
                       {selectedVol.name}
                       <span style={{
                         padding: '4px 10px', borderRadius: '20px', fontSize: '0.9rem', fontWeight: 700, letterSpacing: 'normal',
-                        background: FULL_TIMERS.includes(selectedVol.name) ? 'rgba(59, 130, 246, 0.15)' : 'rgba(107, 114, 128, 0.15)',
-                        color: FULL_TIMERS.includes(selectedVol.name) ? '#60a5fa' : 'var(--text-muted)',
-                        border: `1px solid ${FULL_TIMERS.includes(selectedVol.name) ? 'rgba(59, 130, 246, 0.3)' : 'rgba(107, 114, 128, 0.3)'}`
+                        background: isFullTimer ? 'rgba(59, 130, 246, 0.15)' : 'rgba(107, 114, 128, 0.15)',
+                        color: isFullTimer ? '#60a5fa' : 'var(--text-muted)',
+                        border: `1px solid ${isFullTimer ? 'rgba(59, 130, 246, 0.3)' : 'rgba(107, 114, 128, 0.3)'}`
                       }}>
-                        {FULL_TIMERS.includes(selectedVol.name) ? '同工' : '義工'}
+                        {isFullTimer ? '同工' : '義工'}
                       </span>
                     </h2>
                   </div>
                 </div>
+                  );
+                })()}
               </div>
 
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '30px' }}>

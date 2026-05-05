@@ -380,8 +380,6 @@ function resolveName(raw: string, volunteers: Record<string, Volunteer>): string
   return match ?? null;
 }
 
-
-
 /** 判斷本週是否有專職人員可以輪休 */
 function determineRestingFT(
   field: string,
@@ -424,25 +422,32 @@ function buildOverrides(
   field: string,
 ): Record<string, boolean> {
   const overrides: Record<string, boolean> = {};
+
   for (const role of SHAN_ZHUANG_ROLES) {
     const person = szAssign[role];
+
+    // 無人、缺席、或為特殊人員 → 不視為違規
     if (!person || person === '缺' || person === LIAO_NAME || FULL_TIMERS.includes(person)) {
       overrides[role] = false;
       continue;
     }
-    const p = prefs[person]?.[field];
-    if (!p || p.size === 0) {
+
+    const personPrefs = prefs[person]?.[field];
+
+    // 沒有偏好設定、或為導播/AD 職位 → 不視為違規
+    if (!personPrefs || personPrefs.size === 0 || role === '導播' || role === 'AD') {
       overrides[role] = false;
-    } else if (role === '平面' && p.has('平面')) {
-      overrides[role] = false;
-    } else if (CAM_ROLES.includes(role) && p.has('攝影')) {
-      overrides[role] = false;
-    } else if (role === '導播' || role === 'AD') {
-      overrides[role] = false;
-    } else {
-      overrides[role] = true;
+      continue;
     }
+
+    // 偏好與分配一致 → 不違規
+    const matchesPreference =
+      (role === '平面' && personPrefs.has('平面')) ||
+      (CAM_ROLES.includes(role) && personPrefs.has('攝影'));
+
+    overrides[role] = !matchesPreference;
   }
+
   return overrides;
 }
 
