@@ -11,6 +11,7 @@ export interface Volunteer {
   skills: Record<string, number>;
   lineId?: string; // LINE platform internal user_id
   lineDisplayName?: string; // from LINE_ID column
+  pictureUrl?: string; // LINE profile picture or custom URL
 }
 
 export interface Shift {
@@ -109,8 +110,9 @@ export function parseSkillTreeData(data: any[]): Record<string, Volunteer> {
     const userRole = row['role']?.trim().toLowerCase() === 'admin' ? 'admin' : 'user';
     const lineId = (row['user_id'] || '').trim() || undefined;
     const lineDisplayName = (row['LINE_ID'] || '').trim() || undefined;
+    const pictureUrl = (row['大頭照'] || row['pictureUrl'] || row['頭像'] || '').trim() || undefined;
 
-    volunteers[name] = { name, role: userRole, roles, skills, lineId, lineDisplayName };
+    volunteers[name] = { name, role: userRole, roles, skills, lineId, lineDisplayName, pictureUrl };
   }
 
   return volunteers;

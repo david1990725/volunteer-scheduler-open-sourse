@@ -83,7 +83,7 @@ export async function registerNewVolunteer(payload: NewVolunteerPayload): Promis
 
 /** 綁定 / 更新義工的 LINE user_id 與顯示名稱 */
 export async function updateVolunteerLineId(
-  payload: { name: string; lineId: string; lineName?: string },
+  payload: { name: string; lineId: string; lineName?: string; pictureUrl?: string },
 ): Promise<ApiResult> {
   try {
     const result = await callAppsScript<ApiResult>(

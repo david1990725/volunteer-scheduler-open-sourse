@@ -63,15 +63,24 @@ function handleAddVolunteer(payload) {
   const nameCol = headers.indexOf('姓名');
   let lineIdCol = headers.indexOf('user_id');
   const roleCol = headers.indexOf('role');
+  let photoCol = headers.indexOf('大頭照');
+  if (photoCol === -1) photoCol = headers.indexOf('pictureUrl');
+  if (photoCol === -1) photoCol = headers.indexOf('頭像');
   
   if (nameCol === -1) return jsonResponse({ success: false, message: '找不到「姓名」欄位' });
   
   if (lineIdCol === -1) {
     lastCol += 1;
     sheet.getRange(1, lastCol).setValue('user_id');
-    lineIdCol = lastCol - 1; // 更新 index
-    SpreadsheetApp.flush(); // 強制寫入
+    lineIdCol = lastCol - 1;
   }
+
+  if (photoCol === -1) {
+    lastCol += 1;
+    sheet.getRange(1, lastCol).setValue('大頭照');
+    photoCol = lastCol - 1;
+  }
+  SpreadsheetApp.flush(); 
   
   const lastRow = sheet.getLastRow();
   if (lastRow > 1) {
@@ -88,6 +97,7 @@ function handleAddVolunteer(payload) {
   newRow[nameCol] = payload.name || payload.lineName || '未知';
   newRow[lineIdCol] = payload.lineId;
   if (roleCol !== -1) newRow[roleCol] = 'user';
+  if (photoCol !== -1 && payload.pictureUrl) newRow[photoCol] = payload.pictureUrl;
   
   sheet.appendRow(newRow);
   
@@ -109,6 +119,9 @@ function handleUpdateLineId(payload) {
   const headers = sheet.getRange(1, 1, 1, lastCol).getValues()[0];
   const nameCol = headers.indexOf('姓名');
   let lineIdCol = headers.indexOf('user_id');
+  let photoCol = headers.indexOf('大頭照');
+  if (photoCol === -1) photoCol = headers.indexOf('pictureUrl');
+  if (photoCol === -1) photoCol = headers.indexOf('頭像');
 
   if (nameCol === -1) return jsonResponse({ success: false, message: '找不到「姓名」欄位' });
   
@@ -117,14 +130,22 @@ function handleUpdateLineId(payload) {
     lastCol += 1;
     sheet.getRange(1, lastCol).setValue('user_id');
     lineIdCol = lastCol - 1;
-    SpreadsheetApp.flush();
   }
+  if (photoCol === -1) {
+    lastCol += 1;
+    sheet.getRange(1, lastCol).setValue('大頭照');
+    photoCol = lastCol - 1;
+  }
+  SpreadsheetApp.flush();
 
   const allData = sheet.getRange(2, 1, lastRow - 1, lastCol).getValues();
   for (var i = 0; i < allData.length; i++) {
     if (allData[i][nameCol] === payload.name) {
       sheet.getRange(i + 2, lineIdCol + 1).setValue(payload.lineId);
-      return jsonResponse({ success: true, message: '已成功綁定 LINE 帳號' });
+      if (photoCol !== -1 && payload.pictureUrl) {
+        sheet.getRange(i + 2, photoCol + 1).setValue(payload.pictureUrl);
+      }
+      return jsonResponse({ success: true, message: '已成功綁定 LINE 帳號並更新大頭照' });
     }
   }
 

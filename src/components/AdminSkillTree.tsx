@@ -170,7 +170,11 @@ export const AdminSkillTree: React.FC = () => {
                 color: selectedVol?.name === vol.name ? 'var(--icon-accent)' : 'var(--text-muted)',
                 boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.5)'
               }}>
-                <Camera size={18} />
+                {vol.pictureUrl ? (
+                  <img src={vol.pictureUrl} alt={vol.name} style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }} />
+                ) : (
+                  <Camera size={18} />
+                )}
               </div>
               <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', overflow: 'hidden' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px', overflow: 'hidden' }}>
@@ -233,7 +237,11 @@ export const AdminSkillTree: React.FC = () => {
                     boxShadow: '0 8px 25px rgba(234, 179, 8, 0.4)',
                     color: '#fff'
                   }}>
-                    <Camera size={18} />
+                    {selectedVol.pictureUrl ? (
+                      <img src={selectedVol.pictureUrl} alt={selectedVol.name} style={{ width: '100%', height: '100%', borderRadius: '16px', objectFit: 'cover' }} />
+                    ) : (
+                      <Camera size={32} />
+                    )}
                   </div>
                   <div>
                     <h2 style={{ margin: '0 0 4px', fontSize: '2rem', color: 'var(--text-primary)', letterSpacing: '2px', display: 'flex', alignItems: 'center', gap: '12px' }}>
