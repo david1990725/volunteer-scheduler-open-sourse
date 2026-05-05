@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Loader2, ExternalLink, Users, AlertCircle, Save, Shield, Sword, Camera, Video, Zap } from 'lucide-react';
+import { Loader2, ExternalLink, Users, AlertCircle, Save, Shield, Camera } from 'lucide-react';
 import { fetchCSVAsJson } from '../utils/fileUtils';
-import { parseSkillTreeData } from '../utils/scheduler';
+import { parseSkillTreeData, FULL_TIMERS } from '../utils/scheduler';
 import type { Volunteer } from '../utils/scheduler';
 import { updateVolunteerSkills } from '../utils/googleSheets';
 import { Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer } from 'recharts';
@@ -84,17 +84,9 @@ export const AdminSkillTree: React.FC = () => {
     fullMark: 10,
   })) : [];
 
-  // 判斷角色主要職業 (Icon)
-  const getRoleIcon = (vol: Volunteer) => {
-    if (vol.roles.includes('導播') || vol.roles.includes('山莊導播') || vol.roles.includes('宣教導播')) return <Video size={18} />;
-    if (vol.skills['CAM1'] > 0 || vol.skills['CAM2'] > 0 || vol.skills['CAM3'] > 0 || vol.skills['CAM4'] > 0) return <Camera size={18} />;
-    if (vol.roles.includes('HOST') || vol.roles.includes('CCU')) return <Shield size={18} />;
-    return <Sword size={18} />;
-  };
-
-  // 總戰鬥力計算 (總技能點)
-  const getTotalPower = (skills: Record<string, number>) => {
-    return Object.values(skills).reduce((sum, val) => sum + val, 0);
+  // 統一頭像為相機圖示
+  const getRoleIcon = () => {
+    return <Camera size={18} />;
   };
 
   if (loading) {
@@ -179,19 +171,30 @@ export const AdminSkillTree: React.FC = () => {
                 color: selectedVol?.name === vol.name ? 'var(--icon-accent)' : 'var(--text-muted)',
                 boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.5)'
               }}>
-                {getRoleIcon(vol)}
+                {getRoleIcon()}
               </div>
-              <div style={{ flex: 1 }}>
+              <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <div style={{ fontWeight: 700, color: 'var(--text-primary)', fontSize: '1.1rem' }}>{vol.name}</div>
-                <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '2px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                  <Zap size={12} color="var(--icon-accent)" /> 技能值 {getTotalPower(vol.skills)}
-                </div>
+                <span style={{
+                  padding: '2px 8px', borderRadius: '12px', fontSize: '0.75rem', fontWeight: 700,
+                  background: FULL_TIMERS.includes(vol.name) ? 'rgba(59, 130, 246, 0.15)' : 'rgba(107, 114, 128, 0.15)',
+                  color: FULL_TIMERS.includes(vol.name) ? '#60a5fa' : 'var(--text-muted)',
+                  border: `1px solid ${FULL_TIMERS.includes(vol.name) ? 'rgba(59, 130, 246, 0.3)' : 'rgba(107, 114, 128, 0.3)'}`
+                }}>
+                  {FULL_TIMERS.includes(vol.name) ? '同工' : '義工'}
+                </span>
               </div>
-              <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                 {vol.lineId ? (
-                  <div style={{ width: '10px', height: '10px', borderRadius: '50%', background: '#4ade80', boxShadow: '0 0 8px #4ade80' }} title="已綁定 LINE" />
+                  <>
+                    <span style={{ fontSize: '0.8rem', color: '#4ade80', fontWeight: 600 }}>已綁定 LINE</span>
+                    <div style={{ width: '10px', height: '10px', borderRadius: '50%', background: '#4ade80', boxShadow: '0 0 8px #4ade80' }} />
+                  </>
                 ) : (
-                  <div style={{ width: '10px', height: '10px', borderRadius: '50%', background: '#f87171', opacity: 0.5 }} title="未綁定 LINE" />
+                  <>
+                    <span style={{ fontSize: '0.8rem', color: '#f87171', fontWeight: 600, opacity: 0.8 }}>未綁定 LINE</span>
+                    <div style={{ width: '10px', height: '10px', borderRadius: '50%', background: '#f87171', opacity: 0.5 }} />
+                  </>
                 )}
               </div>
             </div>
@@ -211,26 +214,20 @@ export const AdminSkillTree: React.FC = () => {
                     boxShadow: '0 8px 25px rgba(234, 179, 8, 0.4)',
                     color: '#fff'
                   }}>
-                    {getRoleIcon(selectedVol)}
+                    {getRoleIcon()}
                   </div>
                   <div>
-                    <h2 style={{ margin: '0 0 4px', fontSize: '2rem', color: 'var(--text-primary)', letterSpacing: '2px' }}>{selectedVol.name}</h2>
-                    <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                    <h2 style={{ margin: '0 0 4px', fontSize: '2rem', color: 'var(--text-primary)', letterSpacing: '2px', display: 'flex', alignItems: 'center', gap: '12px' }}>
+                      {selectedVol.name}
                       <span style={{
-                        padding: '4px 10px', borderRadius: '20px', fontSize: '0.8rem', fontWeight: 700,
-                        background: 'rgba(234, 179, 8, 0.1)', color: 'var(--icon-accent)', border: '1px solid rgba(234, 179, 8, 0.3)'
+                        padding: '4px 10px', borderRadius: '20px', fontSize: '0.9rem', fontWeight: 700, letterSpacing: 'normal',
+                        background: FULL_TIMERS.includes(selectedVol.name) ? 'rgba(59, 130, 246, 0.15)' : 'rgba(107, 114, 128, 0.15)',
+                        color: FULL_TIMERS.includes(selectedVol.name) ? '#60a5fa' : 'var(--text-muted)',
+                        border: `1px solid ${FULL_TIMERS.includes(selectedVol.name) ? 'rgba(59, 130, 246, 0.3)' : 'rgba(107, 114, 128, 0.3)'}`
                       }}>
-                        總技能 Lv.{getTotalPower(selectedVol.skills)}
+                        {FULL_TIMERS.includes(selectedVol.name) ? '同工' : '義工'}
                       </span>
-                      {selectedVol.lineId && (
-                        <span style={{
-                          padding: '4px 10px', borderRadius: '20px', fontSize: '0.8rem', fontWeight: 700,
-                          background: 'rgba(34, 197, 94, 0.1)', color: '#4ade80', border: '1px solid rgba(34, 197, 94, 0.3)'
-                        }}>
-                          已綁定 LINE
-                        </span>
-                      )}
-                    </div>
+                    </h2>
                   </div>
                 </div>
 

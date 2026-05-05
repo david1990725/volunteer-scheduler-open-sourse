@@ -825,8 +825,8 @@ function App() {
           {/* Desktop Navigation */}
           <div className="desktop-nav">
             <button className={adminTab === 'home' ? 'btn-primary' : 'btn-secondary'} onClick={() => setAdminTab('home')}>首頁</button>
+            <button className={adminTab === 'skills' ? 'btn-primary' : 'btn-secondary'} onClick={() => setAdminTab('skills')}>義工名冊</button>
             <button className={adminTab === 'raw' ? 'btn-primary' : 'btn-secondary'} onClick={() => setAdminTab('raw')}>RAW 資料表單</button>
-            <button className={adminTab === 'skills' ? 'btn-primary' : 'btn-secondary'} onClick={() => setAdminTab('skills')}>義工技能樹</button>
             <button className={adminTab === 'scheduler' ? 'btn-primary' : 'btn-secondary'} onClick={() => setAdminTab('scheduler')}>自動排班系統</button>
             <button className="btn-secondary" onClick={() => setView('frontend')} style={{ borderColor: 'var(--icon-accent)', color: 'var(--text-primary)' }}>填寫個人表單</button>
             <button className="btn-danger" onClick={handleLogout}>登出</button>
@@ -842,8 +842,8 @@ function App() {
             {isMobileMenuOpen && (
               <div className="mobile-nav-menu animate-morph stagger-1">
                 <button className={adminTab === 'home' ? 'btn-primary' : 'btn-secondary'} onClick={() => { setAdminTab('home'); setIsMobileMenuOpen(false); }}>首頁</button>
+                <button className={adminTab === 'skills' ? 'btn-primary' : 'btn-secondary'} onClick={() => { setAdminTab('skills'); setIsMobileMenuOpen(false); }}>義工名冊</button>
                 <button className={adminTab === 'raw' ? 'btn-primary' : 'btn-secondary'} onClick={() => { setAdminTab('raw'); setIsMobileMenuOpen(false); }}>RAW 資料表單</button>
-                <button className={adminTab === 'skills' ? 'btn-primary' : 'btn-secondary'} onClick={() => { setAdminTab('skills'); setIsMobileMenuOpen(false); }}>義工技能樹</button>
                 <button className={adminTab === 'scheduler' ? 'btn-primary' : 'btn-secondary'} onClick={() => { setAdminTab('scheduler'); setIsMobileMenuOpen(false); }}>自動排班系統</button>
                 <button className="btn-secondary" onClick={() => { setView('frontend'); setIsMobileMenuOpen(false); }} style={{ borderColor: 'var(--icon-accent)', color: 'var(--text-primary)' }}>填寫個人表單</button>
                 <button className="btn-danger" onClick={() => { handleLogout(); setIsMobileMenuOpen(false); }}>登出</button>

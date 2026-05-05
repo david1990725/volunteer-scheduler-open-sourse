@@ -27,7 +27,7 @@ export const SHAN_ZHUANG_ROLES = ['導播', 'HOST/CCU', 'CAM1', 'CAM2', 'CAM3', 
 export const XUAN_JIAO_ROLES = ['導播', '信息版'];
 
 const CAM_ROLES = ['CAM1', 'CAM2', 'CAM3', 'CAM4'];
-const FULL_TIMERS = ['蔡佳翰', '夏翊剛'];
+export const FULL_TIMERS = ['蔡佳翰', '夏翊剛'];
 const LIAO_NAME = '廖亦東';
 
 /** 缺口嚴重度權重（導播最重要 → HOST/CCU 相對可調度） */
