@@ -158,7 +158,7 @@ export const AdminSkillTree: React.FC = () => {
                   ? '1px solid var(--icon-accent)'
                   : '1px solid transparent',
                 transition: 'all 0.2s',
-                transform: selectedVol?.name === vol.name ? 'scale(1.02)' : 'scale(1)',
+                transform: 'none',
                 boxShadow: selectedVol?.name === vol.name ? '0 4px 15px rgba(234, 179, 8, 0.15)' : 'none'
               }}
               className={selectedVol?.name !== vol.name ? 'hover-lift' : ''}
@@ -204,7 +204,15 @@ export const AdminSkillTree: React.FC = () => {
         </div>
 
         {/* 右側：角色狀態與技能樹 (RPG Status Screen) */}
-        <div className={`glass-card ${selectedVol ? 'mobile-modal-active' : ''}`} style={{ padding: '30px', minHeight: '60vh', position: 'sticky', top: '24px', overflow: 'hidden' }}>
+        <div className={`glass-card ${selectedVol ? 'mobile-modal-active' : ''}`} style={{ 
+          padding: '30px', 
+          minHeight: '60vh', 
+          position: 'sticky', 
+          top: '24px', 
+          overflow: 'hidden',
+          border: selectedVol ? '1px solid var(--icon-accent)' : '1px solid var(--bg-card-border)',
+          boxShadow: selectedVol ? '0 8px 32px rgba(234, 179, 8, 0.15)' : 'var(--shadow-card)'
+        }}>
           {selectedVol && (
             <button className="mobile-close-btn" onClick={() => setSelectedVol(null)}>
               <X size={20} />
@@ -238,7 +246,7 @@ export const AdminSkillTree: React.FC = () => {
                   </div>
                 </div>
 
-                <button className="btn-primary" onClick={handleSave} disabled={saving} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '12px 24px', borderRadius: '30px' }}>
+                <button className="btn-primary mobile-save-btn" onClick={handleSave} disabled={saving} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '12px 24px', borderRadius: '30px' }}>
                   {saving ? <Loader2 size={18} className="animate-spin" /> : <Save size={18} />}
                   儲存
                 </button>
@@ -301,7 +309,7 @@ export const AdminSkillTree: React.FC = () => {
               </div>
             </div>
           ) : (
-            <div style={{ height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)' }}>
+            <div className="animate-morph hide-on-mobile" style={{ height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)' }}>
               <Shield size={64} style={{ opacity: 0.2, marginBottom: '20px' }} />
               <h3 style={{ margin: 0, fontSize: '1.5rem', letterSpacing: '1px' }}>等待選擇義工</h3>
               <p style={{ marginTop: '10px' }}>請從左側名單中點選一位義工以檢視狀態</p>

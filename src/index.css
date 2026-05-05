@@ -733,3 +733,14 @@ tr:hover td {
   }
 }
 
+
+@media (max-width: 768px) {
+  .mobile-save-btn {
+    position: absolute !important;
+    top: 16px !important;
+    right: 64px !important;
+    height: 36px !important;
+    padding: 0 16px !important;
+    z-index: 10;
+  }
+}
