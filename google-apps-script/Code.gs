@@ -209,7 +209,7 @@ function handleFetchSchedule(payload) {
  */
 function handleSubmitForm(payload) {
   var ss = SpreadsheetApp.openById(SPREADSHEET_ID);
-  var sheetName = '表單回覆';
+  var sheetName = '表單回覆紀錄';
   var sheet = ss.getSheetByName(sheetName);
   
   if (!sheet) {
@@ -253,7 +253,7 @@ function handleSubmitForm(payload) {
  */
 function handleFetchFormResponses() {
   var ss = SpreadsheetApp.openById(SPREADSHEET_ID);
-  var sheet = ss.getSheetByName('表單回覆');
+  var sheet = ss.getSheetByName('表單回覆紀錄');
   
   if (!sheet || sheet.getLastRow() <= 1) {
     return jsonResponse({ success: true, message: '目前沒有表單資料', data: [] });
@@ -283,7 +283,7 @@ function handleFetchFormResponses() {
  */
 function handleClearFormResponses() {
   var ss = SpreadsheetApp.openById(SPREADSHEET_ID);
-  var sheet = ss.getSheetByName('表單回覆');
+  var sheet = ss.getSheetByName('表單回覆紀錄');
   
   if (!sheet) {
     return jsonResponse({ success: true, message: '工作表不存在，無需清空' });
