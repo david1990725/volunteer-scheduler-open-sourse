@@ -211,12 +211,7 @@ function App() {
         if (cloudRes.success && cloudRes.data && cloudRes.data.length > 0) {
           responseData = cloudRes.data;
         } else {
-          const localData = JSON.parse(localStorage.getItem('volunteer_form_responses') || '[]');
-          if (localData.length > 0) {
-            responseData = localData;
-          } else {
-            responseData = await fetchCSVAsJson(FALLBACK_RESPONSES_PATH);
-          }
+          responseData = await fetchCSVAsJson(FALLBACK_RESPONSES_PATH);
         }
       }
 

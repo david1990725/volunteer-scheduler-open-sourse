@@ -63,11 +63,6 @@ export const FrontendForm: React.FC<FrontendFormProps> = ({ currentUser, onLogou
       if (!res.success) {
         throw new Error(res.message);
       }
-
-      // Also save to localStorage as a local backup
-      const existingData = JSON.parse(localStorage.getItem('volunteer_form_responses') || '[]');
-      existingData.push(responseRow);
-      localStorage.setItem('volunteer_form_responses', JSON.stringify(existingData));
       
       alert(res.message || '表單已成功送出！');
       setSubmitted(true);

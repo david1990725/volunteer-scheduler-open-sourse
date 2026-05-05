@@ -19,23 +19,18 @@ export const AdminRawData: React.FC<AdminRawDataProps> = ({ onStartAutoSchedule 
   const loadData = async () => {
     setLoading(true);
 
-    const localData: any[] = JSON.parse(localStorage.getItem('volunteer_form_responses') || '[]');
-
     try {
       const res = await fetchFormResponsesFromCloud();
       if (res.success && res.data && res.data.length > 0) {
         setData(res.data);
         setSource('cloud');
-      } else if (localData.length > 0) {
-        setData(localData);
-        setSource('local');
       } else {
         setData([]);
         setSource('none');
       }
     } catch {
-      setData(localData.length > 0 ? localData : []);
-      setSource(localData.length > 0 ? 'local' : 'none');
+      setData([]);
+      setSource('none');
     }
 
     setLoading(false);
@@ -63,10 +58,9 @@ export const AdminRawData: React.FC<AdminRawDataProps> = ({ onStartAutoSchedule 
   };
 
   const clearData = async () => {
-    if (confirm('確定要清空所有 RAW 資料嗎？這將會同步清空雲端與本地端資料，且無法復原。')) {
+    if (confirm('確定要清空所有雲端 RAW 資料嗎？這將無法復原。')) {
       const res = await clearFormResponsesInCloud();
       if (res.success) {
-        localStorage.removeItem('volunteer_form_responses');
         setData([]);
         setSource('none');
         alert('已成功清空資料。');
@@ -121,7 +115,7 @@ export const AdminRawData: React.FC<AdminRawDataProps> = ({ onStartAutoSchedule 
               {nextMonths[0]}、{nextMonths[1]} 月份表單回覆紀錄
             </h2>
             <p style={{ margin: 0, fontSize: '0.9rem', color: 'var(--text-muted)' }}>
-              共 {data.length} 筆提交　|　資料來源：{source === 'cloud' ? '☁️ 雲端' : '💾 本地快取'}
+              共 {data.length} 筆提交　|　資料來源：{source === 'cloud' ? '☁️ 雲端' : '目前無資料'}
             </p>
           </div>
           <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
