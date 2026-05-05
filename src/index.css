@@ -675,18 +675,34 @@ tr:hover td {
 @media (max-width: 768px) {
   .mobile-modal-active {
     position: fixed !important;
-    top: 0 !important;
+    top: 80px !important;
     left: 0 !important;
     right: 0 !important;
     bottom: 0 !important;
-    z-index: 9999;
-    height: 100dvh !important;
-    min-height: 100dvh !important;
-    border-radius: 0 !important;
+    z-index: 999;
+    height: calc(100dvh - 80px) !important;
+    min-height: calc(100dvh - 80px) !important;
+    border-radius: 24px 24px 0 0 !important;
     overflow-y: auto !important;
-    background: rgba(10, 14, 26, 0.95) !important;
+    background: var(--bg-dropdown) !important;
     backdrop-filter: blur(25px) !important;
     -webkit-backdrop-filter: blur(25px) !important;
+    transform: translateY(0) !important;
+    animation: slideUpModal 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    border: 1px solid var(--icon-accent) !important;
+    border-bottom: none !important;
+    box-shadow: 0 -10px 40px rgba(234, 179, 8, 0.15) !important;
+  }
+  
+  @keyframes slideUpModal {
+    from {
+      transform: translateY(100%);
+      opacity: 0;
+    }
+    to {
+      transform: translateY(0);
+      opacity: 1;
+    }
   }
   
   .mobile-close-btn {
@@ -717,8 +733,3 @@ tr:hover td {
   }
 }
 
-@media (max-width: 768px) {
-  .mobile-modal-active {
-    transform: none !important;
-  }
-}

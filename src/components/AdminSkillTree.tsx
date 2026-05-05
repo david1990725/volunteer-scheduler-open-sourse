@@ -212,8 +212,8 @@ export const AdminSkillTree: React.FC = () => {
           )}
           {selectedVol ? (
             <div className="animate-morph">
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', borderBottom: '1px solid var(--bg-input-border)', paddingBottom: '20px', marginBottom: '24px', marginTop: '10px' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--bg-input-border)', paddingBottom: '20px', marginBottom: '24px', marginTop: '10px', flexWrap: 'wrap', gap: '16px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '16px', flexWrap: 'wrap' }}>
                   <div style={{
                     width: '72px', height: '72px', borderRadius: '16px',
                     background: 'linear-gradient(135deg, var(--icon-accent), #d97706)',
