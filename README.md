@@ -1,63 +1,57 @@
-# BOL Production 主日轉播排班系統
+# 🏛️ BOL Production 主日轉播智慧排班系統
 
-> 台北靈糧堂主日轉播團隊的智慧排班與志工管理系統
+> 台北靈糧堂主日轉播團隊的專業級排班、技能發展與志工管理系統。
 
-## ✨ 功能特色
+![Project Banner](https://img.shields.io/badge/BOL_Production-Volunteer_Scheduler-EAB308?style=for-the-badge&logo=react)
+![Tech Stack](https://img.shields.io/badge/TypeScript-Vite-blue?style=for-the-badge)
+![Tech Stack](https://img.shields.io/badge/LINE-LIFF-06C755?style=for-the-badge)
 
-### 🔐 角色權限系統
-- **姓名驗證登入** — 透過 Google Sheets 名單即時驗證身分
-- **Admin / User 雙角色** — 管理員可操作後台排班，志工僅能填寫表單
+---
 
-### 📝 前台表單系統
-- 類 Google 表單的填報介面，勾選可服事日期與地點（山莊 / 宣教）
-- 支援**多次提交**，不會覆蓋先前的意願
-- 預設全時開啟，可切換為雙數月 10–25 號限時開放
+## ✨ 核心特色
 
-### ⚙️ 自動排班引擎
-- 依據技能值、輪替公式、偏好加分自動分配最佳人選
-- **5 階段排班流程**：宣教導播 → 山莊導播 → 山莊各職位 → 信息版 → 後處理補位
-- 專職人員智慧輪休機制
-- 全能補位：每月自動選出缺口最嚴重的一週補位
+### 🎭 RPG 風格技能管理 (Admin Skill Tree)
+- **視覺化狀態面板** — 透過 Radar Chart (雷達圖) 直觀檢視每位義工的六維技能屬性。
+- **即時配點系統** — 現代化漸變滑桿調整技能值，仿 RPG 遊戲的配點體驗。
+- **全平台響應式** — 手機端採用滑出式 Modal 面板，電腦端提供寬闊的側邊管理介面。
 
-### 📊 後台管理
-- **RAW 資料管理** — 查看、匯出、清空志工填報資料
-- **編輯排班** — 手動微調自動排班結果（含備用列、燈控、餐點數量）
-- **版本記憶** — 自動保存最近 10 個版本，支援回溯還原
-- **多格式匯出** — Excel / PNG / PDF 一鍵匯出
+### 🔐 LINE 整合登入與自動綁定
+- **LIFF 快速登入** — 支援 LINE 一鍵登入，無需記住密碼。
+- **智慧身分對照** — 自動比對 LINE 使用者 ID 與名冊姓名，支援**自動綁定機制**。
+- **雲端同步** — 登入資訊即時同步至 Google Sheets，確保多端資料一致。
 
-### 🎨 視覺設計
-- **Liquid Glass** 毛玻璃美學，金黃色系品牌色調
-- 深色 / 淺色模式即時切換
-- **互動光影效果** — 桌面端隨滑鼠移動，手機端隨加速度計傾斜
-- Logo 登入動畫 — 登入前後平滑位移過場
+### ⚙️ 專業級排班引擎
+- **智慧演算** — 依據技能權重、歷史服事頻率、人員偏好自動計算最優排班。
+- **專職輪休邏輯** — 自動判斷同工人力，確保休息機制正常運作。
+- **關鍵補位系統** — 偵測每月排班缺口，自動指派關鍵人力支援。
+
+### 📝 現代化填報介面
+- **Liquid Glass 視覺** — 採用毛玻璃特效、動態漸變色調與流暢的物理感動畫。
+- **離線暫存機制** — 支援網路斷線時自動存入佇列，恢復連線後自動同步至雲端。
+- **深淺模式切換** — 完美支持系統深色模式，提供極致的視覺舒適度。
 
 ---
 
 ## 🏗️ 專案架構
 
-```
+```text
 volunteer-scheduler/
-├── public/
-│   ├── logo.png                    品牌 Logo
-│   ├── skill_tree.csv              本地技能樹備用資料
-│   └── schedule_responses.csv      本地排班回應測試資料
+├── google-apps-script/         # 雲端後端 (Google Apps Script)
+│   └── Code.gs                 # 處理 Sheets 讀寫與 LINE 綁定邏輯
 ├── src/
-│   ├── hooks/
-│   │   └── useInteractiveLighting.ts   互動光影 Hook（滑鼠 + 加速度計）
-│   ├── utils/
-│   │   ├── scheduler.ts                排班引擎核心
-│   │   ├── dateUtils.ts                週期計算（主日日期產生）
-│   │   └── fileUtils.ts                CSV/XLSX 解析與下載工具
 │   ├── components/
-│   │   ├── Login.tsx                    姓名驗證登入
-│   │   ├── FrontendForm.tsx            志工填報表單
-│   │   └── AdminRawData.tsx            RAW 資料管理
-│   ├── App.tsx                         主應用（路由 + 排班 UI）
-│   ├── index.css                       Liquid Glass 設計系統
-│   └── main.tsx                        進入點
-├── index.html
-├── package.json
-├── tsconfig.json
+│   │   ├── AdminSkillTree.tsx  # RPG 技能管理核心
+│   │   ├── FrontendForm.tsx    # 志工填報介面
+│   │   ├── Login.tsx           # LINE / 姓名雙模登入
+│   │   └── AdminRawData.tsx    # 原始資料管理
+│   ├── hooks/
+│   │   ├── useLiff.ts          # LINE LIFF 授權管理
+│   │   └── useInteractiveLighting.ts # 互動玻璃光影效果
+│   ├── utils/
+│   │   ├── scheduler.ts        # 排班演算法核心
+│   │   ├── googleSheets.ts     # 雲端 API 溝通層 (DRY Refactored)
+│   │   └── dateUtils.ts        # 週期與日期運算
+│   └── index.css               # 全域設計系統與動畫定義
 └── vite.config.ts
 ```
 
@@ -65,81 +59,44 @@ volunteer-scheduler/
 
 ## 🚀 快速開始
 
-### 環境需求
-- Node.js ≥ 18
-- npm ≥ 9
-
-### 安裝與啟動
-
+### 1. 安裝與開發
 ```bash
 # 安裝依賴
 npm install
 
-# 啟動開發伺服器
+# 啟動本地開發
 npm run dev
 ```
 
-開啟 [http://localhost:5173](http://localhost:5173) 即可使用。
-
-### 建置生產版本
-
-```bash
-npm run build
-```
-
-產出的靜態檔案位於 `dist/` 資料夾。
+### 2. 環境變數設定 (`.env`)
+請建立 `.env` 檔案並設定以下參數：
+- `VITE_LIFF_ID`: 您的 LINE LIFF ID
+- `VITE_APPS_SCRIPT_URL`: 已部署的 Google Apps Script 網址
 
 ---
 
-## 📋 資料來源
+## 📋 資料同步機制 (Google Sheets)
 
-| 資料 | 來源 | 說明 |
-|------|------|------|
-| 技能樹（名單） | [Google Sheets](https://docs.google.com/spreadsheets/d/1L3W6RwrE6gzi_znqNXBww9WVRvi2NVuhDj3-hSYmTZI) | 即時讀取，含姓名、職能、技能值、角色（admin/user） |
-| 排班意願 | localStorage | 志工透過前台表單填寫，儲存於瀏覽器 |
-| 備用回應 | `/schedule_responses.csv` | 無志工填報時的測試用 fallback |
+本系統將 Google Sheets 作為雲端資料庫，透過 Apps Script 進行溝通：
 
----
-
-## 🔧 技術棧
-
-| 技術 | 用途 |
-|------|------|
-| **React 19** | UI 框架 |
-| **TypeScript 6** | 型別安全 |
-| **Vite 8** | 建置工具與開發伺服器 |
-| **SheetJS (xlsx)** | CSV / Excel 解析與匯出 |
-| **html2canvas** | 排班表截圖匯出 PNG |
-| **jsPDF** | PDF 匯出 |
-| **Lucide React** | 圖示庫 |
+| 欄位類型 | 說明 |
+| :--- | :--- |
+| **姓名** | 義工唯一識別名稱 |
+| **LINE_ID** | 顯示使用者的 LINE 名稱 |
+| **user_id** | LINE 平台唯一識別碼 (`Uxxxx...`)，用於自動登入 |
+| **技能值** | 0-10 分的職位熟練度 |
 
 ---
 
-## ⚡ 排班演算法簡介
+## 🛠️ 技術棧
 
-```
-Phase 0: 解析表單 → 建立每週各地點的人員可用清單
-Phase 1: 逐週分配
-  Step 1: 宣教導播（專職優先）
-  Step 2: 山莊導播（具備資格者）
-  Step 3: 山莊其他職位（含偏好加分 + 彈性度加分）
-  Step 4: 信息版（山莊專職人員兼任）
-  Step 5: 偏好違規檢測
-Phase 2: 廖亦東後處理補位（每月找最弱週填最關鍵空缺）
-```
-
-**輪替公式**：`調整技能值 = 基礎技能值 − 同職位次數 × 1.5 − 總服事次數 × 0.1`
+- **核心**: React 19, TypeScript, Vite
+- **視覺**: Lucide React (圖示), Recharts (雷達圖), CSS Variables
+- **整合**: LINE LIFF SDK, Google Apps Script API
+- **處理**: SheetJS (資料解析), html2canvas & jsPDF (匯出)
 
 ---
 
-## 📌 注意事項
+## 📄 授權與維護
 
-- 資料僅儲存於瀏覽器 `localStorage`，清除瀏覽器資料會遺失排班紀錄
-- Logo 檔案請放置於 `public/logo.png`
-- 若需恢復雙數月開放機制，修改 `src/utils/dateUtils.ts` 中的 `isOpen` 邏輯
-
----
-
-## 📄 授權
-
-此專案為台北靈糧堂 BOL Production 團隊內部使用。
+此專案由台北靈糧堂 BOL Production 團隊專屬使用。任何問題請聯繫團隊技術管理員。
