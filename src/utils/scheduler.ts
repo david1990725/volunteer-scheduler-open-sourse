@@ -23,7 +23,7 @@ export interface Shift {
 
 // --- Constants ---------------------------------------------------------------
 
-export const SHAN_ZHUANG_ROLES = ['導播', 'HOST/CCU', 'CAM1', 'CAM2', 'CAM3', 'CAM4', '平面'];
+export const SHAN_ZHUANG_ROLES = ['導播', 'AD', 'CAM1', 'CAM2', 'CAM3', 'CAM4', '平面'];
 export const XUAN_JIAO_ROLES = ['導播', '信息版'];
 
 const CAM_ROLES = ['CAM1', 'CAM2', 'CAM3', 'CAM4'];
@@ -35,7 +35,7 @@ const ROLE_PRIORITY: Record<string, number> = {
   '導播': 10, '平面': 8,
   'CAM1': 6, 'CAM2': 5,
   'CAM3': 4, 'CAM4': 3,
-  'HOST/CCU': 2,
+  'AD': 2,
 };
 
 // --- Helper Functions --------------------------------------------------------
@@ -50,9 +50,9 @@ const getRoleSkill = (p: Volunteer, role: string): { hasRole: boolean; skill: nu
     const skill = p.skills['平面'] || 0;
     return { hasRole: skill > 0, skill };
   }
-  if (role === 'HOST/CCU') {
-    const hasRole = p.roles.includes('HOST') || p.roles.includes('CCU') || (p.skills['HOST/CCU'] || 0) > 0;
-    return { hasRole, skill: p.skills['HOST/CCU'] || 0 };
+  if (role === 'AD') {
+    const hasRole = p.roles.includes('AD') || p.roles.includes('HOST') || p.roles.includes('CCU') || (p.skills['AD'] || 0) > 0;
+    return { hasRole, skill: p.skills['AD'] || 0 };
   }
   // 導播：UI 顯示為「導播」，但技能樹分為「山莊導播」和「宣教導播」
   if (role === '導播') {
@@ -100,10 +100,11 @@ export function parseSkillTreeData(data: any[]): Record<string, Volunteer> {
     skills['山莊導播'] = skills['導播']; // 相容舊版判斷
     skills['宣教導播'] = skills['導播']; // 相容舊版判斷
     
-    skills['CCU/HOST'] = parseInt(row['CCU/HOST技能值']) || parseInt(row['HOST/CCU技能值']) || (roles.some((r: string) => r === 'HOST' || r === 'CCU') ? 10 : 0);
-    skills['HOST/CCU'] = skills['CCU/HOST']; // 相容舊版判斷
+    skills['AD'] = parseInt(row['AD技能值']) || parseInt(row['ＡＤ技能值']) || parseInt(row['CCU/HOST技能值']) || parseInt(row['HOST/CCU技能值']) || (roles.some((r: string) => r === 'AD' || r === 'HOST' || r === 'CCU') ? 10 : 0);
+    skills['HOST/CCU'] = skills['AD']; // 相容舊版判斷
+    skills['CCU/HOST'] = skills['AD']; // 相容舊版判斷
 
-    skills['信息版'] = roles.some((r: string) => ['山莊導播', '宣教導播', '導播', 'HOST', 'CCU'].includes(r)) ? 10 : 0;
+    skills['信息版'] = roles.some((r: string) => ['山莊導播', '宣教導播', '導播', 'AD', 'HOST', 'CCU'].includes(r)) ? 10 : 0;
 
     const userRole = row['role']?.trim().toLowerCase() === 'admin' ? 'admin' : 'user';
     const lineId = (row['user_id'] || '').trim() || undefined;
@@ -284,7 +285,7 @@ export function parseScheduleResponsesData(
     }
 
     // --- Step 3: 山莊其他職位 (含偏好 + 彈性度加分) ---
-    for (const role of ['平面', ...CAM_ROLES, 'HOST/CCU']) {
+    for (const role of ['平面', ...CAM_ROLES, 'AD']) {
       let bestPerson = '';
       let bestScore = -100;
       const candidates = new Set([...(locationAvailability[field]['山莊'] || []), ...FULL_TIMERS]);
@@ -436,7 +437,7 @@ function buildOverrides(
       overrides[role] = false;
     } else if (CAM_ROLES.includes(role) && p.has('攝影')) {
       overrides[role] = false;
-    } else if (role === '導播' || role === 'HOST/CCU') {
+    } else if (role === '導播' || role === 'AD') {
       overrides[role] = false;
     } else {
       overrides[role] = true;
