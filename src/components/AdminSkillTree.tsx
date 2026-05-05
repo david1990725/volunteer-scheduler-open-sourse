@@ -204,7 +204,7 @@ export const AdminSkillTree: React.FC = () => {
         </div>
 
         {/* 右側：角色狀態與技能樹 (RPG Status Screen) */}
-        <div className={`glass-card ${selectedVol ? 'mobile-modal-active' : ''}`} style={{ 
+        <div className={`glass-card ${selectedVol ? 'mobile-modal-active' : 'hide-on-mobile'}`} style={{ 
           padding: '30px', 
           minHeight: '60vh', 
           position: 'sticky', 
@@ -214,9 +214,15 @@ export const AdminSkillTree: React.FC = () => {
           boxShadow: selectedVol ? '0 8px 32px rgba(234, 179, 8, 0.15)' : 'var(--shadow-card)'
         }}>
           {selectedVol && (
-            <button className="mobile-close-btn" onClick={() => setSelectedVol(null)}>
-              <X size={20} />
-            </button>
+            <>
+              <button className="mobile-close-btn" onClick={() => setSelectedVol(null)}>
+                <X size={20} />
+              </button>
+              <button className="btn-primary mobile-save-btn" onClick={handleSave} disabled={saving} style={{ padding: '0 16px', borderRadius: '18px', fontSize: '0.85rem' }}>
+                {saving ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
+                儲存
+              </button>
+            </>
           )}
           {selectedVol ? (
             <div className="animate-morph">
@@ -246,7 +252,7 @@ export const AdminSkillTree: React.FC = () => {
                   </div>
                 </div>
 
-                <button className="btn-primary mobile-save-btn" onClick={handleSave} disabled={saving} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '12px 24px', borderRadius: '30px' }}>
+                <button className="btn-primary hide-on-mobile" onClick={handleSave} disabled={saving} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '12px 24px', borderRadius: '30px' }}>
                   {saving ? <Loader2 size={18} className="animate-spin" /> : <Save size={18} />}
                   儲存
                 </button>
