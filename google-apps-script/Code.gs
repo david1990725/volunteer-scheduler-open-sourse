@@ -14,12 +14,21 @@
 
 // ⚠️ 請替換為您的技能樹 Google Sheets ID
 const SPREADSHEET_ID = '1L3W6RwrE6gzi_znqNXBww9WVRvi2NVuhDj3-hSYmTZI';
-const SHEET_NAME = 'Sheet1'; // 視您的工作表名稱調整
+const SHEET_NAME = '義工名冊'; // 預設工作表名稱
+
+/** 取得主要義工名單工作表 */
+function getMainSheet(ss) {
+  var sheet = ss.getSheetByName(SHEET_NAME);
+  if (!sheet) sheet = ss.getSheetByName('工作表1');
+  if (!sheet) sheet = ss.getSheets()[0];
+  return sheet;
+}
 
 /**
  * 處理 POST 請求（從前端寫入資料）
  */
 function doPost(e) {
+  Logger.log('收到 POST 請求: ' + e.postData.contents);
   try {
     const payload = JSON.parse(e.postData.contents);
     
@@ -58,7 +67,7 @@ function doGet() {
  */
 function handleAddVolunteer(payload) {
   const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
-  const sheet = ss.getSheetByName(SHEET_NAME);
+  const sheet = getMainSheet(ss);
   
   if (!sheet) return jsonResponse({ success: false, message: '找不到工作表' });
   
@@ -68,6 +77,9 @@ function handleAddVolunteer(payload) {
   const headers = sheet.getRange(1, 1, 1, lastCol).getValues()[0].map(h => String(h).trim());
   const nameCol = headers.indexOf('姓名');
   let lineIdCol = headers.indexOf('user_id');
+  if (lineIdCol === -1) lineIdCol = headers.indexOf('LINE_ID');
+  if (lineIdCol === -1) lineIdCol = headers.indexOf('LINE ID');
+  
   const roleCol = headers.indexOf('role');
   let photoCol = headers.indexOf('大頭照');
   if (photoCol === -1) photoCol = headers.indexOf('pictureUrl');
@@ -91,8 +103,9 @@ function handleAddVolunteer(payload) {
   const lastRow = sheet.getLastRow();
   if (lastRow > 1) {
     const allData = sheet.getRange(2, 1, lastRow - 1, sheet.getLastColumn()).getValues();
+    const targetLineId = String(payload.lineId).trim();
     for (var i = 0; i < allData.length; i++) {
-      if (String(allData[i][lineIdCol]).trim() === String(payload.lineId).trim()) {
+      if (lineIdCol !== -1 && String(allData[i][lineIdCol]).trim() === targetLineId) {
         return jsonResponse({ success: true, message: '此 LINE 帳號已在名單中', existingName: allData[i][nameCol] });
       }
     }
@@ -115,7 +128,7 @@ function handleAddVolunteer(payload) {
  */
 function handleUpdateLineId(payload) {
   const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
-  const sheet = ss.getSheetByName(SHEET_NAME);
+  const sheet = getMainSheet(ss);
   if (!sheet) return jsonResponse({ success: false, message: '找不到工作表' });
 
   let lastCol = sheet.getLastColumn();
@@ -125,6 +138,9 @@ function handleUpdateLineId(payload) {
   const headers = sheet.getRange(1, 1, 1, lastCol).getValues()[0].map(h => String(h).trim());
   const nameCol = headers.indexOf('姓名');
   let lineIdCol = headers.indexOf('user_id');
+  if (lineIdCol === -1) lineIdCol = headers.indexOf('LINE_ID');
+  if (lineIdCol === -1) lineIdCol = headers.indexOf('LINE ID');
+  
   let photoCol = headers.indexOf('大頭照');
   if (photoCol === -1) photoCol = headers.indexOf('pictureUrl');
   if (photoCol === -1) photoCol = headers.indexOf('頭像');
@@ -145,8 +161,11 @@ function handleUpdateLineId(payload) {
   SpreadsheetApp.flush();
 
   const allData = sheet.getRange(2, 1, lastRow - 1, lastCol).getValues();
+  const targetName = String(payload.name).replace(/\s+/g, '');
+  
   for (var i = 0; i < allData.length; i++) {
-    if (String(allData[i][nameCol]).trim() === String(payload.name).trim()) {
+    const sheetName = String(allData[i][nameCol]).replace(/\s+/g, '');
+    if (sheetName === targetName) {
       sheet.getRange(i + 2, lineIdCol + 1).setValue(payload.lineId);
       if (photoCol !== -1 && payload.pictureUrl) {
         sheet.getRange(i + 2, photoCol + 1).setValue(payload.pictureUrl);
