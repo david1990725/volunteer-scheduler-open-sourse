@@ -14,7 +14,7 @@ import { parseSpreadsheetFile, fetchCSVAsJson } from './utils/fileUtils';
 import { getCycleDates } from './utils/dateUtils';
 import { useInteractiveLighting } from './hooks/useInteractiveLighting';
 import { useLiff } from './hooks/useLiff';
-import { syncSchedule, fetchScheduleFromCloud, fetchFormResponsesFromCloud, syncOfflineForms } from './utils/googleSheets';
+import * as firebaseService from './utils/firebaseService';
 import { Login } from './components/Login';
 import { FrontendForm } from './components/FrontendForm';
 import { AdminRawData } from './components/AdminRawData';
@@ -207,7 +207,7 @@ function App() {
       if (responseFile) {
         responseData = await parseSpreadsheetFile(responseFile);
       } else {
-        const cloudRes = await fetchFormResponsesFromCloud();
+        const cloudRes = await firebaseService.fetchFormResponsesFromCloud();
         if (cloudRes.success && cloudRes.data && cloudRes.data.length > 0) {
           responseData = cloudRes.data;
         } else {
@@ -236,7 +236,7 @@ function App() {
       const year = new Date().getFullYear();
       const sheetNamePrefix = `${year}年 ${currentMonths[0]}-${currentMonths[1]}月排班表`;
 
-      const cloudResult = await fetchScheduleFromCloud(sheetNamePrefix);
+      const cloudResult = await firebaseService.fetchScheduleFromCloud(sheetNamePrefix);
 
       if (!cloudResult.success || !cloudResult.data) {
         return null;
@@ -358,12 +358,12 @@ function App() {
   // --- Offline Sync ---
   useEffect(() => {
     // 嘗試在應用程式載入時同步
-    syncOfflineForms();
+    firebaseService.syncOfflineForms();
 
     // 監聽網路恢復事件
     const handleOnline = () => {
       console.log('Network is back online. Syncing offline forms...');
-      syncOfflineForms();
+      firebaseService.syncOfflineForms();
     };
 
     // 監聽同步完成的自訂事件，跳出通知
@@ -470,7 +470,7 @@ function App() {
           return newRow;
         });
 
-        await syncSchedule({ sheetName: sheetNamePrefix, data: rectangularData });
+        await firebaseService.syncSchedule({ sheetName: sheetNamePrefix, data: rectangularData });
       }
 
       alert('排班資料已成功同步到 Google 雲端試算表！');
