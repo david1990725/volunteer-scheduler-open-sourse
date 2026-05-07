@@ -3,7 +3,7 @@ import { Loader2, ExternalLink, Users, AlertCircle, Save, Shield, Camera, X } fr
 import { fetchCSVAsJson } from '../utils/fileUtils';
 import { parseSkillTreeData, FULL_TIMERS } from '../utils/scheduler';
 import type { Volunteer } from '../utils/scheduler';
-import { updateVolunteerSkills } from '../utils/googleSheets';
+import * as firebaseService from '../utils/firebaseService';
 import { Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer } from 'recharts';
 
 const SKILL_TREE_URL = 'https://docs.google.com/spreadsheets/d/1L3W6RwrE6gzi_znqNXBww9WVRvi2NVuhDj3-hSYmTZI/export?format=csv';
@@ -27,9 +27,15 @@ export const AdminSkillTree: React.FC = () => {
     setLoading(true);
     setError(null);
     try {
-      const csvData = await fetchCSVAsJson(SKILL_TREE_URL);
-      const parsed = parseSkillTreeData(csvData);
-      setVolunteers(Object.values(parsed));
+      const result = await firebaseService.fetchVolunteers();
+      if (result.success && result.data) {
+        setVolunteers(result.data);
+      } else {
+        // Fallback to Google Sheets if Firebase is empty (Migration period)
+        const csvData = await fetchCSVAsJson(SKILL_TREE_URL);
+        const parsed = parseSkillTreeData(csvData);
+        setVolunteers(Object.values(parsed));
+      }
     } catch (err: any) {
       setError(err.message || '無法載入技能樹資料，請確定試算表權限已設定為「知道連結的人皆可檢視」。');
     } finally {
@@ -56,7 +62,7 @@ export const AdminSkillTree: React.FC = () => {
     if (!selectedVol) return;
     setSaving(true);
     try {
-      const result = await updateVolunteerSkills({
+      const result = await firebaseService.updateVolunteerSkills({
         name: selectedVol.name,
         skills: editingSkills
       });

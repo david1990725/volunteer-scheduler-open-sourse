@@ -2,8 +2,10 @@ import React, { useState, useRef } from 'react';
 import * as XLSX from 'xlsx';
 import { parseSkillTreeData, buildLineIdMap } from '../utils/scheduler';
 import type { Volunteer } from '../utils/scheduler';
-import { registerNewVolunteer, updateVolunteerLineId } from '../utils/googleSheets';
-import { Users, LogIn, RefreshCw, MessageCircle, UserPlus } from 'lucide-react';
+import { signInWithPopup } from 'firebase/auth';
+import { auth, googleProvider } from '../firebase/config';
+import * as firebaseService from '../utils/firebaseService';
+import { Users, LogIn, RefreshCw, MessageCircle, UserPlus, Mail } from 'lucide-react';
 import { useLiff } from '../hooks/useLiff';
 
 const SKILL_TREE_URL = 'https://docs.google.com/spreadsheets/d/1L3W6RwrE6gzi_znqNXBww9WVRvi2NVuhDj3-hSYmTZI/export?format=csv';
@@ -81,32 +83,28 @@ export const Login: React.FC<LoginProps> = ({ onLogin }) => {
       if (matchedName && volunteers[matchedName]) {
         const user = { ...volunteers[matchedName] };
         
-        // 將 LINE 大頭照注入到當前 session 的義工資料中（不需等待雲端寫入完成）
         if (profile.pictureUrl) {
           user.pictureUrl = profile.pictureUrl;
-          // 同步更新 volunteers 物件，讓其他頁面也能看到
           volunteers[matchedName] = user;
         }
 
-        // 背景同步最新的 metadata (LINE ID, 名稱, 大頭照) 到雲端試算表
-        updateVolunteerLineId({ 
+        firebaseService.updateVolunteerLineId({ 
           name: matchedName, 
           lineId: lineUserId, 
           lineName: displayName,
           pictureUrl: profile.pictureUrl 
         })
-          .then(res => console.log('[Login] Metadata 同步結果:', res.message))
-          .catch(err => console.error('[Login] Metadata 同步失敗:', err));
+          .then(res => console.log('[Login] LINE Metadata 同步結果:', res.message))
+          .catch(err => console.error('[Login] LINE Metadata 同步失敗:', err));
 
         onLogin(user, volunteers);
         return;
       }
 
-      // 未在名單中 → 自動註冊
       setRegistering(true);
       setError('');
 
-      const result = await registerNewVolunteer({
+      const result = await firebaseService.registerNewVolunteer({
         name: displayName,
         lineId: lineUserId,
         lineName: displayName,
@@ -114,7 +112,6 @@ export const Login: React.FC<LoginProps> = ({ onLogin }) => {
       });
 
       if (result.success) {
-        // 建立一個暫時的 user 物件讓使用者可以繼續操作
         const newUser: Volunteer = {
           name: displayName,
           role: 'user',
@@ -122,11 +119,9 @@ export const Login: React.FC<LoginProps> = ({ onLogin }) => {
           skills: {},
           lineId: lineUserId,
         };
-        // 同步加入 volunteers map
         volunteers[displayName] = newUser;
         setRegisterSuccess(`歡迎 ${displayName}！已自動加入名單，您可以開始使用系統。`);
         
-        // 延遲一秒後自動進入系統
         setTimeout(() => {
           onLogin(newUser, volunteers);
         }, 1500);
@@ -138,6 +133,63 @@ export const Login: React.FC<LoginProps> = ({ onLogin }) => {
       console.error(err);
       setError('LINE 登入驗證失敗，請稍後再試。');
       setRegistering(false);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  /** Google 帳號登入 */
+  const handleGoogleLogin = async () => {
+    setLoading(true);
+    setError('');
+    setRegisterSuccess('');
+
+    try {
+      const result = await signInWithPopup(auth, googleProvider);
+      const googleUser = result.user;
+      const displayName = googleUser.displayName || 'Google 使用者';
+      const email = googleUser.email;
+
+      const { volunteers } = await fetchSkillTree();
+      
+      // 比對姓名或 Email (這裡簡單處理：若名單中有對應姓名則登入)
+      // 未來可在名單中加入 email 欄位做精確比對
+      let matchedName = Object.keys(volunteers).find(name => name === displayName);
+
+      if (matchedName) {
+        const user = { ...volunteers[matchedName] };
+        if (googleUser.photoURL) user.pictureUrl = googleUser.photoURL;
+        
+        onLogin(user, volunteers);
+      } else {
+        // 自動註冊 Google 使用者
+        setRegistering(true);
+        const regResult = await firebaseService.registerNewVolunteer({
+          name: displayName,
+          lineId: `google_${googleUser.uid}`,
+          lineName: displayName,
+          pictureUrl: googleUser.photoURL || undefined
+        });
+
+        if (regResult.success) {
+          const newUser: Volunteer = {
+            name: displayName,
+            role: 'user',
+            roles: [],
+            skills: {},
+            lineId: `google_${googleUser.uid}`,
+          };
+          volunteers[displayName] = newUser;
+          setRegisterSuccess(`歡迎 ${displayName}！已透過 Google 帳號加入系統。`);
+          setTimeout(() => onLogin(newUser, volunteers), 1500);
+        } else {
+          setError('Google 註冊失敗');
+          setRegistering(false);
+        }
+      }
+    } catch (err: any) {
+      console.error(err);
+      setError('Google 登入失敗：' + (err.message || '未知錯誤'));
     } finally {
       setLoading(false);
     }
@@ -200,7 +252,7 @@ export const Login: React.FC<LoginProps> = ({ onLogin }) => {
         <h2 style={{ fontSize: '1.8rem', marginBottom: '10px', color: 'var(--text-primary)' }}>登入排班系統</h2>
         <p style={{ color: 'var(--text-secondary)', marginBottom: '30px' }}>使用 LINE 帳號快速登入，或輸入姓名手動驗證</p>
         
-        {/* LINE 快速登入（放在最上方，作為主要登入方式） */}
+        {/* LINE 快速登入 */}
         <button 
           type="button" 
           onClick={handleExplicitLineLogin}
@@ -225,6 +277,27 @@ export const Login: React.FC<LoginProps> = ({ onLogin }) => {
           ) : (
             <><MessageCircle size={22} fill="#fff" /> LINE 快速登入</>
           )}
+        </button>
+        
+        {/* Google 登入按鈕 */}
+        <button 
+          type="button" 
+          onClick={handleGoogleLogin}
+          className="btn-secondary" 
+          disabled={loading || registering} 
+          style={{ 
+            width: '100%', justifyContent: 'center', padding: '14px', 
+            borderColor: '#4285F4', color: '#fff', 
+            background: '#4285F4',
+            borderRadius: '12px',
+            fontSize: '1rem',
+            fontWeight: 600,
+            marginBottom: '20px',
+            transition: 'all 0.3s',
+            opacity: loading || registering ? 0.6 : 1,
+          }}
+        >
+          <Mail size={20} /> 使用 Google 帳號登入
         </button>
 
         {/* 成功訊息 */}

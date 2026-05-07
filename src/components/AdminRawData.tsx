@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import * as XLSX from 'xlsx';
 import { Download, Loader2, RefreshCw, User, Calendar, MapPin, Trash2 } from 'lucide-react';
-import { fetchFormResponsesFromCloud, clearFormResponsesInCloud } from '../utils/googleSheets';
+import * as firebaseService from '../utils/firebaseService';
 import { getCycleDates } from '../utils/dateUtils';
 
 interface AdminRawDataProps {
@@ -21,7 +21,7 @@ export const AdminRawData: React.FC<AdminRawDataProps> = ({ onStartAutoSchedule 
     setLoading(true);
 
     try {
-      const res = await fetchFormResponsesFromCloud();
+      const res = await firebaseService.fetchFormResponsesFromCloud();
       if (res.success) {
         if (res.data && res.data.length > 0) {
           setData(res.data);
@@ -67,7 +67,7 @@ export const AdminRawData: React.FC<AdminRawDataProps> = ({ onStartAutoSchedule 
 
   const clearData = async () => {
     if (confirm('確定要清空所有雲端 RAW 資料嗎？這將無法復原。')) {
-      const res = await clearFormResponsesInCloud();
+      const res = await firebaseService.clearFormResponsesInCloud();
       if (res.success) {
         setData([]);
         setSource('none');
