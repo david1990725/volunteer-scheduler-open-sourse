@@ -148,7 +148,6 @@ export const Login: React.FC<LoginProps> = ({ onLogin }) => {
       const result = await signInWithPopup(auth, googleProvider);
       const googleUser = result.user;
       const displayName = googleUser.displayName || 'Google 使用者';
-      const email = googleUser.email;
 
       const { volunteers } = await fetchSkillTree();
       
