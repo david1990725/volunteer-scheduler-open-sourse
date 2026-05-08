@@ -2,10 +2,9 @@ import React, { useState, useRef } from 'react';
 import * as XLSX from 'xlsx';
 import { parseSkillTreeData, buildLineIdMap } from '../utils/scheduler';
 import type { Volunteer } from '../utils/scheduler';
-import { signInWithPopup } from 'firebase/auth';
-import { auth, googleProvider } from '../firebase/config';
+import { auth } from '../firebase/config';
 import * as firebaseService from '../utils/firebaseService';
-import { Users, LogIn, RefreshCw, MessageCircle, UserPlus, Mail } from 'lucide-react';
+import { Users, LogIn, RefreshCw, MessageCircle, UserPlus } from 'lucide-react';
 import { useLiff } from '../hooks/useLiff';
 
 const SKILL_TREE_URL = 'https://docs.google.com/spreadsheets/d/1L3W6RwrE6gzi_znqNXBww9WVRvi2NVuhDj3-hSYmTZI/export?format=csv';
@@ -138,61 +137,7 @@ export const Login: React.FC<LoginProps> = ({ onLogin }) => {
     }
   };
 
-  /** Google 帳號登入 */
-  const handleGoogleLogin = async () => {
-    setLoading(true);
-    setError('');
-    setRegisterSuccess('');
 
-    try {
-      const result = await signInWithPopup(auth, googleProvider);
-      const googleUser = result.user;
-      const displayName = googleUser.displayName || 'Google 使用者';
-
-      const { volunteers } = await fetchSkillTree();
-      
-      // 比對姓名或 Email (這裡簡單處理：若名單中有對應姓名則登入)
-      // 未來可在名單中加入 email 欄位做精確比對
-      let matchedName = Object.keys(volunteers).find(name => name === displayName);
-
-      if (matchedName) {
-        const user = { ...volunteers[matchedName] };
-        if (googleUser.photoURL) user.pictureUrl = googleUser.photoURL;
-        
-        onLogin(user, volunteers);
-      } else {
-        // 自動註冊 Google 使用者
-        setRegistering(true);
-        const regResult = await firebaseService.registerNewVolunteer({
-          name: displayName,
-          lineId: `google_${googleUser.uid}`,
-          lineName: displayName,
-          pictureUrl: googleUser.photoURL || undefined
-        });
-
-        if (regResult.success) {
-          const newUser: Volunteer = {
-            name: displayName,
-            role: 'user',
-            roles: [],
-            skills: {},
-            lineId: `google_${googleUser.uid}`,
-          };
-          volunteers[displayName] = newUser;
-          setRegisterSuccess(`歡迎 ${displayName}！已透過 Google 帳號加入系統。`);
-          setTimeout(() => onLogin(newUser, volunteers), 1500);
-        } else {
-          setError('Google 註冊失敗');
-          setRegistering(false);
-        }
-      }
-    } catch (err: any) {
-      console.error(err);
-      setError('Google 登入失敗：' + (err.message || '未知錯誤'));
-    } finally {
-      setLoading(false);
-    }
-  };
 
   /** 使用者主動點擊 LINE 登入 */
   const handleExplicitLineLogin = () => {
@@ -278,26 +223,7 @@ export const Login: React.FC<LoginProps> = ({ onLogin }) => {
           )}
         </button>
         
-        {/* Google 登入按鈕 */}
-        <button 
-          type="button" 
-          onClick={handleGoogleLogin}
-          className="btn-secondary" 
-          disabled={loading || registering} 
-          style={{ 
-            width: '100%', justifyContent: 'center', padding: '14px', 
-            borderColor: '#4285F4', color: '#fff', 
-            background: '#4285F4',
-            borderRadius: '12px',
-            fontSize: '1rem',
-            fontWeight: 600,
-            marginBottom: '20px',
-            transition: 'all 0.3s',
-            opacity: loading || registering ? 0.6 : 1,
-          }}
-        >
-          <Mail size={20} /> 使用 Google 帳號登入
-        </button>
+
 
         {/* 成功訊息 */}
         {registerSuccess && (

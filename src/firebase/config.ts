@@ -1,7 +1,7 @@
 import { initializeApp } from "firebase/app";
 import { getAnalytics, isSupported } from "firebase/analytics";
 import { getFirestore } from "firebase/firestore";
-import { getAuth, GoogleAuthProvider } from "firebase/auth";
+import { getAuth } from "firebase/auth";
 
 // Firebase 配置資訊 (從環境變數讀取)
 const firebaseConfig = {
@@ -20,7 +20,7 @@ const app = initializeApp(firebaseConfig);
 // 初始化 Firestore 與 Auth (後續開發使用)
 export const db = getFirestore(app);
 export const auth = getAuth(app);
-export const googleProvider = new GoogleAuthProvider();
+
 
 // 初始化 Analytics (需檢查瀏覽器支援)
 export const analytics = isSupported().then(yes => yes ? getAnalytics(app) : null);
