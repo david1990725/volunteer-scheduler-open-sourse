@@ -25,6 +25,8 @@ interface NewVolunteerPayload {
   pictureUrl?: string;
 }
 
+type SheetRow = Record<string, string>;
+
 // --- Core: 統一 API 呼叫函數 -------------------------------------------------
 
 /**
@@ -65,6 +67,25 @@ async function callAppsScript<T>(
 }
 
 // --- 義工名單與 LINE 綁定 ----------------------------------------------------
+
+/** 讀取所有義工 */
+export async function fetchVolunteers(): Promise<ApiResultWithData<SheetRow[]>> {
+  try {
+    const result = await callAppsScript<ApiResultWithData<SheetRow[]>>(
+      'fetchVolunteers',
+      {},
+      { success: false, message: 'Apps Script URL 尚未設定，請聯繫管理員。', data: null },
+    );
+    return {
+      success: result.success ?? false,
+      message: result.message ?? '讀取失敗',
+      data: result.data ?? null,
+    };
+  } catch (err) {
+    console.error('[fetchVolunteers]', err);
+    return { success: false, message: '從試算表讀取義工名冊失敗，請稍後再試。', data: null };
+  }
+}
 
 /** 註冊新義工（寫入姓名、LINE 名稱、user_id） */
 export async function registerNewVolunteer(payload: NewVolunteerPayload): Promise<ApiResult> {

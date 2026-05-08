@@ -25,8 +25,12 @@ function doPost(e) {
     
     if (payload.action === 'addVolunteer') {
       return handleAddVolunteer(payload);
+    } else if (payload.action === 'fetchVolunteers') {
+      return handleFetchVolunteers();
     } else if (payload.action === 'updateLineId') {
       return handleUpdateLineId(payload);
+    } else if (payload.action === 'updateSkills') {
+      return handleUpdateSkills(payload);
     } else if (payload.action === 'syncSchedule') {
       return handleSyncSchedule(payload);
     } else if (payload.action === 'fetchSchedule') {
@@ -50,6 +54,34 @@ function doPost(e) {
  */
 function doGet() {
   return jsonResponse({ success: true, message: 'API is running' });
+}
+
+/**
+ * 讀取義工名冊工作表所有資料
+ */
+function handleFetchVolunteers() {
+  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  const sheet = ss.getSheetByName(SHEET_NAME);
+  if (!sheet || sheet.getLastRow() <= 1) {
+    return jsonResponse({ success: true, message: '目前沒有義工資料', data: [] });
+  }
+
+  const lastRow = sheet.getLastRow();
+  const lastCol = sheet.getLastColumn();
+  const headers = sheet.getRange(1, 1, 1, lastCol).getValues()[0].map(function(h) { return String(h).trim(); });
+  const rows = sheet.getRange(2, 1, lastRow - 1, lastCol).getValues();
+
+  const result = rows.map(function(row) {
+    const obj = {};
+    headers.forEach(function(header, index) {
+      if (header) {
+        obj[header] = row[index] !== undefined && row[index] !== null ? String(row[index]) : '';
+      }
+    });
+    return obj;
+  });
+
+  return jsonResponse({ success: true, message: '讀取成功', data: result });
 }
 
 /**
@@ -152,6 +184,64 @@ function handleUpdateLineId(payload) {
         sheet.getRange(i + 2, photoCol + 1).setValue(payload.pictureUrl);
       }
       return jsonResponse({ success: true, message: '已成功更新 LINE 資訊與大頭照' });
+    }
+  }
+
+  return jsonResponse({ success: false, message: '找不到符合姓名的義工' });
+}
+
+/**
+ * 更新義工技能數值
+ */
+function handleUpdateSkills(payload) {
+  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  const sheet = ss.getSheetByName(SHEET_NAME);
+  if (!sheet) return jsonResponse({ success: false, message: '找不到工作表' });
+
+  let lastCol = sheet.getLastColumn();
+  const lastRow = sheet.getLastRow();
+  if (lastCol === 0 || lastRow <= 1) return jsonResponse({ success: false, message: '無資料可更新' });
+
+  const headerRange = sheet.getRange(1, 1, 1, lastCol);
+  const headers = headerRange.getValues()[0].map(function(h) { return String(h).trim(); });
+  const nameCol = headers.indexOf('姓名');
+  if (nameCol === -1) return jsonResponse({ success: false, message: '找不到「姓名」欄位' });
+
+  const skillColumnNames = {
+    '導播': '導播技能值',
+    'AD': 'AD技能值',
+    '平面': '平面技能值',
+    'CAM1': 'Cam1技能值',
+    'CAM2': 'Cam2技能值',
+    'CAM3': 'Cam3技能值',
+    'CAM4': 'Cam4技能值'
+  };
+
+  const skills = payload.skills || {};
+  const skillColumns = {};
+
+  Object.keys(skills).forEach(function(skillName) {
+    const headerName = skillColumnNames[skillName] || skillName + '技能值';
+    let colIndex = headers.indexOf(headerName);
+    if (colIndex === -1) {
+      lastCol += 1;
+      sheet.getRange(1, lastCol).setValue(headerName);
+      headers.push(headerName);
+      colIndex = lastCol - 1;
+    }
+    skillColumns[skillName] = colIndex;
+  });
+  SpreadsheetApp.flush();
+
+  const names = sheet.getRange(2, nameCol + 1, lastRow - 1, 1).getValues();
+  for (let i = 0; i < names.length; i++) {
+    if (String(names[i][0]).trim() === String(payload.name).trim()) {
+      Object.keys(skills).forEach(function(skillName) {
+        const colIndex = skillColumns[skillName];
+        const value = Math.max(0, Math.min(10, Number(skills[skillName]) || 0));
+        sheet.getRange(i + 2, colIndex + 1).setValue(value);
+      });
+      return jsonResponse({ success: true, message: '技能更新成功' });
     }
   }
 

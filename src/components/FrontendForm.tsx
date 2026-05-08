@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { getCycleDates } from '../utils/dateUtils';
 import type { Volunteer } from '../utils/scheduler';
 import { Save, CheckCircle, Loader2 } from 'lucide-react';
-import * as firebaseService from '../utils/firebaseService';
+import * as cloudService from '../utils/googleSheets';
 
 interface FrontendFormProps {
   currentUser: Volunteer;
@@ -57,8 +57,7 @@ export const FrontendForm: React.FC<FrontendFormProps> = ({ currentUser, onLogou
         responseRow[`[${date}]`] = locs.join(', ');
       });
 
-      // Submit to Firebase
-      const res = await firebaseService.submitVolunteerForm({ data: responseRow });
+      const res = await cloudService.submitVolunteerForm({ data: responseRow });
       
       if (!res.success) {
         throw new Error(res.message);

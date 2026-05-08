@@ -2,8 +2,7 @@ import React, { useState, useRef } from 'react';
 import * as XLSX from 'xlsx';
 import { parseSkillTreeData, buildLineIdMap } from '../utils/scheduler';
 import type { Volunteer } from '../utils/scheduler';
-import { auth } from '../firebase/config';
-import * as firebaseService from '../utils/firebaseService';
+import * as cloudService from '../utils/googleSheets';
 import { Users, LogIn, RefreshCw, MessageCircle, UserPlus } from 'lucide-react';
 import { useLiff } from '../hooks/useLiff';
 
@@ -87,7 +86,7 @@ export const Login: React.FC<LoginProps> = ({ onLogin }) => {
           volunteers[matchedName] = user;
         }
 
-        firebaseService.updateVolunteerLineId({ 
+        cloudService.updateVolunteerLineId({ 
           name: matchedName, 
           lineId: lineUserId, 
           lineName: displayName,
@@ -103,7 +102,7 @@ export const Login: React.FC<LoginProps> = ({ onLogin }) => {
       setRegistering(true);
       setError('');
 
-      const result = await firebaseService.registerNewVolunteer({
+      const result = await cloudService.registerNewVolunteer({
         name: displayName,
         lineId: lineUserId,
         lineName: displayName,
