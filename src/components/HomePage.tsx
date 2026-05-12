@@ -75,7 +75,7 @@ export const HomePage: React.FC<HomePageProps> = ({
             const isExtra = extraRoles.includes(role);
             // 優先讀取手動調整(approvedEdits)，若無且為基本職位則讀取原始排班(assignments)
             const assignedPerson = approvedEdits?.[editKey] ?? (!isExtra ? shift.assignments[role] : undefined);
-            
+
             return { role, location: shift.location, person: assignedPerson };
           })
           .filter((assignment) => assignment.person === currentUser.name)
@@ -135,7 +135,7 @@ export const HomePage: React.FC<HomePageProps> = ({
         </h2>
         <p style={{ color: 'var(--text-secondary)', lineHeight: '1.6', marginBottom: '24px' }}>
           {isAdmin
-            ? '請透過上方功能選單，切換至 RAW 資料表單管理義工，或使用自動排班系統。'
+            ? '請透過上方功能選單，切換至義工名冊管理義工，查看RAW資料表單，或使用自動排班系統。'
             : '感謝您參與 BOL Production 主日轉播事工，以下是您最近的排班資訊。'
           }
         </p>
