@@ -31,7 +31,7 @@ const CAM_ROLES = ['CAM1', 'CAM2', 'CAM3', 'CAM4'];
 export const FULL_TIMERS = ['蔡佳翰', '夏翊剛'];
 const LIAO_NAME = '廖亦東';
 
-/** 缺口嚴重度權重（導播最重要 → HOST/CCU 相對可調度） */
+/** 缺口嚴重度權重（導播最重要 → AD 相對可調度） */
 const ROLE_PRIORITY: Record<string, number> = {
   '導播': 10, '平面': 8,
   'CAM1': 6, 'CAM2': 5,
