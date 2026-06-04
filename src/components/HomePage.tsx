@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { Calendar, MapPin, Clock, Sparkles, Video, Camera, X } from 'lucide-react';
 import type { Volunteer, Shift } from '../utils/scheduler';
@@ -49,7 +49,6 @@ export const HomePage: React.FC<HomePageProps> = ({
   currentUser,
   approvedShifts,
   approvedEdits,
-  onGoToAdmin,
   selectedTeam = '影視團隊',
   onSelectTeam = () => {},
 }) => {
