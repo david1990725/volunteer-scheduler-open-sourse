@@ -314,6 +314,7 @@ export const HomePage: React.FC<HomePageProps> = ({
             );
           })}
         </div>
+        )
       ) : (
         <div className="glass-card animate-morph stagger-3" style={{ padding: '40px 30px', textAlign: 'center', marginBottom: '24px' }}>
            <h3 style={{ margin: '0 0 10px 0', color: 'var(--text-primary)' }}>{selectedTeam} 排班系統</h3>
