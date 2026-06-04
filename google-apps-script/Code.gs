@@ -38,6 +38,8 @@ function doPost(e) {
       return handleSyncSchedule(payload);
     } else if (payload.action === 'fetchSchedule') {
       return handleFetchSchedule(payload);
+    } else if (payload.action === 'updateUser') {
+      return handleUpdateUser(payload);
     } else if (payload.action === 'submitForm') {
       return handleSubmitForm(payload);
     } else if (payload.action === 'fetchFormResponses') {
@@ -382,8 +384,64 @@ function handleClearFormResponses() {
   if (lastRow > 1) {
     sheet.deleteRows(2, lastRow - 1);
   }
+  SpreadsheetApp.flush();
+  return jsonResponse({ success: true, message: '已清空表單回覆紀錄' });
+}
+
+/**
+ * 更新使用者基本資料 (Job_Title, Name, User_Level, Avatar)
+ */
+function handleUpdateUser(payload) {
+  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  const sheet = getVolunteerSheet(ss);
+  if (!sheet) return jsonResponse({ success: false, message: '找不到工作表' });
+
+  const lastCol = sheet.getLastColumn();
+  const lastRow = sheet.getLastRow();
+  if (lastCol === 0 || lastRow <= 1) return jsonResponse({ success: false, message: '無資料可更新' });
+
+  const headers = sheet.getRange(1, 1, 1, lastCol).getValues()[0].map(function(h) { return String(h).trim(); });
+  const nameCol = headers.indexOf('Name');
+  if (nameCol === -1) return jsonResponse({ success: false, message: '找不到「Name」欄位' });
+
+  let jobTitleCol = headers.indexOf('Job_Title');
+  let userLevelCol = headers.indexOf('User_Level');
+  let avatarCol = headers.indexOf('Avatar');
   
-  return jsonResponse({ success: true, message: '已成功清空所有表單回覆' });
+  if (jobTitleCol === -1 || userLevelCol === -1 || avatarCol === -1) {
+    return jsonResponse({ success: false, message: '試算表缺少部分必要欄位 (Job_Title, User_Level, Avatar)' });
+  }
+
+  const rows = sheet.getRange(2, 1, lastRow - 1, lastCol).getValues();
+  const data = payload.data || {};
+  const oldName = data.oldName;
+  const newName = data.newName;
+  const jobTitle = data.jobTitle;
+  const userLevel = data.userLevel;
+  const avatar = data.avatar;
+
+  if (!oldName) return jsonResponse({ success: false, message: '缺少原姓名(oldName)' });
+
+  let targetRowIdx = -1;
+  for (let i = 0; i < rows.length; i++) {
+    const rowName = String(rows[i][nameCol] || '').trim();
+    if (rowName === String(oldName).trim()) {
+      targetRowIdx = i + 2; 
+      break;
+    }
+  }
+
+  if (targetRowIdx === -1) {
+    return jsonResponse({ success: false, message: '找不到該名義工' });
+  }
+
+  sheet.getRange(targetRowIdx, nameCol + 1).setValue(newName || '');
+  sheet.getRange(targetRowIdx, jobTitleCol + 1).setValue(jobTitle || '');
+  sheet.getRange(targetRowIdx, userLevelCol + 1).setValue(userLevel || '');
+  sheet.getRange(targetRowIdx, avatarCol + 1).setValue(avatar || '');
+
+  SpreadsheetApp.flush();
+  return jsonResponse({ success: true, message: '使用者資料更新成功' });
 }
 
 /**

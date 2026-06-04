@@ -119,6 +119,21 @@ export async function updateVolunteerLineId(
   }
 }
 
+/** 更新使用者基本資料 (姓名、職能、權限、頭像) */
+export async function updateUser(payload: { oldName: string; newName: string; jobTitle: string; userLevel: string; avatar: string }): Promise<ApiResult> {
+  try {
+    const result = await callAppsScript<ApiResult>(
+      'updateUser',
+      payload,
+      { success: false, message: 'Apps Script URL 尚未設定，請聯繫管理員。' },
+    );
+    return { success: result.success ?? true, message: result.message ?? '使用者更新成功' };
+  } catch (err) {
+    console.error('[updateUser]', err);
+    return { success: false, message: '更新使用者失敗，請稍後再試。' };
+  }
+}
+
 /** 更新義工技能數值 */
 export async function updateVolunteerSkills(
   payload: { name: string; skills: Record<string, number> },

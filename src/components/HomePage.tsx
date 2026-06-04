@@ -55,8 +55,20 @@ export const HomePage: React.FC<HomePageProps> = ({
   const [showFullSchedule, setShowFullSchedule] = useState(false);
   const { currentMonths } = getCycleDates();
 
+  const allTeams = ['影視團隊', '燈光團隊', '舞監團隊', '音控團隊'];
+  
+  const visibleTeams = useMemo(() => {
+    if (currentUser.roles.includes('管理')) {
+      return allTeams;
+    }
+    const myTeams = currentUser.roles.filter(r => allTeams.includes(r));
+    return myTeams.length > 0 ? myTeams : ['影視團隊'];
+  }, [currentUser.roles]);
+
+  const [selectedTeam, setSelectedTeam] = useState<string>(visibleTeams[0]);
+
   /**
-   * 取得使用者在最近主日的排班資料
+   * 取得使用者在最近主日的排班資料 (跨所有團隊，目前只實作了影視的解析)
    * @returns 包含地點與職位的陣列
    */
   const myAssignments = useMemo(() => {
@@ -131,15 +143,29 @@ export const HomePage: React.FC<HomePageProps> = ({
           background: 'linear-gradient(135deg, var(--text-title-from) 0%, var(--text-title-to) 100%)',
           WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
         }}>
-          {isAdmin ? '歡迎進入主日轉播排班後台' : `哈囉，${currentUser.name}！`}
+          {isAdmin ? '歡迎進入系統後台' : `哈囉，${currentUser.name}！`}
         </h2>
         <p style={{ color: 'var(--text-secondary)', lineHeight: '1.6', marginBottom: '24px' }}>
           {isAdmin
-            ? '請透過上方功能選單，切換至義工名冊管理義工，查看RAW資料表單，或使用自動排班系統。'
-            : '感謝您參與 BOL Production 主日轉播事工，以下是您最近的排班資訊。'
+            ? '請透過上方選單切換您要管理的團隊或使用者功能。'
+            : '感謝您參與 BOL Production 主日服事，以下是您最近的排班資訊。'
           }
         </p>
-
+        
+        {/* Team Selector Dropdown */}
+        <div style={{ display: 'inline-flex', alignItems: 'center', gap: '10px', background: 'var(--bg-input)', padding: '6px 12px', borderRadius: '12px', border: '1px solid var(--bg-input-border)' }}>
+          <span style={{ color: 'var(--text-muted)', fontSize: '0.9rem', fontWeight: 600 }}>檢視組別：</span>
+          <select 
+            className="glass-input" 
+            style={{ border: 'none', background: 'transparent', fontWeight: 700, color: 'var(--icon-accent)', padding: '4px 8px', fontSize: '1rem', cursor: 'pointer' }}
+            value={selectedTeam}
+            onChange={(e) => setSelectedTeam(e.target.value)}
+          >
+            {visibleTeams.map(team => (
+              <option key={team} value={team}>{team}</option>
+            ))}
+          </select>
+        </div>
       </div>
 
       {/* 倒數計時卡片 */}
@@ -227,14 +253,15 @@ export const HomePage: React.FC<HomePageProps> = ({
       </div>
 
       {/* 當週排班總覽 */}
-      {sundaySummary && (
-        <div className="glass-card animate-morph stagger-3" style={{ padding: '24px 30px', marginBottom: '24px' }}>
-          <h3 style={{
-            margin: '0 0 20px 0', fontSize: '1.15rem', color: 'var(--text-primary)',
-            display: 'flex', alignItems: 'center', gap: '8px',
-          }}>
-            <Calendar size={20} color="var(--icon-accent)" /> {nextSundayStr} 排班總覽
-          </h3>
+      {selectedTeam === '影視團隊' ? (
+        sundaySummary && (
+          <div className="glass-card animate-morph stagger-3" style={{ padding: '24px 30px', marginBottom: '24px' }}>
+            <h3 style={{
+              margin: '0 0 20px 0', fontSize: '1.15rem', color: 'var(--text-primary)',
+              display: 'flex', alignItems: 'center', gap: '8px',
+            }}>
+              <Calendar size={20} color="var(--icon-accent)" /> {nextSundayStr} {selectedTeam} 排班總覽
+            </h3>
 
           {sundaySummary.map((loc, locIdx) => {
             const tagClass = loc.location === '山莊大堂' ? 'shanzhuang' : 'xuanjiao';
@@ -287,9 +314,14 @@ export const HomePage: React.FC<HomePageProps> = ({
             );
           })}
         </div>
+      ) : (
+        <div className="glass-card animate-morph stagger-3" style={{ padding: '40px 30px', textAlign: 'center', marginBottom: '24px' }}>
+           <h3 style={{ margin: '0 0 10px 0', color: 'var(--text-primary)' }}>{selectedTeam} 排班系統</h3>
+           <p style={{ color: 'var(--text-muted)' }}>此團隊的專屬運算引擎及排班功能正在開發中，敬請期待！🚧</p>
+        </div>
       )}
 
-      {/* === 右側固定頁籤 & 完整班表 Overlay (Portaled to body to escape parent transform) === */}
+      {/* === 右側固定頁籤 & 完整班表 Overlay === */}
       {approvedShifts && approvedShifts.length > 0 && createPortal(
         <>
           {/* 右側固定頁籤 */}
