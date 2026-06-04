@@ -83,34 +83,34 @@ export function parseSkillTreeData(data: any[]): Record<string, Volunteer> {
   const volunteers: Record<string, Volunteer> = {};
 
   for (const row of data) {
-    const name = row['姓名']?.trim();
+    const name = row['Name']?.trim() || row['姓名']?.trim();
     if (!name) continue;
 
-    const roles = (row['職能'] || '').split(',').map((r: string) => r.trim()).filter(Boolean);
+    const roles = (row['Job_Title'] || row['Skill_Role'] || row['職能'] || '').split(',').map((r: string) => r.trim()).filter(Boolean);
 
     const skills: Record<string, number> = {
-      '平面': parseInt(row['Photo技能值']) || parseInt(row['平面技能值']) || 0,
-      'CAM1': parseInt(row['Cam1技能值']) || 0,
-      'CAM2': parseInt(row['Cam2技能值']) || 0,
-      'CAM3': parseInt(row['Cam3技能值']) || 0,
-      'CAM4': parseInt(row['Cam4技能值']) || 0,
+      '平面': parseInt(row['Photo_Skill']) || parseInt(row['Photo技能值']) || parseInt(row['平面技能值']) || 0,
+      'CAM1': parseInt(row['Cam1_Skill']) || parseInt(row['Cam1技能值']) || 0,
+      'CAM2': parseInt(row['Cam2_Skill']) || parseInt(row['Cam2技能值']) || 0,
+      'CAM3': parseInt(row['Cam3_Skill']) || parseInt(row['Cam3技能值']) || 0,
+      'CAM4': parseInt(row['Cam4_Skill']) || parseInt(row['Cam4技能值']) || 0,
     };
 
     // 優先讀取數值，若無則依職能字串給予布林預設值（有 → 10, 無 → 0）
-    skills['導播'] = parseInt(row['導播技能值']) || (roles.includes('山莊導播') || roles.includes('宣教導播') || roles.includes('導播') ? 10 : 0);
+    skills['導播'] = parseInt(row['D_Skill']) || parseInt(row['導播技能值']) || (roles.includes('山莊導播') || roles.includes('宣教導播') || roles.includes('導播') ? 10 : 0);
     skills['山莊導播'] = skills['導播']; // 相容舊版判斷
     skills['宣教導播'] = skills['導播']; // 相容舊版判斷
     
-    skills['AD'] = parseInt(row['AD技能值']) || parseInt(row['ＡＤ技能值']) || parseInt(row['CCU/HOST技能值']) || parseInt(row['HOST/CCU技能值']) || (roles.some((r: string) => r === 'AD' || r === 'HOST' || r === 'CCU') ? 10 : 0);
+    skills['AD'] = parseInt(row['AD_Skill']) || parseInt(row['AD技能值']) || parseInt(row['ＡＤ技能值']) || parseInt(row['CCU/HOST技能值']) || parseInt(row['HOST/CCU技能值']) || (roles.some((r: string) => r === 'AD' || r === 'HOST' || r === 'CCU') ? 10 : 0);
     skills['HOST/CCU'] = skills['AD']; // 相容舊版判斷
     skills['CCU/HOST'] = skills['AD']; // 相容舊版判斷
 
     skills['信息版'] = roles.some((r: string) => ['山莊導播', '宣教導播', '導播', 'AD', 'HOST', 'CCU'].includes(r)) ? 10 : 0;
 
-    const userRole = row['role']?.trim().toLowerCase() === 'admin' ? 'admin' : 'user';
-    const lineId = (row['user_id'] || '').trim() || undefined;
+    const userRole = row['User_Level']?.trim().toLowerCase() === 'admin' ? 'admin' : (row['role']?.trim().toLowerCase() === 'admin' ? 'admin' : 'user');
+    const lineId = (row['User_ID'] || row['user_id'] || '').trim() || undefined;
     const lineDisplayName = (row['LINE_ID'] || '').trim() || undefined;
-    const pictureUrl = (row['大頭照'] || row['pictureUrl'] || row['頭像'] || '').trim() || undefined;
+    const pictureUrl = (row['Avatar'] || row['大頭照'] || row['pictureUrl'] || row['頭像'] || '').trim() || undefined;
 
     volunteers[name] = { name, role: userRole, roles, skills, lineId, lineDisplayName, pictureUrl };
   }

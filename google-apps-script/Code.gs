@@ -98,24 +98,22 @@ function handleAddVolunteer(payload) {
   if (lastCol === 0) return jsonResponse({ success: false, message: '工作表為空' });
 
   const headers = sheet.getRange(1, 1, 1, lastCol).getValues()[0].map(h => String(h).trim());
-  const nameCol = headers.indexOf('姓名');
-  let lineIdCol = headers.indexOf('user_id');
-  const roleCol = headers.indexOf('role');
-  let photoCol = headers.indexOf('大頭照');
-  if (photoCol === -1) photoCol = headers.indexOf('pictureUrl');
-  if (photoCol === -1) photoCol = headers.indexOf('頭像');
+  const nameCol = headers.indexOf('Name');
+  let lineIdCol = headers.indexOf('User_ID');
+  const roleCol = headers.indexOf('User_Level');
+  let photoCol = headers.indexOf('Avatar');
   
-  if (nameCol === -1) return jsonResponse({ success: false, message: '找不到「姓名」欄位' });
+  if (nameCol === -1) return jsonResponse({ success: false, message: '找不到「Name」欄位' });
   
   if (lineIdCol === -1) {
     lastCol += 1;
-    sheet.getRange(1, lastCol).setValue('user_id');
+    sheet.getRange(1, lastCol).setValue('User_ID');
     lineIdCol = lastCol - 1;
   }
 
   if (photoCol === -1) {
     lastCol += 1;
-    sheet.getRange(1, lastCol).setValue('大頭照');
+    sheet.getRange(1, lastCol).setValue('Avatar');
     photoCol = lastCol - 1;
   }
   SpreadsheetApp.flush(); 
@@ -155,23 +153,21 @@ function handleUpdateLineId(payload) {
   if (lastCol === 0 || lastRow <= 1) return jsonResponse({ success: false, message: '無資料可更新' });
 
   const headers = sheet.getRange(1, 1, 1, lastCol).getValues()[0].map(h => String(h).trim());
-  const nameCol = headers.indexOf('姓名');
-  let lineIdCol = headers.indexOf('user_id');
-  let photoCol = headers.indexOf('大頭照');
-  if (photoCol === -1) photoCol = headers.indexOf('pictureUrl');
-  if (photoCol === -1) photoCol = headers.indexOf('頭像');
+  const nameCol = headers.indexOf('Name');
+  let lineIdCol = headers.indexOf('User_ID');
+  let photoCol = headers.indexOf('Avatar');
 
-  if (nameCol === -1) return jsonResponse({ success: false, message: '找不到「姓名」欄位' });
+  if (nameCol === -1) return jsonResponse({ success: false, message: '找不到「Name」欄位' });
   
-  // 如果沒有 user_id 欄位，就建一個
+  // 如果沒有 User_ID 欄位，就建一個
   if (lineIdCol === -1) {
     lastCol += 1;
-    sheet.getRange(1, lastCol).setValue('user_id');
+    sheet.getRange(1, lastCol).setValue('User_ID');
     lineIdCol = lastCol - 1;
   }
   if (photoCol === -1) {
     lastCol += 1;
-    sheet.getRange(1, lastCol).setValue('大頭照');
+    sheet.getRange(1, lastCol).setValue('Avatar');
     photoCol = lastCol - 1;
   }
   SpreadsheetApp.flush();
@@ -204,24 +200,24 @@ function handleUpdateSkills(payload) {
 
   const headerRange = sheet.getRange(1, 1, 1, lastCol);
   const headers = headerRange.getValues()[0].map(function(h) { return String(h).trim(); });
-  const nameCol = headers.indexOf('姓名');
-  if (nameCol === -1) return jsonResponse({ success: false, message: '找不到「姓名」欄位' });
+  const nameCol = headers.indexOf('Name');
+  if (nameCol === -1) return jsonResponse({ success: false, message: '找不到「Name」欄位' });
 
   const skillColumnNames = {
-    '導播': '導播技能值',
-    'AD': 'AD技能值',
-    '平面': '平面技能值',
-    'CAM1': 'Cam1技能值',
-    'CAM2': 'Cam2技能值',
-    'CAM3': 'Cam3技能值',
-    'CAM4': 'Cam4技能值'
+    '導播': 'D_Skill',
+    'AD': 'AD_Skill',
+    '平面': 'Photo_Skill',
+    'CAM1': 'Cam1_Skill',
+    'CAM2': 'Cam2_Skill',
+    'CAM3': 'Cam3_Skill',
+    'CAM4': 'Cam4_Skill'
   };
 
   const skills = payload.skills || {};
   const skillColumns = {};
 
   Object.keys(skills).forEach(function(skillName) {
-    const headerName = skillColumnNames[skillName] || skillName + '技能值';
+    const headerName = skillColumnNames[skillName] || skillName + '_Skill';
     let colIndex = headers.indexOf(headerName);
     if (colIndex === -1) {
       lastCol += 1;
