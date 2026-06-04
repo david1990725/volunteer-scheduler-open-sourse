@@ -56,7 +56,7 @@ export const HomePage: React.FC<HomePageProps> = ({
   const { currentMonths } = getCycleDates();
 
   const allTeams = ['影視團隊', '燈光團隊', '舞監團隊', '音控團隊'];
-  
+
   const visibleTeams = useMemo(() => {
     if (currentUser.roles.includes('管理')) {
       return allTeams;
@@ -143,20 +143,20 @@ export const HomePage: React.FC<HomePageProps> = ({
           background: 'linear-gradient(135deg, var(--text-title-from) 0%, var(--text-title-to) 100%)',
           WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
         }}>
-          {isAdmin ? '歡迎進入系統後台' : `哈囉，${currentUser.name}！`}
+          {isAdmin ? '歡迎進入崇拜排班系統' : `哈囉，${currentUser.name}！`}
         </h2>
         <p style={{ color: 'var(--text-secondary)', lineHeight: '1.6', marginBottom: '24px' }}>
           {isAdmin
-            ? '請透過上方選單切換您要管理的團隊或使用者功能。'
+            ? '請透過上方選單切換您的團隊。'
             : '感謝您參與 BOL Production 主日服事，以下是您最近的排班資訊。'
           }
         </p>
-        
+
         {/* Team Selector Dropdown */}
         <div style={{ display: 'inline-flex', alignItems: 'center', gap: '10px', background: 'var(--bg-input)', padding: '6px 12px', borderRadius: '12px', border: '1px solid var(--bg-input-border)' }}>
           <span style={{ color: 'var(--text-muted)', fontSize: '0.9rem', fontWeight: 600 }}>檢視組別：</span>
-          <select 
-            className="glass-input" 
+          <select
+            className="glass-input"
             style={{ border: 'none', background: 'transparent', fontWeight: 700, color: 'var(--icon-accent)', padding: '4px 8px', fontSize: '1rem', cursor: 'pointer' }}
             value={selectedTeam}
             onChange={(e) => setSelectedTeam(e.target.value)}
@@ -263,62 +263,62 @@ export const HomePage: React.FC<HomePageProps> = ({
               <Calendar size={20} color="var(--icon-accent)" /> {nextSundayStr} {selectedTeam} 排班總覽
             </h3>
 
-          {sundaySummary.map((loc, locIdx) => {
-            const tagClass = loc.location === '山莊大堂' ? 'shanzhuang' : 'xuanjiao';
-            return (
-              <div key={loc.location} style={{ marginBottom: locIdx < sundaySummary.length - 1 ? '20px' : 0 }}>
-                <div style={{
-                  display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px',
-                }}>
-                  <span className={`location location-${tagClass}`}
-                    style={{ padding: '3px 10px', borderRadius: '16px', fontSize: '0.8rem' }}>
-                    {loc.location}
-                  </span>
-                </div>
+            {sundaySummary.map((loc, locIdx) => {
+              const tagClass = loc.location === '山莊大堂' ? 'shanzhuang' : 'xuanjiao';
+              return (
+                <div key={loc.location} style={{ marginBottom: locIdx < sundaySummary.length - 1 ? '20px' : 0 }}>
+                  <div style={{
+                    display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px',
+                  }}>
+                    <span className={`location location-${tagClass}`}
+                      style={{ padding: '3px 10px', borderRadius: '16px', fontSize: '0.8rem' }}>
+                      {loc.location}
+                    </span>
+                  </div>
 
-                <div style={{
-                  display: 'grid',
-                  gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))',
-                  gap: '8px',
-                }}>
-                  {loc.roles.map(r => {
-                    const isMissing = r.person === '缺';
-                    const isMe = r.person === currentUser.name;
-                    return (
-                      <div key={r.role} style={{
-                        padding: '10px 14px', borderRadius: '10px',
-                        background: isMe
-                          ? 'linear-gradient(135deg, rgba(234, 179, 8, 0.12), rgba(245, 158, 11, 0.06))'
-                          : 'var(--bg-input)',
-                        border: isMe ? '1px solid rgba(234, 179, 8, 0.25)' : '1px solid var(--bg-input-border)',
-                        transition: 'all 0.2s',
-                      }}>
-                        <div style={{
-                          fontSize: '0.75rem', color: 'var(--text-muted)',
-                          marginBottom: '4px', fontWeight: 500,
+                  <div style={{
+                    display: 'grid',
+                    gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))',
+                    gap: '8px',
+                  }}>
+                    {loc.roles.map(r => {
+                      const isMissing = r.person === '缺';
+                      const isMe = r.person === currentUser.name;
+                      return (
+                        <div key={r.role} style={{
+                          padding: '10px 14px', borderRadius: '10px',
+                          background: isMe
+                            ? 'linear-gradient(135deg, rgba(234, 179, 8, 0.12), rgba(245, 158, 11, 0.06))'
+                            : 'var(--bg-input)',
+                          border: isMe ? '1px solid rgba(234, 179, 8, 0.25)' : '1px solid var(--bg-input-border)',
+                          transition: 'all 0.2s',
                         }}>
-                          {r.role}
+                          <div style={{
+                            fontSize: '0.75rem', color: 'var(--text-muted)',
+                            marginBottom: '4px', fontWeight: 500,
+                          }}>
+                            {r.role}
+                          </div>
+                          <div style={{
+                            fontSize: '0.95rem', fontWeight: 700,
+                            color: isMissing ? 'var(--text-missing)' : isMe ? 'var(--icon-accent)' : 'var(--text-primary)',
+                          }}>
+                            {isMissing ? '缺' : r.person}
+                            {isMe && ' ⭐'}
+                          </div>
                         </div>
-                        <div style={{
-                          fontSize: '0.95rem', fontWeight: 700,
-                          color: isMissing ? 'var(--text-missing)' : isMe ? 'var(--icon-accent)' : 'var(--text-primary)',
-                        }}>
-                          {isMissing ? '缺' : r.person}
-                          {isMe && ' ⭐'}
-                        </div>
-                      </div>
-                    );
-                  })}
+                      );
+                    })}
+                  </div>
                 </div>
-              </div>
-            );
-          })}
-        </div>
+              );
+            })}
+          </div>
         )
       ) : (
         <div className="glass-card animate-morph stagger-3" style={{ padding: '40px 30px', textAlign: 'center', marginBottom: '24px' }}>
-           <h3 style={{ margin: '0 0 10px 0', color: 'var(--text-primary)' }}>{selectedTeam} 排班系統</h3>
-           <p style={{ color: 'var(--text-muted)' }}>此團隊的專屬運算引擎及排班功能正在開發中，敬請期待！🚧</p>
+          <h3 style={{ margin: '0 0 10px 0', color: 'var(--text-primary)' }}>{selectedTeam} 排班系統</h3>
+          <p style={{ color: 'var(--text-muted)' }}>此團隊的專屬運算引擎及排班功能正在開發中，敬請期待！🚧</p>
         </div>
       )}
 
