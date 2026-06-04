@@ -10,6 +10,8 @@ interface HomePageProps {
   approvedShifts: Shift[] | null;
   approvedEdits: Record<string, string> | null;
   onGoToAdmin?: () => void;
+  selectedTeam?: string;
+  onSelectTeam?: (team: string) => void;
 }
 
 /** 取得最近一個主日（今天或未來） */
@@ -47,6 +49,9 @@ export const HomePage: React.FC<HomePageProps> = ({
   currentUser,
   approvedShifts,
   approvedEdits,
+  onGoToAdmin,
+  selectedTeam = '影視團隊',
+  onSelectTeam = () => {},
 }) => {
   const isAdmin = currentUser.role === 'admin';
   const days = daysUntilSunday();
@@ -65,14 +70,19 @@ export const HomePage: React.FC<HomePageProps> = ({
     return myTeams.length > 0 ? myTeams : ['影視團隊'];
   }, [currentUser.roles]);
 
-  const [selectedTeam, setSelectedTeam] = useState<string>(visibleTeams[0]);
+  // If the currently selected team is not in visibleTeams (e.g. on initial load), select the first visible team
+  useEffect(() => {
+    if (visibleTeams.length > 0 && !visibleTeams.includes(selectedTeam)) {
+      onSelectTeam(visibleTeams[0]);
+    }
+  }, [visibleTeams, selectedTeam, onSelectTeam]);
 
   /**
-   * 取得使用者在最近主日的排班資料 (跨所有團隊，目前只實作了影視的解析)
+   * 取得使用者在最近主日的排班資料 (只顯示當前所選團隊的排班)
    * @returns 包含地點與職位的陣列
    */
   const myAssignments = useMemo(() => {
-    if (!approvedShifts) return [];
+    if (!approvedShifts || selectedTeam !== '影視團隊') return [];
 
     return approvedShifts
       .filter((shift) => shift.date === nextSundayStr)
@@ -159,7 +169,7 @@ export const HomePage: React.FC<HomePageProps> = ({
             className="glass-input"
             style={{ border: 'none', background: 'transparent', fontWeight: 700, color: 'var(--icon-accent)', padding: '4px 8px', fontSize: '1rem', cursor: 'pointer' }}
             value={selectedTeam}
-            onChange={(e) => setSelectedTeam(e.target.value)}
+            onChange={(e) => onSelectTeam(e.target.value)}
           >
             {visibleTeams.map(team => (
               <option key={team} value={team}>{team}</option>
