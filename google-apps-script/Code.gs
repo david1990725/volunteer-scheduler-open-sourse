@@ -20,6 +20,19 @@ function getVolunteerSheet(ss) {
 }
 
 /**
+ * 透過 gid 取得表單回覆紀錄工作表 (gid=120152057)
+ */
+function getFormResponsesSheet(ss) {
+  var sheets = ss.getSheets();
+  for (var i = 0; i < sheets.length; i++) {
+    if (sheets[i].getSheetId() == 120152057) {
+      return sheets[i];
+    }
+  }
+  return ss.getSheetByName('影視表單回覆紀錄');
+}
+
+/**
  * 處理 POST 請求（從前端寫入資料）
  */
 function doPost(e) {
@@ -300,11 +313,10 @@ function handleFetchSchedule(payload) {
  */
 function handleSubmitForm(payload) {
   var ss = SpreadsheetApp.openById(SPREADSHEET_ID);
-  var sheetName = '表單回覆紀錄';
-  var sheet = ss.getSheetByName(sheetName);
+  var sheet = getFormResponsesSheet(ss);
   
   if (!sheet) {
-    sheet = ss.insertSheet(sheetName);
+    sheet = ss.insertSheet('影視表單回覆紀錄');
   }
   
   var formData = payload.data;
@@ -344,7 +356,7 @@ function handleSubmitForm(payload) {
  */
 function handleFetchFormResponses() {
   var ss = SpreadsheetApp.openById(SPREADSHEET_ID);
-  var sheet = ss.getSheetByName('表單回覆紀錄');
+  var sheet = getFormResponsesSheet(ss);
   
   if (!sheet || sheet.getLastRow() <= 1) {
     return jsonResponse({ success: true, message: '目前沒有表單資料', data: [] });
@@ -374,7 +386,7 @@ function handleFetchFormResponses() {
  */
 function handleClearFormResponses() {
   var ss = SpreadsheetApp.openById(SPREADSHEET_ID);
-  var sheet = ss.getSheetByName('表單回覆紀錄');
+  var sheet = getFormResponsesSheet(ss);
   
   if (!sheet) {
     return jsonResponse({ success: true, message: '工作表不存在，無需清空' });
