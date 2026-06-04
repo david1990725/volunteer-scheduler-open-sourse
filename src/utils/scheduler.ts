@@ -83,10 +83,12 @@ export function parseSkillTreeData(data: any[]): Record<string, Volunteer> {
   const volunteers: Record<string, Volunteer> = {};
 
   for (const row of data) {
-    const name = row['Name']?.trim() || row['姓名']?.trim();
+    const rawName = row['Name'] || row['姓名'];
+    const name = typeof rawName === 'string' ? rawName.trim() : (rawName ? String(rawName).trim() : undefined);
     if (!name) continue;
 
-    const roles = (row['Job_Title'] || row['Skill_Role'] || row['職能'] || '').split(',').map((r: string) => r.trim()).filter(Boolean);
+    const rawRoles = row['Job_Title'] || row['Skill_Role'] || row['職能'] || '';
+    const roles = String(rawRoles).split(',').map((r: string) => r.trim()).filter(Boolean);
 
     const skills: Record<string, number> = {
       '平面': parseInt(row['Photo_Skill']) || parseInt(row['Photo技能值']) || parseInt(row['平面技能值']) || 0,
@@ -107,10 +109,14 @@ export function parseSkillTreeData(data: any[]): Record<string, Volunteer> {
 
     skills['信息版'] = roles.some((r: string) => ['山莊導播', '宣教導播', '導播', 'AD', 'HOST', 'CCU'].includes(r)) ? 10 : 0;
 
-    const userRole = row['User_Level']?.trim().toLowerCase() === 'admin' ? 'admin' : (row['role']?.trim().toLowerCase() === 'admin' ? 'admin' : 'user');
-    const lineId = (row['User_ID'] || row['user_id'] || '').trim() || undefined;
-    const lineDisplayName = (row['LINE_ID'] || '').trim() || undefined;
-    const pictureUrl = (row['Avatar'] || row['大頭照'] || row['pictureUrl'] || row['頭像'] || '').trim() || undefined;
+    const rawUserLevel = row['User_Level'] || row['role'] || '';
+    const userRole = String(rawUserLevel).trim().toLowerCase() === 'admin' ? 'admin' : 'user';
+    const rawUserId = row['User_ID'] || row['user_id'] || '';
+    const lineId = String(rawUserId).trim() || undefined;
+    const rawLineId = row['LINE_ID'] || '';
+    const lineDisplayName = String(rawLineId).trim() || undefined;
+    const rawAvatar = row['Avatar'] || row['大頭照'] || row['pictureUrl'] || row['頭像'] || '';
+    const pictureUrl = String(rawAvatar).trim() || undefined;
 
     volunteers[name] = { name, role: userRole, roles, skills, lineId, lineDisplayName, pictureUrl };
   }

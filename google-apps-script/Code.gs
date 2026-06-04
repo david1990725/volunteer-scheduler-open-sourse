@@ -14,7 +14,10 @@
 
 // ⚠️ 請替換為您的技能樹 Google Sheets ID
 const SPREADSHEET_ID = '1L3W6RwrE6gzi_znqNXBww9WVRvi2NVuhDj3-hSYmTZI';
-const SHEET_NAME = 'Sheet1'; // 視您的工作表名稱調整
+
+function getVolunteerSheet(ss) {
+  return ss.getSheetByName('Sheet1') || ss.getSheetByName('工作表1') || ss.getSheetByName('義工名單') || ss.getSheets()[0];
+}
 
 /**
  * 處理 POST 請求（從前端寫入資料）
@@ -61,7 +64,7 @@ function doGet() {
  */
 function handleFetchVolunteers() {
   const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
-  const sheet = ss.getSheetByName(SHEET_NAME);
+  const sheet = getVolunteerSheet(ss);
   if (!sheet || sheet.getLastRow() <= 1) {
     return jsonResponse({ success: true, message: '目前沒有義工資料', data: [] });
   }
@@ -90,7 +93,7 @@ function handleFetchVolunteers() {
  */
 function handleAddVolunteer(payload) {
   const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
-  const sheet = ss.getSheetByName(SHEET_NAME);
+  const sheet = getVolunteerSheet(ss);
   
   if (!sheet) return jsonResponse({ success: false, message: '找不到工作表' });
   
@@ -145,7 +148,7 @@ function handleAddVolunteer(payload) {
  */
 function handleUpdateLineId(payload) {
   const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
-  const sheet = ss.getSheetByName(SHEET_NAME);
+  const sheet = getVolunteerSheet(ss);
   if (!sheet) return jsonResponse({ success: false, message: '找不到工作表' });
 
   let lastCol = sheet.getLastColumn();
@@ -191,7 +194,7 @@ function handleUpdateLineId(payload) {
  */
 function handleUpdateSkills(payload) {
   const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
-  const sheet = ss.getSheetByName(SHEET_NAME);
+  const sheet = getVolunteerSheet(ss);
   if (!sheet) return jsonResponse({ success: false, message: '找不到工作表' });
 
   let lastCol = sheet.getLastColumn();
