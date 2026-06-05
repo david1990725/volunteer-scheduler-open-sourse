@@ -5,7 +5,7 @@ import { parseSkillTreeData } from '../utils/scheduler';
 import { fetchCSVAsJson } from '../utils/fileUtils';
 import * as cloudService from '../utils/googleSheets';
 
-const JOB_TITLE_OPTIONS = ['管理', '影視團隊', '燈光團隊', '舞監團隊', '音控團隊'];
+const JOB_TITLE_OPTIONS = ['管理團隊', '影視團隊', '燈光團隊', '舞監團隊', '音控團隊'];
 const SKILL_TREE_URL = 'https://docs.google.com/spreadsheets/d/1L3W6RwrE6gzi_znqNXBww9WVRvi2NVuhDj3-hSYmTZI/export?format=csv';
 
 interface AdminRosterTeamProps {
@@ -134,7 +134,7 @@ export const AdminRosterTeam: React.FC<AdminRosterTeamProps> = ({ team }) => {
           {team} 義工名冊
         </h2>
         <div style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>
-          共 {users.filter(u => u.roles.includes('管理') || u.roles.includes(team)).length} 位成員
+          共 {users.filter(u => u.roles.some(r => r.includes('管理')) || u.roles.includes(team)).length} 位成員
         </div>
       </div>
 
@@ -150,7 +150,7 @@ export const AdminRosterTeam: React.FC<AdminRosterTeamProps> = ({ team }) => {
             </tr>
           </thead>
           <tbody>
-            {users.filter(u => u.roles.includes('管理') || u.roles.includes(team)).map(user => {
+            {users.filter(u => u.roles.some(r => r.includes('管理')) || u.roles.includes(team)).map(user => {
               const isEditing = editingUser === user.name;
               
               return (

@@ -162,28 +162,39 @@ export const FormAudio: React.FC<FrontendFormProps> = ({ currentUser, onLogout, 
                 }}>
                   <div style={{ fontSize: '1.2rem', fontWeight: 700, width: '80px', color: 'var(--text-primary)' }}>{date}</div>
                   <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', flex: 1 }}>
-                    {['山莊IN HOUSE', '山莊OB', '宣教IN HOUSE', '宣教OB'].map(loc => {
-                      const checked = (availability[date] || []).includes(loc);
-                      return (
-                        <label key={loc} style={{ 
-                          display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', 
-                          background: checked ? 'var(--icon-bg)' : 'var(--bg-card)', 
-                          padding: '12px 16px', borderRadius: '12px', 
-                          border: checked ? '1px solid var(--icon-accent)' : '1px solid var(--bg-input-border)', 
-                          whiteSpace: 'nowrap', flex: 1, minWidth: '120px', justifyContent: 'center',
-                          boxShadow: checked ? '0 4px 12px rgba(234, 179, 8, 0.1)' : 'none',
-                          transition: 'all 0.2s'
-                        }}>
-                          <input 
-                            type="checkbox" 
-                            checked={checked}
-                            onChange={() => toggleAvailability(date, loc)}
-                            style={{ accentColor: 'var(--icon-accent)', width: '22px', height: '22px' }}
-                          />
-                          <span style={{ fontSize: '1.05rem', fontWeight: checked ? 600 : 400, color: checked ? 'var(--text-primary)' : 'var(--text-secondary)' }}>{loc}</span>
-                        </label>
-                      );
-                    })}
+                    {(() => {
+                      const currentSelections = availability[date] || [];
+                      const hasShanZhuang = currentSelections.some(loc => loc.includes('山莊'));
+                      const hasXuanJiao = currentSelections.some(loc => loc.includes('宣教'));
+                      
+                      const allOptions = ['山莊IN HOUSE', '山莊OB', '宣教IN HOUSE', '宣教OB'];
+                      let visibleOptions = allOptions;
+                      if (hasShanZhuang) visibleOptions = allOptions.filter(loc => loc.includes('山莊'));
+                      if (hasXuanJiao) visibleOptions = allOptions.filter(loc => loc.includes('宣教'));
+
+                      return visibleOptions.map(loc => {
+                        const checked = currentSelections.includes(loc);
+                        return (
+                          <label key={loc} style={{ 
+                            display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', 
+                            background: checked ? 'var(--icon-bg)' : 'var(--bg-card)', 
+                            padding: '12px 16px', borderRadius: '12px', 
+                            border: checked ? '1px solid var(--icon-accent)' : '1px solid var(--bg-input-border)', 
+                            whiteSpace: 'nowrap', flex: '1 1 0%', minWidth: '120px', justifyContent: 'center',
+                            boxShadow: checked ? '0 4px 12px rgba(234, 179, 8, 0.1)' : 'none',
+                            transition: 'all 0.2s'
+                          }}>
+                            <input 
+                              type="checkbox" 
+                              checked={checked}
+                              onChange={() => toggleAvailability(date, loc)}
+                              style={{ accentColor: 'var(--icon-accent)', width: '22px', height: '22px' }}
+                            />
+                            <span style={{ fontSize: '1.05rem', fontWeight: checked ? 600 : 400, color: checked ? 'var(--text-primary)' : 'var(--text-secondary)' }}>{loc}</span>
+                          </label>
+                        );
+                      });
+                    })()}
                   </div>
                 </div>
               ))}
