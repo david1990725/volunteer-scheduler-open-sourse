@@ -148,16 +148,16 @@ export const HomePage: React.FC<HomePageProps> = ({
       {/* 歡迎卡片 */}
       <div className="glass-card animate-morph stagger-1" style={{ padding: '40px 30px', textAlign: 'center', marginBottom: '24px' }}>
         <h2 style={{
-          fontSize: '1.8rem', marginBottom: '12px',
+          fontSize: '1.8rem', marginBottom: '12px', color: 'var(--text-primary)',
           background: 'linear-gradient(135deg, var(--text-title-from) 0%, var(--text-title-to) 100%)',
-          WebkitBackgroundClip: 'text', backgroundClip: 'text', WebkitTextFillColor: 'transparent', color: 'transparent'
+          WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
         }}>
-          哈囉，{currentUser.name || '夥伴'}！歡迎回來！
+          哈囉，{currentUser.name}！歡迎回來！
         </h2>
         <p style={{ color: 'var(--text-secondary)', lineHeight: '1.6', marginBottom: '24px' }}>
-          {visibleTeams.length > 1 || isAdmin
-            ? '感謝您參與 BOL Production 主日服事，請透過下方選單切換您想檢視的團隊。'
-            : '感謝您參與 BOL Production 主日服事，以下是您最近的排班資訊。'
+          {visibleTeams.length > 1
+            ? '請透過下方選單切換您想檢視的團隊。'
+            : '以下是您最近的排班資訊。'
           }
         </p>
 
