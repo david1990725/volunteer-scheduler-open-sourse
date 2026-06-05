@@ -74,6 +74,7 @@ interface ApprovedVersion {
   label: string;
   shifts: Shift[];
   edits: Record<string, string>;
+  isLocalAdminEdit?: boolean;
 }
 
 // =============================================================================
@@ -173,6 +174,7 @@ function App() {
       label,
       shifts: JSON.parse(JSON.stringify(shifts)),
       edits: { ...manualEdits },
+      isLocalAdminEdit: true,
     };
     setApprovedVersion(v);
     alert(`已設定為審定版本！\n${label}`);
@@ -352,8 +354,8 @@ function App() {
   };
 
   useEffect(() => {
-    // 當使用者登入且在首頁時，如果沒有本地 approvedVersion 或想強制更新，背景默默拉取最新排班
-    if (currentUser && view === 'home') {
+    // 當使用者登入且在首頁時，如果沒有本地未同步的排班版本，才去雲端拉取
+    if (currentUser && view === 'home' && !approvedVersion?.isLocalAdminEdit) {
       loadCloudApprovedVersion().then(version => {
         if (version) {
           setApprovedVersion(version);
@@ -480,6 +482,8 @@ function App() {
         });
 
         await cloudService.syncSchedule({ sheetName: sheetNamePrefix, data: rectangularData });
+        // 同步成功後，解除本地強制覆蓋標記
+        setApprovedVersion(prev => prev ? { ...prev, isLocalAdminEdit: false } : prev);
       }
 
       alert('排班資料已成功同步到 Google 雲端試算表！');
