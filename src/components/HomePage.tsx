@@ -52,7 +52,6 @@ export const HomePage: React.FC<HomePageProps> = ({
   selectedTeam = '影視團隊',
   onSelectTeam = () => { },
 }) => {
-  const isAdmin = currentUser.role === 'admin';
   const days = daysUntilSunday();
   const nextSunday = getNextSunday();
   const nextSundayStr = formatMMDD(nextSunday);
