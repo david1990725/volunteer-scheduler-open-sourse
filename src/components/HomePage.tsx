@@ -61,7 +61,7 @@ export const HomePage: React.FC<HomePageProps> = ({
   const allTeams = ['影視團隊', '燈光團隊', '舞監團隊', '音控團隊'];
 
   const visibleTeams = useMemo(() => {
-    if (currentUser.roles.includes('管理')) {
+    if (currentUser.roles.some(r => r.includes('管理'))) {
       return allTeams;
     }
     const myTeams = currentUser.roles.filter(r => allTeams.includes(r));
@@ -72,6 +72,9 @@ export const HomePage: React.FC<HomePageProps> = ({
   useEffect(() => {
     if (visibleTeams.length > 0 && !visibleTeams.includes(selectedTeam)) {
       onSelectTeam(visibleTeams[0]);
+    } else if (visibleTeams.includes(selectedTeam)) {
+      // Sync back to parent (App.tsx) in case parent state was empty and we used default prop
+      onSelectTeam(selectedTeam);
     }
   }, [visibleTeams, selectedTeam, onSelectTeam]);
 
