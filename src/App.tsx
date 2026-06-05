@@ -891,7 +891,8 @@ function App() {
               setCurrentUser(user);
               setView('home');
               if (user.role === 'admin') {
-                setAdminTeam('users');
+                setAdminTeam('video');
+                setAdminSubTab('roster');
               }
             }, 3500);
           }} />
