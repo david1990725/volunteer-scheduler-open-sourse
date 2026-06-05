@@ -82,6 +82,7 @@ function App() {
   
   const [adminTeam, setAdminTeam] = useState<'users' | 'video' | 'light' | 'stage' | 'audio'>('users');
   const [adminVideoTab, setAdminVideoTab] = useState<'skills' | 'raw' | 'scheduler'>('skills');
+  const [homeSelectedTeam, setHomeSelectedTeam] = useState<string>('');
   
   const [scheduleStep, setScheduleStep] = useState<1 | 2 | 3>(1);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -894,10 +895,7 @@ function App() {
               {currentUser.role === 'admin' && (
                 <button className="btn-primary" onClick={() => setView('admin')}>進入後台管理</button>
               )}
-              <button className="btn-secondary" onClick={() => setView('frontend')} style={{ borderColor: 'var(--icon-accent)', color: 'var(--text-primary)' }}>
-                填寫個人表單
-              </button>
-              <button className="btn-danger" onClick={handleLogout}>登出</button>
+              <button className="btn-danger" onClick={handleLogout} style={{ marginLeft: 'auto' }}>登出</button>
             </div>
 
             <div className="mobile-nav-container" style={{ marginBottom: '24px' }}>
@@ -911,9 +909,6 @@ function App() {
                   {currentUser.role === 'admin' && (
                     <button className="btn-primary" onClick={() => { setView('admin'); setIsMobileMenuOpen(false); }}>進入後台管理</button>
                   )}
-                  <button className="btn-secondary" onClick={() => { setView('frontend'); setIsMobileMenuOpen(false); }} style={{ borderColor: 'var(--icon-accent)', color: 'var(--text-primary)' }}>
-                    填寫個人表單
-                  </button>
                   <button className="btn-danger" onClick={() => { handleLogout(); setIsMobileMenuOpen(false); }}>登出</button>
                 </div>
               )}
@@ -922,7 +917,9 @@ function App() {
               currentUser={currentUser}
               approvedShifts={approvedVersion?.shifts ?? null}
               approvedEdits={approvedVersion?.edits ?? null}
-              onGoToAdmin={currentUser.role === 'admin' ? () => setView('admin') : undefined}
+              selectedTeam={homeSelectedTeam || undefined}
+              onSelectTeam={setHomeSelectedTeam}
+              onGoToForm={() => setView('frontend')}
             />
           </>
         )}
@@ -930,8 +927,8 @@ function App() {
         {view === 'frontend' && (
           <FrontendForm
             currentUser={currentUser!}
+            team={homeSelectedTeam || '影視團隊'}
             onLogout={handleLogout}
-            onBackToAdmin={currentUser?.role === 'admin' ? () => setView('admin') : undefined}
             onBackToHome={() => setView('home')}
           />
         )}

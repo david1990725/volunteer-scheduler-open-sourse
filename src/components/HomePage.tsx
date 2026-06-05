@@ -12,6 +12,7 @@ interface HomePageProps {
   onGoToAdmin?: () => void;
   selectedTeam?: string;
   onSelectTeam?: (team: string) => void;
+  onGoToForm?: () => void;
 }
 
 /** 取得最近一個主日（今天或未來） */
@@ -51,6 +52,7 @@ export const HomePage: React.FC<HomePageProps> = ({
   approvedEdits,
   selectedTeam = '影視團隊',
   onSelectTeam = () => {},
+  onGoToForm,
 }) => {
   const isAdmin = currentUser.role === 'admin';
   const days = daysUntilSunday();
@@ -174,6 +176,18 @@ export const HomePage: React.FC<HomePageProps> = ({
               <option key={team} value={team}>{team}</option>
             ))}
           </select>
+        </div>
+
+        <div style={{ marginTop: '20px' }}>
+          {selectedTeam === '影視團隊' ? (
+            <button className="btn-secondary" onClick={onGoToForm} style={{ borderColor: 'var(--icon-accent)', color: 'var(--text-primary)' }}>
+              填寫 {selectedTeam} 表單
+            </button>
+          ) : (
+            <button className="btn-secondary" disabled style={{ opacity: 0.5, cursor: 'not-allowed' }}>
+              {selectedTeam} 表單尚未開發
+            </button>
+          )}
         </div>
       </div>
 
