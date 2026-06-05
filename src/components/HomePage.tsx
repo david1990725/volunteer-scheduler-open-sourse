@@ -148,7 +148,7 @@ export const HomePage: React.FC<HomePageProps> = ({
       {/* 歡迎卡片 */}
       <div className="glass-card animate-morph stagger-1" style={{ padding: '40px 30px', textAlign: 'center', marginBottom: '24px' }}>
         <h2 style={{
-          fontSize: '1.8rem', marginBottom: '12px', color: 'var(--text-primary)',
+          fontSize: '1.8rem', marginBottom: '12px',
           background: 'linear-gradient(135deg, var(--text-title-from) 0%, var(--text-title-to) 100%)',
           WebkitBackgroundClip: 'text', backgroundClip: 'text', WebkitTextFillColor: 'transparent', color: 'transparent'
         }}>
