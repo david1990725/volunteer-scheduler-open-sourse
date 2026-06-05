@@ -821,8 +821,8 @@ function App() {
 
       {view === 'loading' && (
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '60vh' }}>
-          <div className="animate-spin" style={{ marginBottom: '20px' }}>
-            <Loader2 size={48} color="var(--icon-accent)" />
+          <div style={{ marginBottom: '20px' }}>
+            <Loader2 className="animate-spin" size={48} color="var(--icon-accent)" />
           </div>
           <h2 style={{ color: 'var(--text-primary)', marginBottom: '8px' }}>登入進度處理中...</h2>
           <p style={{ color: 'var(--text-secondary)' }}>正在載入您的資料，請稍候</p>
