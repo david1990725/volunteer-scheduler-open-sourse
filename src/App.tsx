@@ -891,11 +891,20 @@ function App() {
 
         {view === 'home' && currentUser && (
           <>
-            <div className="desktop-nav" style={{ marginBottom: '24px' }}>
+            <div className="desktop-nav" style={{ marginBottom: '24px', justifyContent: 'center' }}>
               {currentUser.role === 'admin' && (
                 <button className="btn-primary" onClick={() => setView('admin')}>進入後台管理</button>
               )}
-              <button className="btn-danger" onClick={handleLogout} style={{ marginLeft: 'auto' }}>登出</button>
+              {homeSelectedTeam === '影視團隊' ? (
+                <button className="btn-secondary" onClick={() => setView('frontend')} style={{ borderColor: 'var(--icon-accent)', color: 'var(--text-primary)' }}>
+                  填寫 {homeSelectedTeam} 表單
+                </button>
+              ) : (
+                <button className="btn-secondary" disabled style={{ opacity: 0.5, cursor: 'not-allowed' }}>
+                  {homeSelectedTeam || '個人'} 表單尚未開發
+                </button>
+              )}
+              <button className="btn-danger" onClick={handleLogout}>登出</button>
             </div>
 
             <div className="mobile-nav-container" style={{ marginBottom: '24px' }}>
@@ -909,6 +918,15 @@ function App() {
                   {currentUser.role === 'admin' && (
                     <button className="btn-primary" onClick={() => { setView('admin'); setIsMobileMenuOpen(false); }}>進入後台管理</button>
                   )}
+                  {homeSelectedTeam === '影視團隊' ? (
+                    <button className="btn-secondary" onClick={() => { setView('frontend'); setIsMobileMenuOpen(false); }} style={{ borderColor: 'var(--icon-accent)', color: 'var(--text-primary)' }}>
+                      填寫 {homeSelectedTeam} 表單
+                    </button>
+                  ) : (
+                    <button className="btn-secondary" disabled style={{ opacity: 0.5, cursor: 'not-allowed' }}>
+                      {homeSelectedTeam || '個人'} 表單尚未開發
+                    </button>
+                  )}
                   <button className="btn-danger" onClick={() => { handleLogout(); setIsMobileMenuOpen(false); }}>登出</button>
                 </div>
               )}
@@ -919,7 +937,6 @@ function App() {
               approvedEdits={approvedVersion?.edits ?? null}
               selectedTeam={homeSelectedTeam || undefined}
               onSelectTeam={setHomeSelectedTeam}
-              onGoToForm={() => setView('frontend')}
             />
           </>
         )}

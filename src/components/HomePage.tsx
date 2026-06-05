@@ -12,7 +12,6 @@ interface HomePageProps {
   onGoToAdmin?: () => void;
   selectedTeam?: string;
   onSelectTeam?: (team: string) => void;
-  onGoToForm?: () => void;
 }
 
 /** 取得最近一個主日（今天或未來） */
@@ -51,8 +50,7 @@ export const HomePage: React.FC<HomePageProps> = ({
   approvedShifts,
   approvedEdits,
   selectedTeam = '影視團隊',
-  onSelectTeam = () => {},
-  onGoToForm,
+  onSelectTeam = () => { },
 }) => {
   const isAdmin = currentUser.role === 'admin';
   const days = daysUntilSunday();
@@ -152,13 +150,13 @@ export const HomePage: React.FC<HomePageProps> = ({
         <h2 style={{
           fontSize: '1.8rem', marginBottom: '12px', color: 'var(--text-primary)',
           background: 'linear-gradient(135deg, var(--text-title-from) 0%, var(--text-title-to) 100%)',
-          WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
+          WebkitBackgroundClip: 'text', backgroundClip: 'text', WebkitTextFillColor: 'transparent', color: 'transparent'
         }}>
-          {isAdmin ? '歡迎進入崇拜排班系統' : `哈囉，${currentUser.name}！`}
+          哈囉，{currentUser.name || '夥伴'}！歡迎回來！
         </h2>
         <p style={{ color: 'var(--text-secondary)', lineHeight: '1.6', marginBottom: '24px' }}>
-          {isAdmin
-            ? '請透過上方選單切換您的團隊。'
+          {visibleTeams.length > 1 || isAdmin
+            ? '感謝您參與 BOL Production 主日服事，請透過下方選單切換您想檢視的團隊。'
             : '感謝您參與 BOL Production 主日服事，以下是您最近的排班資訊。'
           }
         </p>
@@ -176,18 +174,6 @@ export const HomePage: React.FC<HomePageProps> = ({
               <option key={team} value={team}>{team}</option>
             ))}
           </select>
-        </div>
-
-        <div style={{ marginTop: '20px' }}>
-          {selectedTeam === '影視團隊' ? (
-            <button className="btn-secondary" onClick={onGoToForm} style={{ borderColor: 'var(--icon-accent)', color: 'var(--text-primary)' }}>
-              填寫 {selectedTeam} 表單
-            </button>
-          ) : (
-            <button className="btn-secondary" disabled style={{ opacity: 0.5, cursor: 'not-allowed' }}>
-              {selectedTeam} 表單尚未開發
-            </button>
-          )}
         </div>
       </div>
 
