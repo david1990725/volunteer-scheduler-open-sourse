@@ -1,5 +1,5 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
-import { Menu, X, Download, Users, RefreshCw, FileSpreadsheet, RotateCcw, Image, FileText, Sun, Moon, ChevronDown, CloudUpload, ArrowRight, ArrowLeft, ShieldCheck, ArchiveRestore } from 'lucide-react';
+import { Menu, X, Download, Users, RefreshCw, Loader2, FileSpreadsheet, RotateCcw, Image, FileText, Sun, Moon, ChevronDown, CloudUpload, ArrowRight, ArrowLeft, ShieldCheck, ArchiveRestore } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import html2canvas from 'html2canvas';
 import { jsPDF } from 'jspdf';
@@ -822,7 +822,7 @@ function App() {
       {view === 'loading' && (
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '60vh' }}>
           <div className="animate-spin" style={{ marginBottom: '20px' }}>
-            <RefreshCw size={48} color="var(--icon-accent)" />
+            <Loader2 size={48} color="var(--icon-accent)" />
           </div>
           <h2 style={{ color: 'var(--text-primary)', marginBottom: '8px' }}>登入進度處理中...</h2>
           <p style={{ color: 'var(--text-secondary)' }}>正在載入您的資料，請稍候</p>
