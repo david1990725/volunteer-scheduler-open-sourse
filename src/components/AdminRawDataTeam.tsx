@@ -5,10 +5,11 @@ import * as cloudService from '../utils/googleSheets';
 import { getCycleDates } from '../utils/dateUtils';
 
 interface AdminRawDataProps {
+  team: string;
   onStartAutoSchedule: () => void;
 }
 
-export const AdminRawDataVideo: React.FC<AdminRawDataProps> = ({ onStartAutoSchedule }) => {
+export const AdminRawDataTeam: React.FC<AdminRawDataProps> = ({ team, onStartAutoSchedule }) => {
   const [data, setData] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [source, setSource] = useState<'cloud' | 'local' | 'none'>('none');
@@ -21,7 +22,7 @@ export const AdminRawDataVideo: React.FC<AdminRawDataProps> = ({ onStartAutoSche
     setLoading(true);
 
     try {
-      const res = await cloudService.fetchFormResponsesFromCloud('影視團隊');
+      const res = await cloudService.fetchFormResponsesFromCloud(team);
       if (res.success) {
         if (res.data && res.data.length > 0) {
           setData(res.data);
@@ -66,8 +67,8 @@ export const AdminRawDataVideo: React.FC<AdminRawDataProps> = ({ onStartAutoSche
   };
 
   const clearData = async () => {
-    if (confirm('確定要清空所有雲端 RAW 資料嗎？這將無法復原。')) {
-      const res = await cloudService.clearFormResponsesInCloud('影視團隊');
+    if (confirm(`確定要清空 ${team} 的所有雲端 RAW 資料嗎？這將無法復原。`)) {
+      const res = await cloudService.clearFormResponsesInCloud(team);
       if (res.success) {
         setData([]);
         setSource('none');

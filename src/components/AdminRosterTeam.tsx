@@ -8,7 +8,11 @@ import * as cloudService from '../utils/googleSheets';
 const JOB_TITLE_OPTIONS = ['管理', '影視團隊', '燈光團隊', '舞監團隊', '音控團隊'];
 const SKILL_TREE_URL = 'https://docs.google.com/spreadsheets/d/1L3W6RwrE6gzi_znqNXBww9WVRvi2NVuhDj3-hSYmTZI/export?format=csv';
 
-export const AdminUsers: React.FC = () => {
+interface AdminRosterTeamProps {
+  team: string;
+}
+
+export const AdminRosterTeam: React.FC<AdminRosterTeamProps> = ({ team }) => {
   const [users, setUsers] = useState<Volunteer[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -127,10 +131,10 @@ export const AdminUsers: React.FC = () => {
       <div className="glass-card animate-morph stagger-1" style={{ padding: '24px', marginBottom: '24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <h2 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '12px', color: 'var(--text-primary)' }}>
           <Users size={24} color="var(--icon-accent)" />
-          使用者權限管理
+          {team} 義工名冊
         </h2>
         <div style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>
-          共 {users.length} 位使用者
+          共 {users.filter(u => u.roles.includes('管理') || u.roles.includes(team)).length} 位成員
         </div>
       </div>
 
@@ -146,7 +150,7 @@ export const AdminUsers: React.FC = () => {
             </tr>
           </thead>
           <tbody>
-            {users.map(user => {
+            {users.filter(u => u.roles.includes('管理') || u.roles.includes(team)).map(user => {
               const isEditing = editingUser === user.name;
               
               return (

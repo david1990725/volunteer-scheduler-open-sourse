@@ -9,7 +9,11 @@ import { Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Responsi
 const SKILL_TREE_URL = 'https://docs.google.com/spreadsheets/d/1L3W6RwrE6gzi_znqNXBww9WVRvi2NVuhDj3-hSYmTZI/export?format=csv';
 const GOOGLE_SHEET_URL = 'https://docs.google.com/spreadsheets/d/1L3W6RwrE6gzi_znqNXBww9WVRvi2NVuhDj3-hSYmTZI/edit';
 
-export const AdminSkillTreeVideo: React.FC = () => {
+interface AdminSkillTreeTeamProps {
+  team: string;
+}
+
+export const AdminSkillTreeTeam: React.FC<AdminSkillTreeTeamProps> = ({ team }) => {
   const [volunteers, setVolunteers] = useState<Volunteer[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -60,6 +64,12 @@ export const AdminSkillTreeVideo: React.FC = () => {
 
   const handleSave = async () => {
     if (!selectedVol) return;
+
+    if (team !== '影視團隊') {
+      alert(`【尚未實裝】目前 ${team} 尚未部署後端技能樹與排班引擎，僅供介面預覽！`);
+      return;
+    }
+
     setSaving(true);
     try {
       const result = await cloudService.updateVolunteerSkills({
@@ -114,6 +124,8 @@ export const AdminSkillTreeVideo: React.FC = () => {
     );
   }
 
+  const filteredVolunteers = volunteers.filter(v => v.roles.includes('管理') || v.roles.includes(team));
+
   return (
     <div className="rpg-layout animate-morph stagger-1">
       {/* 標題區塊 */}
@@ -122,7 +134,7 @@ export const AdminSkillTreeVideo: React.FC = () => {
           margin: 0, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '12px',
           textShadow: '0 2px 10px rgba(234, 179, 8, 0.3)'
         }}>
-          <Users size={28} color="var(--icon-accent)" /> 義工名冊 ({volunteers.length} 人)
+          <Users size={28} color="var(--icon-accent)" /> 義工名冊 ({filteredVolunteers.length} 人)
         </h2>
         <a href={GOOGLE_SHEET_URL} target="_blank" rel="noreferrer" className="btn-secondary" style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', textDecoration: 'none' }}>
           <ExternalLink size={16} /> 開啟 Google Sheets
@@ -146,7 +158,7 @@ export const AdminSkillTreeVideo: React.FC = () => {
             選擇義工
           </div>
           <div style={{ maxHeight: '480px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '10px', paddingRight: '4px' }}>
-          {volunteers.map((vol) => {
+          {filteredVolunteers.map((vol) => {
             const isFullTimer = FULL_TIMERS.includes(vol.name);
             return (
             <div

@@ -19,10 +19,11 @@ import { Login } from './components/Login';
 import { FormVideo } from './components/FormVideo';
 import { FormLight } from './components/FormLight';
 import { FormAudio } from './components/FormAudio';
-import { AdminRawDataVideo } from './components/AdminRawDataVideo';
-import { AdminSkillTreeVideo } from './components/AdminSkillTreeVideo';
+import { FormStage } from './components/FormStage';
+import { AdminRosterTeam } from './components/AdminRosterTeam';
+import { AdminRawDataTeam } from './components/AdminRawDataTeam';
+import { AdminSkillTreeTeam } from './components/AdminSkillTreeTeam';
 import { HomePage } from './components/HomePage';
-import { AdminUsers } from './components/AdminUsers';
 
 // =============================================================================
 // Constants
@@ -82,8 +83,8 @@ interface ApprovedVersion {
 function App() {
   const [view, setView] = useState<'login' | 'loading' | 'home' | 'frontend' | 'admin'>('login');
   
-  const [adminTeam, setAdminTeam] = useState<'users' | 'video' | 'light' | 'stage' | 'audio'>('users');
-  const [adminVideoTab, setAdminVideoTab] = useState<'skills' | 'raw' | 'scheduler'>('skills');
+  const [adminTeam, setAdminTeam] = useState<'video' | 'light' | 'stage' | 'audio'>('video');
+  const [adminSubTab, setAdminSubTab] = useState<'roster' | 'skills' | 'raw' | 'scheduler'>('roster');
   const [homeSelectedTeam, setHomeSelectedTeam] = useState<string>('');
   
   const [scheduleStep, setScheduleStep] = useState<1 | 2 | 3>(1);
@@ -97,7 +98,8 @@ function App() {
     liffLogout();
     setView('login');
     setCurrentUser(null);
-    setAdminTeam('users');
+    setAdminTeam('video');
+    setAdminSubTab('roster');
   };
 
   const [shifts, setShifts] = useState<Shift[]>([]);
@@ -827,22 +829,24 @@ function App() {
         <>
           {/* Desktop Navigation */}
           <div className="desktop-nav">
-            <button className={adminTeam === 'users' ? 'btn-primary' : 'btn-secondary'} onClick={() => setAdminTeam('users')}>使用者管理</button>
-            <button className={adminTeam === 'video' ? 'btn-primary' : 'btn-secondary'} onClick={() => setAdminTeam('video')}>影視團隊</button>
-            <button className={adminTeam === 'light' ? 'btn-primary' : 'btn-secondary'} onClick={() => setAdminTeam('light')}>燈光團隊</button>
-            <button className={adminTeam === 'stage' ? 'btn-primary' : 'btn-secondary'} onClick={() => setAdminTeam('stage')}>舞監團隊</button>
-            <button className={adminTeam === 'audio' ? 'btn-primary' : 'btn-secondary'} onClick={() => setAdminTeam('audio')}>音控團隊</button>
+            <button className={adminTeam === 'video' ? 'btn-primary' : 'btn-secondary'} onClick={() => { setAdminTeam('video'); setAdminSubTab('roster'); }}>影視團隊</button>
+            <button className={adminTeam === 'light' ? 'btn-primary' : 'btn-secondary'} onClick={() => { setAdminTeam('light'); setAdminSubTab('roster'); }}>燈光團隊</button>
+            <button className={adminTeam === 'stage' ? 'btn-primary' : 'btn-secondary'} onClick={() => { setAdminTeam('stage'); setAdminSubTab('roster'); }}>舞監團隊</button>
+            <button className={adminTeam === 'audio' ? 'btn-primary' : 'btn-secondary'} onClick={() => { setAdminTeam('audio'); setAdminSubTab('roster'); }}>音控團隊</button>
             
             <button className="btn-secondary" onClick={() => setView('home')} style={{ borderColor: 'var(--icon-accent)', color: 'var(--text-primary)', marginLeft: 'auto' }}>回前台</button>
             <button className="btn-danger" onClick={handleLogout}>登出</button>
           </div>
 
-          {/* Video Team Sub Navigation */}
-          {adminTeam === 'video' && (
+          {/* Team Sub Navigation */}
+          {['video', 'light', 'stage', 'audio'].includes(adminTeam) && (
             <div className="desktop-nav" style={{ marginTop: '-12px', marginBottom: '24px', padding: '10px', background: 'rgba(255,255,255,0.02)', borderRadius: '12px' }}>
-               <button className={adminVideoTab === 'skills' ? 'btn-primary' : 'btn-secondary'} onClick={() => setAdminVideoTab('skills')} style={{ padding: '6px 16px', fontSize: '0.9rem' }}>義工名冊</button>
-               <button className={adminVideoTab === 'raw' ? 'btn-primary' : 'btn-secondary'} onClick={() => setAdminVideoTab('raw')} style={{ padding: '6px 16px', fontSize: '0.9rem' }}>RAW 資料表單</button>
-               <button className={adminVideoTab === 'scheduler' ? 'btn-primary' : 'btn-secondary'} onClick={() => setAdminVideoTab('scheduler')} style={{ padding: '6px 16px', fontSize: '0.9rem' }}>自動排班系統</button>
+               <button className={adminSubTab === 'roster' ? 'btn-primary' : 'btn-secondary'} onClick={() => setAdminSubTab('roster')} style={{ padding: '6px 16px', fontSize: '0.9rem' }}>義工名冊</button>
+               <button className={adminSubTab === 'raw' ? 'btn-primary' : 'btn-secondary'} onClick={() => setAdminSubTab('raw')} style={{ padding: '6px 16px', fontSize: '0.9rem' }}>RAW 資料表單</button>
+               <button className={adminSubTab === 'skills' ? 'btn-primary' : 'btn-secondary'} onClick={() => setAdminSubTab('skills')} style={{ padding: '6px 16px', fontSize: '0.9rem' }}>技能雷達圖</button>
+               {adminTeam === 'video' && (
+                 <button className={adminSubTab === 'scheduler' ? 'btn-primary' : 'btn-secondary'} onClick={() => setAdminSubTab('scheduler')} style={{ padding: '6px 16px', fontSize: '0.9rem' }}>自動排班系統</button>
+               )}
             </div>
           )}
 
@@ -855,17 +859,19 @@ function App() {
 
             {isMobileMenuOpen && (
               <div className="mobile-nav-menu animate-morph stagger-1">
-                <button className={adminTeam === 'users' ? 'btn-primary' : 'btn-secondary'} onClick={() => { setAdminTeam('users'); setIsMobileMenuOpen(false); }}>使用者管理</button>
-                <button className={adminTeam === 'video' ? 'btn-primary' : 'btn-secondary'} onClick={() => { setAdminTeam('video'); setIsMobileMenuOpen(false); }}>影視團隊</button>
-                <button className={adminTeam === 'light' ? 'btn-primary' : 'btn-secondary'} onClick={() => { setAdminTeam('light'); setIsMobileMenuOpen(false); }}>燈光團隊</button>
-                <button className={adminTeam === 'stage' ? 'btn-primary' : 'btn-secondary'} onClick={() => { setAdminTeam('stage'); setIsMobileMenuOpen(false); }}>舞監團隊</button>
-                <button className={adminTeam === 'audio' ? 'btn-primary' : 'btn-secondary'} onClick={() => { setAdminTeam('audio'); setIsMobileMenuOpen(false); }}>音控團隊</button>
+                <button className={adminTeam === 'video' ? 'btn-primary' : 'btn-secondary'} onClick={() => { setAdminTeam('video'); setAdminSubTab('roster'); setIsMobileMenuOpen(false); }}>影視團隊</button>
+                <button className={adminTeam === 'light' ? 'btn-primary' : 'btn-secondary'} onClick={() => { setAdminTeam('light'); setAdminSubTab('roster'); setIsMobileMenuOpen(false); }}>燈光團隊</button>
+                <button className={adminTeam === 'stage' ? 'btn-primary' : 'btn-secondary'} onClick={() => { setAdminTeam('stage'); setAdminSubTab('roster'); setIsMobileMenuOpen(false); }}>舞監團隊</button>
+                <button className={adminTeam === 'audio' ? 'btn-primary' : 'btn-secondary'} onClick={() => { setAdminTeam('audio'); setAdminSubTab('roster'); setIsMobileMenuOpen(false); }}>音控團隊</button>
                 
-                {adminTeam === 'video' && (
+                {['video', 'light', 'stage', 'audio'].includes(adminTeam) && (
                   <div style={{ padding: '10px 0', borderTop: '1px solid rgba(255,255,255,0.1)', borderBottom: '1px solid rgba(255,255,255,0.1)', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                    <button className={adminVideoTab === 'skills' ? 'btn-primary' : 'btn-secondary'} onClick={() => { setAdminVideoTab('skills'); setIsMobileMenuOpen(false); }}>- 義工名冊</button>
-                    <button className={adminVideoTab === 'raw' ? 'btn-primary' : 'btn-secondary'} onClick={() => { setAdminVideoTab('raw'); setIsMobileMenuOpen(false); }}>- RAW 資料表單</button>
-                    <button className={adminVideoTab === 'scheduler' ? 'btn-primary' : 'btn-secondary'} onClick={() => { setAdminVideoTab('scheduler'); setIsMobileMenuOpen(false); }}>- 自動排班系統</button>
+                    <button className={adminSubTab === 'roster' ? 'btn-primary' : 'btn-secondary'} onClick={() => { setAdminSubTab('roster'); setIsMobileMenuOpen(false); }}>- 義工名冊</button>
+                    <button className={adminSubTab === 'raw' ? 'btn-primary' : 'btn-secondary'} onClick={() => { setAdminSubTab('raw'); setIsMobileMenuOpen(false); }}>- RAW 資料表單</button>
+                    <button className={adminSubTab === 'skills' ? 'btn-primary' : 'btn-secondary'} onClick={() => { setAdminSubTab('skills'); setIsMobileMenuOpen(false); }}>- 技能雷達圖</button>
+                    {adminTeam === 'video' && (
+                      <button className={adminSubTab === 'scheduler' ? 'btn-primary' : 'btn-secondary'} onClick={() => { setAdminSubTab('scheduler'); setIsMobileMenuOpen(false); }}>- 自動排班系統</button>
+                    )}
                   </div>
                 )}
                 
@@ -897,7 +903,7 @@ function App() {
               {currentUser.role === 'admin' && (
                 <button className="btn-primary" onClick={() => setView('admin')}>進入後台管理</button>
               )}
-              {['影視團隊', '燈光團隊', '音控團隊'].includes(homeSelectedTeam) ? (
+              {['影視團隊', '燈光團隊', '音控團隊', '舞監團隊'].includes(homeSelectedTeam) ? (
                 <button className="btn-secondary" onClick={() => setView('frontend')} style={{ borderColor: 'var(--icon-accent)', color: 'var(--text-primary)' }}>
                   填寫 {homeSelectedTeam} 表單
                 </button>
@@ -920,7 +926,7 @@ function App() {
                   {currentUser.role === 'admin' && (
                     <button className="btn-primary" onClick={() => { setView('admin'); setIsMobileMenuOpen(false); }}>進入後台管理</button>
                   )}
-                  {['影視團隊', '燈光團隊', '音控團隊'].includes(homeSelectedTeam) ? (
+                  {['影視團隊', '燈光團隊', '音控團隊', '舞監團隊'].includes(homeSelectedTeam) ? (
                     <button className="btn-secondary" onClick={() => { setView('frontend'); setIsMobileMenuOpen(false); }} style={{ borderColor: 'var(--icon-accent)', color: 'var(--text-primary)' }}>
                       填寫 {homeSelectedTeam} 表單
                     </button>
@@ -954,30 +960,44 @@ function App() {
             {homeSelectedTeam === '音控團隊' && (
               <FormAudio currentUser={currentUser!} team={homeSelectedTeam} onLogout={handleLogout} onBackToHome={() => setView('home')} />
             )}
+            {homeSelectedTeam === '舞監團隊' && (
+              <FormStage currentUser={currentUser!} team={homeSelectedTeam} onLogout={handleLogout} onBackToHome={() => setView('home')} />
+            )}
           </>
         )}
 
         {view === 'admin' && currentUser?.role === 'admin' && (
           <>
-            {adminTeam === 'users' && <AdminUsers />}
-            
-            {adminTeam !== 'users' && adminTeam !== 'video' && (
-              <div className="glass-card animate-morph" style={{ padding: '60px 20px', textAlign: 'center' }}>
-                <h3 style={{ color: 'var(--text-primary)', marginBottom: '12px' }}>功能開發中</h3>
-                <p style={{ color: 'var(--text-muted)' }}>這個團隊的管理介面與排班引擎尚未開放，敬請期待！🚧</p>
-              </div>
-            )}
+            {(() => {
+              const teamNameMap: Record<string, string> = {
+                video: '影視團隊',
+                light: '燈光團隊',
+                audio: '音控團隊',
+                stage: '舞監團隊'
+              };
+              const currentTeamName = teamNameMap[adminTeam];
 
-            {adminTeam === 'video' && adminVideoTab === 'raw' && (
-              <AdminRawDataVideo onStartAutoSchedule={() => {
-                setAdminVideoTab('scheduler');
-                generateSchedule();
-              }} />
-            )}
+              return (
+                <>
+                  {adminSubTab === 'roster' && <AdminRosterTeam team={currentTeamName} />}
+                  
+                  {adminSubTab === 'raw' && (
+                    <AdminRawDataTeam 
+                      team={currentTeamName} 
+                      onStartAutoSchedule={() => {
+                        if (adminTeam === 'video') {
+                          setAdminSubTab('scheduler');
+                          generateSchedule();
+                        } else {
+                          alert(`【尚未實裝】目前 ${currentTeamName} 尚未部署排班引擎。`);
+                        }
+                      }} 
+                    />
+                  )}
 
-            {adminTeam === 'video' && adminVideoTab === 'skills' && <AdminSkillTreeVideo />}
-
-            {adminTeam === 'video' && adminVideoTab === 'scheduler' && (
+                  {adminSubTab === 'skills' && <AdminSkillTreeTeam team={currentTeamName} />}
+                  
+                  {adminTeam === 'video' && adminSubTab === 'scheduler' && (
               <>
                 {/* 階段標籤 */}
                 <div className="glass-card animate-morph stagger-1" style={{ padding: '16px 24px', marginBottom: '24px', display: 'flex', justifyContent: 'center', gap: '20px', flexWrap: 'wrap' }}>
@@ -1101,7 +1121,10 @@ function App() {
               </>
             )}
           </>
-        )}
+        );
+      })()}
+    </>
+  )}
       </main>
     </div>
   );

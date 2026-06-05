@@ -32,6 +32,9 @@ function getFormResponsesSheet(ss, team) {
   } else if (team === '音控團隊') {
     gid = 205317315;
     defaultName = '音控表單回覆紀錄';
+  } else if (team === '舞監團隊') {
+    gid = 1363659258;
+    defaultName = '舞監表單回覆紀錄';
   }
 
   var sheets = ss.getSheets();
