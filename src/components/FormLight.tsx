@@ -12,13 +12,13 @@ interface FrontendFormProps {
   team?: string;
 }
 
-export const FormLight: React.FC<FrontendFormProps> = ({ currentUser, onLogout, onBackToAdmin, onBackToHome, team }) => {
+export const FormLight: React.FC<FrontendFormProps> = ({ currentUser, onLogout, onBackToAdmin, onBackToHome }) => {
   const { isOpen, sundays, nextMonths } = getCycleDates();
   const [availability, setAvailability] = useState<Record<string, string[]>>({});
   const [submitted, setSubmitted] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   
-
+  const groups = ['燈光團隊'];
 
   // Group sundays by month
   const sundaysByMonth = sundays.reduce((acc, date) => {
@@ -147,6 +147,7 @@ export const FormLight: React.FC<FrontendFormProps> = ({ currentUser, onLogout, 
 
       <form onSubmit={handleSubmit}>
         
+        {Object.entries(sundaysByMonth).map(([month, dates], index) => (
           <div key={month} className={`glass-card animate-morph stagger-${index + 2}`} style={{ padding: '30px', marginBottom: '20px' }}>
             <label style={{ display: 'block', fontSize: '1.2rem', fontWeight: 700, marginBottom: '20px', color: 'var(--text-primary)' }}>
               {month} 月份可服事日期與地點

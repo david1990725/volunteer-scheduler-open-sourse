@@ -12,7 +12,7 @@ interface FrontendFormProps {
   team?: string;
 }
 
-export const FormVideo: React.FC<FrontendFormProps> = ({ currentUser, onLogout, onBackToAdmin, onBackToHome, team }) => {
+export const FormVideo: React.FC<FrontendFormProps> = ({ currentUser, onLogout, onBackToAdmin, onBackToHome }) => {
   const { isOpen, sundays, nextMonths } = getCycleDates();
   const [groups, setGroups] = useState<string[]>([]);
   const [availability, setAvailability] = useState<Record<string, string[]>>({});
