@@ -20,16 +20,27 @@ function getVolunteerSheet(ss) {
 }
 
 /**
- * 透過 gid 取得表單回覆紀錄工作表 (gid=120152057)
+ * 透過 gid 取得表單回覆紀錄工作表
  */
-function getFormResponsesSheet(ss) {
+function getFormResponsesSheet(ss, team) {
+  var gid = 120152057; // 預設影視團隊
+  var defaultName = '影視表單回覆紀錄';
+  
+  if (team === '燈光團隊') {
+    gid = 1936818818;
+    defaultName = '燈光表單回覆紀錄';
+  } else if (team === '音控團隊') {
+    gid = 205317315;
+    defaultName = '音控表單回覆紀錄';
+  }
+
   var sheets = ss.getSheets();
   for (var i = 0; i < sheets.length; i++) {
-    if (sheets[i].getSheetId() == 120152057) {
+    if (sheets[i].getSheetId() == gid) {
       return sheets[i];
     }
   }
-  return ss.getSheetByName('影視表單回覆紀錄');
+  return ss.getSheetByName(defaultName);
 }
 
 /**
@@ -56,9 +67,9 @@ function doPost(e) {
     } else if (payload.action === 'submitForm') {
       return handleSubmitForm(payload);
     } else if (payload.action === 'fetchFormResponses') {
-      return handleFetchFormResponses();
+      return handleFetchFormResponses(payload);
     } else if (payload.action === 'clearFormResponses') {
-      return handleClearFormResponses();
+      return handleClearFormResponses(payload);
     }
     
     return jsonResponse({ success: false, message: '未知的操作' });
@@ -313,10 +324,11 @@ function handleFetchSchedule(payload) {
  */
 function handleSubmitForm(payload) {
   var ss = SpreadsheetApp.openById(SPREADSHEET_ID);
-  var sheet = getFormResponsesSheet(ss);
+  var team = payload.team || '影視團隊';
+  var sheet = getFormResponsesSheet(ss, team);
   
   if (!sheet) {
-    sheet = ss.insertSheet('影視表單回覆紀錄');
+    sheet = ss.insertSheet(team + '表單回覆紀錄');
   }
   
   var formData = payload.data;
@@ -354,9 +366,10 @@ function handleSubmitForm(payload) {
 /**
  * 讀取「表單回覆」工作表所有資料
  */
-function handleFetchFormResponses() {
+function handleFetchFormResponses(payload) {
   var ss = SpreadsheetApp.openById(SPREADSHEET_ID);
-  var sheet = getFormResponsesSheet(ss);
+  var team = payload && payload.team ? payload.team : '影視團隊';
+  var sheet = getFormResponsesSheet(ss, team);
   
   if (!sheet || sheet.getLastRow() <= 1) {
     return jsonResponse({ success: true, message: '目前沒有表單資料', data: [] });
@@ -384,9 +397,10 @@ function handleFetchFormResponses() {
 /**
  * 清空「表單回覆」工作表（保留標題列）
  */
-function handleClearFormResponses() {
+function handleClearFormResponses(payload) {
   var ss = SpreadsheetApp.openById(SPREADSHEET_ID);
-  var sheet = getFormResponsesSheet(ss);
+  var team = payload && payload.team ? payload.team : '影視團隊';
+  var sheet = getFormResponsesSheet(ss, team);
   
   if (!sheet) {
     return jsonResponse({ success: true, message: '工作表不存在，無需清空' });

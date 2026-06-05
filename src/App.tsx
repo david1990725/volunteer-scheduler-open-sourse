@@ -16,9 +16,11 @@ import { useInteractiveLighting } from './hooks/useInteractiveLighting';
 import { useLiff } from './hooks/useLiff';
 import * as cloudService from './utils/googleSheets';
 import { Login } from './components/Login';
-import { FrontendForm } from './components/FrontendForm';
-import { AdminRawData } from './components/AdminRawData';
-import { AdminSkillTree } from './components/AdminSkillTree';
+import { FormVideo } from './components/FormVideo';
+import { FormLight } from './components/FormLight';
+import { FormAudio } from './components/FormAudio';
+import { AdminRawDataVideo } from './components/AdminRawDataVideo';
+import { AdminSkillTreeVideo } from './components/AdminSkillTreeVideo';
 import { HomePage } from './components/HomePage';
 import { AdminUsers } from './components/AdminUsers';
 
@@ -895,7 +897,7 @@ function App() {
               {currentUser.role === 'admin' && (
                 <button className="btn-primary" onClick={() => setView('admin')}>進入後台管理</button>
               )}
-              {homeSelectedTeam === '影視團隊' ? (
+              {['影視團隊', '燈光團隊', '音控團隊'].includes(homeSelectedTeam) ? (
                 <button className="btn-secondary" onClick={() => setView('frontend')} style={{ borderColor: 'var(--icon-accent)', color: 'var(--text-primary)' }}>
                   填寫 {homeSelectedTeam} 表單
                 </button>
@@ -918,7 +920,7 @@ function App() {
                   {currentUser.role === 'admin' && (
                     <button className="btn-primary" onClick={() => { setView('admin'); setIsMobileMenuOpen(false); }}>進入後台管理</button>
                   )}
-                  {homeSelectedTeam === '影視團隊' ? (
+                  {['影視團隊', '燈光團隊', '音控團隊'].includes(homeSelectedTeam) ? (
                     <button className="btn-secondary" onClick={() => { setView('frontend'); setIsMobileMenuOpen(false); }} style={{ borderColor: 'var(--icon-accent)', color: 'var(--text-primary)' }}>
                       填寫 {homeSelectedTeam} 表單
                     </button>
@@ -942,12 +944,17 @@ function App() {
         )}
 
         {view === 'frontend' && (
-          <FrontendForm
-            currentUser={currentUser!}
-            team={homeSelectedTeam || '影視團隊'}
-            onLogout={handleLogout}
-            onBackToHome={() => setView('home')}
-          />
+          <>
+            {homeSelectedTeam === '影視團隊' && (
+              <FormVideo currentUser={currentUser!} team={homeSelectedTeam} onLogout={handleLogout} onBackToHome={() => setView('home')} />
+            )}
+            {homeSelectedTeam === '燈光團隊' && (
+              <FormLight currentUser={currentUser!} team={homeSelectedTeam} onLogout={handleLogout} onBackToHome={() => setView('home')} />
+            )}
+            {homeSelectedTeam === '音控團隊' && (
+              <FormAudio currentUser={currentUser!} team={homeSelectedTeam} onLogout={handleLogout} onBackToHome={() => setView('home')} />
+            )}
+          </>
         )}
 
         {view === 'admin' && currentUser?.role === 'admin' && (
@@ -962,13 +969,13 @@ function App() {
             )}
 
             {adminTeam === 'video' && adminVideoTab === 'raw' && (
-              <AdminRawData onStartAutoSchedule={() => {
+              <AdminRawDataVideo onStartAutoSchedule={() => {
                 setAdminVideoTab('scheduler');
                 generateSchedule();
               }} />
             )}
 
-            {adminTeam === 'video' && adminVideoTab === 'skills' && <AdminSkillTree />}
+            {adminTeam === 'video' && adminVideoTab === 'skills' && <AdminSkillTreeVideo />}
 
             {adminTeam === 'video' && adminVideoTab === 'scheduler' && (
               <>

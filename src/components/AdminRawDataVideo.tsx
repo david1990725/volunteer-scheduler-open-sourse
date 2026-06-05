@@ -8,7 +8,7 @@ interface AdminRawDataProps {
   onStartAutoSchedule: () => void;
 }
 
-export const AdminRawData: React.FC<AdminRawDataProps> = ({ onStartAutoSchedule }) => {
+export const AdminRawDataVideo: React.FC<AdminRawDataProps> = ({ onStartAutoSchedule }) => {
   const [data, setData] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [source, setSource] = useState<'cloud' | 'local' | 'none'>('none');
@@ -21,7 +21,7 @@ export const AdminRawData: React.FC<AdminRawDataProps> = ({ onStartAutoSchedule 
     setLoading(true);
 
     try {
-      const res = await cloudService.fetchFormResponsesFromCloud();
+      const res = await cloudService.fetchFormResponsesFromCloud('影視團隊');
       if (res.success) {
         if (res.data && res.data.length > 0) {
           setData(res.data);
@@ -67,7 +67,7 @@ export const AdminRawData: React.FC<AdminRawDataProps> = ({ onStartAutoSchedule 
 
   const clearData = async () => {
     if (confirm('確定要清空所有雲端 RAW 資料嗎？這將無法復原。')) {
-      const res = await cloudService.clearFormResponsesInCloud();
+      const res = await cloudService.clearFormResponsesInCloud('影視團隊');
       if (res.success) {
         setData([]);
         setSource('none');

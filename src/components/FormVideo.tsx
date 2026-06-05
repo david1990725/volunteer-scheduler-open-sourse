@@ -12,7 +12,7 @@ interface FrontendFormProps {
   team?: string;
 }
 
-export const FrontendForm: React.FC<FrontendFormProps> = ({ currentUser, onLogout, onBackToAdmin, onBackToHome, team }) => {
+export const FormVideo: React.FC<FrontendFormProps> = ({ currentUser, onLogout, onBackToAdmin, onBackToHome, team }) => {
   const { isOpen, sundays, nextMonths } = getCycleDates();
   const [groups, setGroups] = useState<string[]>([]);
   const [availability, setAvailability] = useState<Record<string, string[]>>({});
@@ -58,7 +58,7 @@ export const FrontendForm: React.FC<FrontendFormProps> = ({ currentUser, onLogou
         responseRow[`[${date}]`] = locs.join(', ');
       });
 
-      const res = await cloudService.submitVolunteerForm({ data: responseRow });
+      const res = await cloudService.submitVolunteerForm({ data: responseRow, team: '影視團隊' });
       
       if (!res.success) {
         throw new Error(res.message);
@@ -93,23 +93,7 @@ export const FrontendForm: React.FC<FrontendFormProps> = ({ currentUser, onLogou
     );
   }
   
-  if (team && team !== '影視團隊') {
-    return (
-      <div className="glass-card" style={{ padding: '60px 20px', textAlign: 'center', maxWidth: '600px', margin: '100px auto' }}>
-        <h2 style={{ fontSize: '1.8rem', marginBottom: '20px', color: 'var(--text-primary)' }}>{team} 表單</h2>
-        <p style={{ color: 'var(--text-secondary)' }}>
-          此團隊的專屬表單與排班引擎正在開發中，敬請期待！🚧
-        </p>
-        {onBackToAdmin ? (
-          <button className="btn-secondary" onClick={onBackToAdmin} style={{ margin: '30px auto 0' }}>返回後台</button>
-        ) : onBackToHome ? (
-          <button className="btn-secondary" onClick={onBackToHome} style={{ margin: '30px auto 0' }}>返回</button>
-        ) : (
-          <button className="btn-secondary" onClick={onLogout} style={{ margin: '30px auto 0' }}>返回登入</button>
-        )}
-      </div>
-    );
-  }
+
 
   const resetForm = () => {
     setGroups([]);
