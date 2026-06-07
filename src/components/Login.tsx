@@ -39,15 +39,34 @@ export const Login: React.FC<LoginProps> = ({ onLogin }) => {
     handleLineLogin();
   }, [isReady, isLoggedIn, profile]);
 
-  /** 載入技能樹並回傳解析結果 */
+  /** 載入技能樹並回傳解析結果 (含 Session 快取機制) */
   const fetchSkillTree = async () => {
+    const cacheKey = 'skillTreeCache';
+    const cacheTimeKey = 'skillTreeCacheTime';
+    const cached = sessionStorage.getItem(cacheKey);
+    const cachedTime = sessionStorage.getItem(cacheTimeKey);
+    
+    // 快取有效期 1 小時 (3600000 毫秒)
+    if (cached && cachedTime && (Date.now() - parseInt(cachedTime)) < 3600000) {
+      try {
+        return JSON.parse(cached);
+      } catch (e) {
+        console.warn('解析快取失敗，將重新載入:', e);
+      }
+    }
+
     const res = await fetch(SKILL_TREE_URL);
     const text = await res.text();
     const wb = XLSX.read(text, { type: 'string' });
     const data = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { defval: '' });
     const volunteers = parseSkillTreeData(data);
     const lineIdMap = buildLineIdMap(volunteers);
-    return { volunteers, lineIdMap };
+    
+    const result = { volunteers, lineIdMap };
+    sessionStorage.setItem(cacheKey, JSON.stringify(result));
+    sessionStorage.setItem(cacheTimeKey, Date.now().toString());
+    
+    return result;
   };
 
   /** LINE 登入：以 profile.userId 比對技能樹中的 user_id 欄位 */
@@ -122,7 +141,7 @@ export const Login: React.FC<LoginProps> = ({ onLogin }) => {
         
         setTimeout(() => {
           onLogin(newUser, volunteers);
-        }, 1500);
+        }, 500);
       } else {
         setError(result.message || '自動註冊失敗，請聯繫管理員。');
         setRegistering(false);
@@ -143,18 +162,15 @@ export const Login: React.FC<LoginProps> = ({ onLogin }) => {
     // 清除手動登出旗標
     clearManualLogout();
     autoLoginAttempted.current = false;
+    setLoading(true); // 先開啟 loading 狀態，避免畫面無回饋讓使用者誤會
 
     if (liffObject && liffObject.isLoggedIn()) {
       // 若 LIFF 確實是登入狀態，直接驗證 (即使 React 狀態 isLoggedIn 尚未同步)
       if (profile) {
         handleLineLogin();
       } else {
-        liffObject.getProfile().then(() => {
-           // profile might not be in state yet
-           // We can just rely on useEffect to trigger once profile is fetched by the hook 
-           // But since the hook doesn't re-fetch on click, we call login()
-           login();
-        }).catch(() => login());
+        // profile 尚未同步完成，呼叫 login 來重新抓取，後續由 useEffect 觸發 handleLineLogin
+        login();
       }
     } else {
       // 無 LIFF session，導向 LINE 授權頁
@@ -187,6 +203,18 @@ export const Login: React.FC<LoginProps> = ({ onLogin }) => {
       setLoading(false);
     }
   };
+
+  if (!isReady) {
+    return (
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px 0' }}>
+        <div className="glass-card" style={{ padding: '50px 40px', maxWidth: '400px', width: '100%', textAlign: 'center' }}>
+          <RefreshCw className="animate-spin" color="var(--icon-accent)" size={48} style={{ margin: '0 auto 20px' }} />
+          <h2 style={{ fontSize: '1.5rem', marginBottom: '10px', color: 'var(--text-primary)' }}>系統初始化中...</h2>
+          <p style={{ color: 'var(--text-secondary)' }}>正在連線 LINE 登入服務</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px 0' }}>
