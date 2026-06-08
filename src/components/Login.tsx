@@ -40,7 +40,7 @@ export const Login: React.FC<LoginProps> = ({ onLogin }) => {
   }, [isReady, isLoggedIn, profile]);
 
   /** 載入技能樹並回傳解析結果 (含 Session 快取機制) */
-  const fetchSkillTree = async () => {
+  const fetchSkillTree = async (): Promise<{ volunteers: Record<string, Volunteer>; lineIdMap: Record<string, string> }> => {
     const cacheKey = 'skillTreeCache';
     const cacheTimeKey = 'skillTreeCacheTime';
     const cached = sessionStorage.getItem(cacheKey);
