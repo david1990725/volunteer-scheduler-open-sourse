@@ -41,12 +41,33 @@ const SUB_TABS: { key: SubTab; name: string; Icon: React.FC<{ size?: number }>; 
   { key: 'scheduler', name: '排班系統', Icon: CalendarClock, videoOnly: true },
 ];
 
-// Angles in degrees: 0=Right, 90=Down, 180=Left, 270=Up
-const FAN_RAD_IDLE = [155, 115, 65, 25]; // Downward arc (Left to Right), spread wide
-const FAN_R_IDLE = 260;
+const isMobile = () => typeof window !== 'undefined' && window.innerWidth < 768;
 
-const FAN_RAD_SWITCH = [225, 195, 165, 135]; // Left-side arc (Top to Bottom)
-const FAN_R_SWITCH = 200;
+const getIdleFanConfig = () => {
+  if (isMobile()) {
+    return {
+      rad: [160, 120, 60, 20], // U-shape, prevents horizontal overlap on small screens
+      r: 140
+    };
+  }
+  return {
+    rad: [155, 115, 65, 25], // Downward arc (Left to Right), spread wide
+    r: 260
+  };
+};
+
+const getSwitchFanConfig = () => {
+  if (isMobile()) {
+    return {
+      rad: [240, 210, 150, 120], // Left-side arc, tighter for mobile
+      r: 130
+    };
+  }
+  return {
+    rad: [225, 195, 165, 135], // Left-side arc (Top to Bottom)
+    r: 200
+  };
+};
 
 // =============================================================================
 // Component
@@ -242,7 +263,8 @@ export const AdminNav: React.FC<AdminNavProps> = ({
   const openSwitch = useCallback(() => {
     setState('switching');
     requestAnimationFrame(() => {
-      buildFan(FAN_RAD_SWITCH, FAN_R_SWITCH, (idx, nd) => switchSelectTeamRef.current(idx, nd));
+      const conf = getSwitchFanConfig();
+      buildFan(conf.rad, conf.r, (idx, nd) => switchSelectTeamRef.current(idx, nd));
     });
   }, [buildFan]);
 
@@ -255,7 +277,8 @@ export const AdminNav: React.FC<AdminNavProps> = ({
   const openFan = useCallback(() => {
     setState('fan');
     requestAnimationFrame(() => {
-      buildFan(FAN_RAD_IDLE, FAN_R_IDLE, selectTeam);
+      const conf = getIdleFanConfig();
+      buildFan(conf.rad, conf.r, selectTeam);
     });
   }, [buildFan, selectTeam]);
 
@@ -389,7 +412,7 @@ export const AdminNav: React.FC<AdminNavProps> = ({
             top: (() => {
               if (!navRootRef.current) return '50%';
               const nr = navRootRef.current.getBoundingClientRect();
-              return (nr.top + nr.height / 2 - FAN_R_SWITCH - 30) + 'px';
+              return (nr.top + nr.height / 2 - getSwitchFanConfig().r - 30) + 'px';
             })(),
             left: (() => {
               if (!navRootRef.current) return '50%';
