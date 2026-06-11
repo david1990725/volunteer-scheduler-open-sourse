@@ -38,7 +38,7 @@ const SUB_TABS: { key: SubTab; name: string; Icon: React.FC<{ size?: number }>; 
   { key: 'roster', name: '義工名冊', Icon: BookOpen },
   { key: 'raw', name: 'RAW 資料', Icon: Table },
   { key: 'skills', name: '技能雷達', Icon: Radar },
-  { key: 'scheduler', name: '排班系統', Icon: CalendarClock, videoOnly: true },
+  { key: 'scheduler', name: '排班系統', Icon: CalendarClock },
 ];
 
 const isMobile = () => typeof window !== 'undefined' && window.innerWidth < 768;
@@ -282,6 +282,29 @@ export const AdminNav: React.FC<AdminNavProps> = ({
     });
   }, [buildFan, selectTeam]);
 
+  const closeFan = useCallback(() => {
+    setState('idle');
+    collapseFan();
+  }, [collapseFan]);
+
+  // Global click-outside listener to close the fan when clicking empty space
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (state === 'switching' || state === 'fan') {
+        const target = e.target as Node;
+        // If clicking inside the fan nodes or the hub/pills area, do nothing here
+        if (navAreaRef.current?.contains(target)) return;
+        if (fanWrapRef.current?.contains(target)) return;
+        
+        // Otherwise, it's an outside click, so close the fan
+        if (state === 'switching') cancelSwitch();
+        else closeFan();
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [state, cancelSwitch, closeFan]);
+
   // Auto-open on mount if no team is selected
   useEffect(() => {
     if (state === 'idle' && activeTeamIdx === null) {
@@ -289,11 +312,6 @@ export const AdminNav: React.FC<AdminNavProps> = ({
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-
-  const closeFan = useCallback(() => {
-    setState('idle');
-    collapseFan();
-  }, [collapseFan]);
 
   // ── Hub interaction ─────────────────────────────────────────────────────
 
@@ -335,19 +353,17 @@ export const AdminNav: React.FC<AdminNavProps> = ({
   const ActiveIcon = activeTeam?.Icon ?? LayoutGrid;
 
   // Determine visible sub-tabs
-  const visibleSubTabs = SUB_TABS.filter(
-    tab => !tab.videoOnly || adminTeam === 'video'
-  );
+  const visibleSubTabs = SUB_TABS;
 
   // ── Render ──────────────────────────────────────────────────────────────
 
   return (
     <>
-      {/* Full-viewport dim overlay for fan / switching */}
-      <div
-        className={`admin-overlay${showOverlay ? ' dim' : ''}`}
-        onClick={handleOverlayClick}
-      />
+      {/* Dark overlay for fan background */}
+      <div className={`admin-overlay${showOverlay ? ' vis' : ''}`} onClick={handleHubClick} />
+
+      {/* Fan nodes container — fixed positioning layer */}
+      <div ref={fanWrapRef} className="admin-fan-wrap" />
 
       {/* Nav wrapper — no card, just positioning context */}
       <div ref={navAreaRef} className={`admin-nav-area${isLayoutAnchored ? ' anchored' : ''}`}>
@@ -372,7 +388,7 @@ export const AdminNav: React.FC<AdminNavProps> = ({
 
         {/* Function pills (visible when anchored) */}
         <div className={`admin-fn-pills-wrap${isLayoutAnchored ? ' expanded' : ''}${showPills ? ' vis' : ''}`}>
-          <div className="admin-fn-pills" style={state === 'switching' ? { zIndex: 4 } : undefined}>
+          <div className="admin-fn-pills">
             {visibleSubTabs.map(tab => (
               <button
                 key={tab.key}
@@ -384,10 +400,10 @@ export const AdminNav: React.FC<AdminNavProps> = ({
               </button>
             ))}
 
-            {/* Separator + utility buttons */}
+            {/* Utility / Nav buttons */}
             <div className="admin-fn-sep" />
-            <button className="admin-fn-util" onClick={onBackToHome}>
-              <ArrowLeft size={12} /> 回前台
+            <button className="admin-fn-util primary" onClick={onBackToHome}>
+              <LayoutGrid size={14} /> 回前台
             </button>
             <button className="admin-fn-util danger" onClick={onLogout}>
               <LogOut size={12} /> 登出
@@ -420,6 +436,7 @@ export const AdminNav: React.FC<AdminNavProps> = ({
               return (nr.left + nr.width / 2) + 'px';
             })(),
             transform: 'translateX(-50%)',
+            zIndex: 950,
           }}
         >
           <X size={12} /> 取消切換

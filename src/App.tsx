@@ -83,7 +83,10 @@ interface ApprovedVersion {
 // =============================================================================
 
 function App() {
-  const [view, setView] = useState<'login' | 'loading' | 'home' | 'frontend' | 'admin'>('login');
+  const [view, setView] = useState<'login' | 'loading' | 'home' | 'frontend' | 'admin'>(() => {
+    const saved = localStorage.getItem('volunteer_scheduler_user');
+    return saved ? 'home' : 'login';
+  });
   
   const [adminTeam, setAdminTeam] = useState<'video' | 'light' | 'stage' | 'audio'>('video');
   const [adminSubTab, setAdminSubTab] = useState<'roster' | 'skills' | 'raw' | 'scheduler'>('roster');
@@ -92,13 +95,24 @@ function App() {
   
   const [scheduleStep, setScheduleStep] = useState<1 | 2 | 3>(1);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [currentUser, setCurrentUser] = useState<Volunteer | null>(null);
+  const [currentUser, setCurrentUser] = useState<Volunteer | null>(() => {
+    const saved = localStorage.getItem('volunteer_scheduler_user');
+    if (saved) {
+      try {
+        return JSON.parse(saved);
+      } catch (e) {
+        return null;
+      }
+    }
+    return null;
+  });
   const { logout: liffLogout } = useLiff();
 
   const handleLogout = () => {
     // liffLogout 會設置 sessionStorage 旗標 + 清除 LIFF session
     // 防止回到登入頁後自動觸發 LINE 登入
     liffLogout();
+    localStorage.removeItem('volunteer_scheduler_user');
     setView('login');
     setCurrentUser(null);
     setAdminTeam('video');
@@ -847,6 +861,7 @@ function App() {
           <Login onLogin={(user) => {
             setView('loading');
             setTimeout(() => {
+              localStorage.setItem('volunteer_scheduler_user', JSON.stringify(user));
               setCurrentUser(user);
               setView('home');
               if (user.role === 'admin') {
@@ -957,7 +972,8 @@ function App() {
 
                   {adminSubTab === 'skills' && <AdminSkillTreeTeam team={currentTeamName} />}
                   
-                  {adminTeam === 'video' && adminSubTab === 'scheduler' && (
+                  {adminSubTab === 'scheduler' && (
+                    adminTeam === 'video' ? (
               <>
                 {/* 階段標籤 */}
                 <div className="glass-card animate-morph stagger-1" style={{ padding: '16px 24px', marginBottom: '24px', display: 'flex', justifyContent: 'center', gap: '20px', flexWrap: 'wrap' }}>
@@ -1079,7 +1095,12 @@ function App() {
                   </div>
                 )}
               </>
-            )}
+            ) : (
+              <div className="glass-card animate-morph stagger-1" style={{ padding: '60px 20px', textAlign: 'center', marginTop: '40px' }}>
+                <h3 style={{ color: 'var(--text-secondary)', fontSize: '1.2rem', marginBottom: '10px' }}>尚未建立演算法</h3>
+                <p style={{ color: 'var(--text-muted)' }}>目前 {currentTeamName} 的排班引擎尚未實裝，請靜候後續更新。</p>
+              </div>
+            ))}
           </>
         );
       })()}
