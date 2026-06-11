@@ -128,7 +128,7 @@ export const AdminRosterTeam: React.FC<AdminRosterTeamProps> = ({ team }) => {
 
   return (
     <div style={{ padding: '0 20px', maxWidth: '1200px', margin: '0 auto' }}>
-      <div className="glass-card animate-morph stagger-1" style={{ padding: '24px', marginBottom: '24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+      <div className="animate-morph stagger-1" style={{ padding: '10px 0', marginBottom: '20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <h2 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '12px', color: 'var(--text-primary)' }}>
           <Users size={24} color="var(--icon-accent)" />
           {team} 義工名冊
@@ -138,115 +138,106 @@ export const AdminRosterTeam: React.FC<AdminRosterTeamProps> = ({ team }) => {
         </div>
       </div>
 
-      <div className="glass-card animate-morph stagger-2" style={{ overflowX: 'auto', padding: '20px' }}>
-        <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', minWidth: '800px' }}>
-          <thead>
-            <tr>
-              <th style={{ padding: '12px', borderBottom: '1px solid var(--bg-card-border)', color: 'var(--text-secondary)' }}>頭像</th>
-              <th style={{ padding: '12px', borderBottom: '1px solid var(--bg-card-border)', color: 'var(--text-secondary)' }}>姓名</th>
-              <th style={{ padding: '12px', borderBottom: '1px solid var(--bg-card-border)', color: 'var(--text-secondary)' }}>所屬團隊 (Job_Title)</th>
-              <th style={{ padding: '12px', borderBottom: '1px solid var(--bg-card-border)', color: 'var(--text-secondary)' }}>權限 (User_Level)</th>
-              <th style={{ padding: '12px', borderBottom: '1px solid var(--bg-card-border)', color: 'var(--text-secondary)' }}>操作</th>
-            </tr>
-          </thead>
-          <tbody>
-            {users.filter(u => u.roles.some(r => r.includes('管理')) || u.roles.includes(team)).map(user => {
-              const isEditing = editingUser === user.name;
+      <div className="animate-morph stagger-2" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '20px' }}>
+        {users.filter(u => u.roles.some(r => r.includes('管理')) || u.roles.includes(team)).map(user => {
+          const isEditing = editingUser === user.name;
+          
+          return (
+            <div key={user.name} className="glass-card" style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                {user.pictureUrl ? (
+                  <img src={user.pictureUrl} alt="avatar" style={{ width: '60px', height: '60px', borderRadius: '50%', objectFit: 'cover' }} />
+                ) : (
+                  <div style={{ width: '60px', height: '60px', borderRadius: '50%', background: 'var(--bg-input)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <User size={30} color="var(--text-muted)" />
+                  </div>
+                )}
+                
+                <div style={{ flex: 1 }}>
+                  {isEditing ? (
+                    <input 
+                      className="glass-input" 
+                      value={editForm.name}
+                      onChange={e => setEditForm(prev => ({ ...prev, name: e.target.value }))}
+                      style={{ width: '100%', marginBottom: '8px' }}
+                      placeholder="姓名"
+                    />
+                  ) : (
+                    <div style={{ fontSize: '1.2rem', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '4px' }}>
+                      {user.name}
+                    </div>
+                  )}
+                  
+                  {isEditing ? (
+                    <select 
+                      className="glass-input"
+                      value={editForm.userLevel}
+                      onChange={e => setEditForm(prev => ({ ...prev, userLevel: e.target.value }))}
+                      style={{ width: '100%', fontSize: '0.85rem' }}
+                    >
+                      <option value="user">User</option>
+                      <option value="admin">Admin</option>
+                    </select>
+                  ) : (
+                    <span style={{ 
+                      padding: '4px 10px', 
+                      borderRadius: '6px', 
+                      fontSize: '0.8rem', 
+                      fontWeight: 600,
+                      background: user.role === 'admin' ? 'rgba(234, 179, 8, 0.2)' : 'var(--bg-input)',
+                      color: user.role === 'admin' ? 'var(--icon-accent)' : 'var(--text-secondary)'
+                    }}>
+                      {user.role}
+                    </span>
+                  )}
+                </div>
+              </div>
               
-              return (
-                <tr key={user.name} style={{ borderBottom: '1px solid var(--bg-table-border)', background: isEditing ? 'var(--bg-hover)' : 'transparent' }}>
-                  <td style={{ padding: '12px' }}>
-                    {user.pictureUrl ? (
-                      <img src={user.pictureUrl} alt="avatar" style={{ width: '40px', height: '40px', borderRadius: '50%', objectFit: 'cover' }} />
-                    ) : (
-                      <div style={{ width: '40px', height: '40px', borderRadius: '50%', background: 'var(--bg-input)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                        <User size={20} color="var(--text-muted)" />
-                      </div>
-                    )}
-                  </td>
-                  
-                  <td style={{ padding: '12px', fontWeight: 700, color: 'var(--text-primary)' }}>
-                    {isEditing ? (
-                      <input 
-                        className="glass-input" 
-                        value={editForm.name}
-                        onChange={e => setEditForm(prev => ({ ...prev, name: e.target.value }))}
-                        style={{ width: '120px' }}
-                      />
-                    ) : user.name}
-                  </td>
-                  
-                  <td style={{ padding: '12px' }}>
-                    {isEditing ? (
-                      <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                        {JOB_TITLE_OPTIONS.map(opt => (
-                          <label key={opt} style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer', fontSize: '0.85rem' }}>
-                            <input 
-                              type="checkbox" 
-                              checked={editForm.jobTitle.includes(opt)}
-                              onChange={() => toggleJobTitle(opt)}
-                            />
-                            {opt}
-                          </label>
-                        ))}
-                      </div>
-                    ) : (
-                      <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
-                        {user.roles.map(r => (
-                          <span key={r} style={{ padding: '2px 8px', background: 'var(--bg-input)', borderRadius: '12px', fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
-                            {r}
-                          </span>
-                        ))}
-                      </div>
-                    )}
-                  </td>
-                  
-                  <td style={{ padding: '12px' }}>
-                    {isEditing ? (
-                      <select 
-                        className="glass-input"
-                        value={editForm.userLevel}
-                        onChange={e => setEditForm(prev => ({ ...prev, userLevel: e.target.value }))}
-                        style={{ width: '100px' }}
-                      >
-                        <option value="user">User</option>
-                        <option value="admin">Admin</option>
-                      </select>
-                    ) : (
-                      <span style={{ 
-                        padding: '4px 10px', 
-                        borderRadius: '6px', 
-                        fontSize: '0.8rem', 
-                        fontWeight: 600,
-                        background: user.role === 'admin' ? 'rgba(234, 179, 8, 0.2)' : 'var(--bg-input)',
-                        color: user.role === 'admin' ? 'var(--icon-accent)' : 'var(--text-secondary)'
-                      }}>
-                        {user.role}
+              <div>
+                <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '8px' }}>所屬團隊</div>
+                {isEditing ? (
+                  <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                    {JOB_TITLE_OPTIONS.map(opt => (
+                      <label key={opt} style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer', fontSize: '0.85rem', color: 'var(--text-primary)' }}>
+                        <input 
+                          type="checkbox" 
+                          checked={editForm.jobTitle.includes(opt)}
+                          onChange={() => toggleJobTitle(opt)}
+                        />
+                        {opt}
+                      </label>
+                    ))}
+                  </div>
+                ) : (
+                  <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                    {user.roles.map(r => (
+                      <span key={r} style={{ padding: '4px 10px', background: 'var(--bg-input)', borderRadius: '12px', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+                        {r}
                       </span>
-                    )}
-                  </td>
-                  
-                  <td style={{ padding: '12px' }}>
-                    {isEditing ? (
-                      <div style={{ display: 'flex', gap: '8px' }}>
-                        <button className="btn-primary" onClick={() => handleSave(user.name)} disabled={saving} style={{ padding: '6px 12px', fontSize: '0.85rem' }}>
-                          <Save size={14} /> 儲存
-                        </button>
-                        <button className="btn-secondary" onClick={handleCancelEdit} disabled={saving} style={{ padding: '6px 12px', fontSize: '0.85rem' }}>
-                          <X size={14} />
-                        </button>
-                      </div>
-                    ) : (
-                      <button className="btn-secondary" onClick={() => handleEdit(user)} style={{ padding: '6px 12px', fontSize: '0.85rem' }}>
-                        <Edit2 size={14} /> 編輯
-                      </button>
-                    )}
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
+                    ))}
+                  </div>
+                )}
+              </div>
+              
+              <div style={{ marginTop: 'auto', paddingTop: '16px', borderTop: '1px solid var(--bg-card-border)', display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
+                {isEditing ? (
+                  <>
+                    <button className="btn-secondary" onClick={handleCancelEdit} disabled={saving} style={{ padding: '8px 16px', fontSize: '0.9rem', flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}>
+                      <X size={16} /> 取消
+                    </button>
+                    <button className="btn-primary" onClick={() => handleSave(user.name)} disabled={saving} style={{ padding: '8px 16px', fontSize: '0.9rem', flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}>
+                      <Save size={16} /> 儲存
+                    </button>
+                  </>
+                ) : (
+                  <button className="btn-secondary" onClick={() => handleEdit(user)} style={{ padding: '8px 16px', fontSize: '0.9rem', width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
+                    <Edit2 size={16} /> 編輯資料
+                  </button>
+                )}
+              </div>
+            </div>
+          );
+        })}
       </div>
     </div>
   );
