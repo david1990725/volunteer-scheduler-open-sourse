@@ -2,7 +2,7 @@ import React, { useState, useRef, useCallback, useEffect } from 'react';
 import {
   Video, Lightbulb, Music, Mic,
   BookOpen, Table, Radar, CalendarClock,
-  LayoutGrid, X, ArrowLeft, LogOut
+  LayoutGrid, X, LogOut
 } from 'lucide-react';
 
 // =============================================================================
@@ -74,7 +74,6 @@ const getSwitchFanConfig = () => {
 // =============================================================================
 
 export const AdminNav: React.FC<AdminNavProps> = ({
-  adminTeam,
   adminSubTab,
   onTeamChange,
   onSubTabChange,
@@ -329,11 +328,6 @@ export const AdminNav: React.FC<AdminNavProps> = ({
       return;
     }
   }, [openFan, closeFan, openSwitch]);
-
-  const handleOverlayClick = useCallback(() => {
-    if (stateRef.current === 'fan') closeFan();
-    if (stateRef.current === 'switching') cancelSwitch();
-  }, [closeFan, cancelSwitch]);
 
   // ── Cleanup ─────────────────────────────────────────────────────────────
 
