@@ -817,7 +817,6 @@ tr:hover td {
 @media (min-width: 769px) {
   .floating-save-container {
     left: 50%;
-    /* transform is handled inside or on the container, but since animate-morph is on the child, we can transform container safely */
     transform: translateX(-50%);
   }
   .floating-save-btn {
@@ -902,3 +901,388 @@ tr:hover td {
     transform: translateY(0) scale(0.98);
   }
 }
+
+/* ---------------------------------------------------------------------------
+ * Admin Hub-and-Spoke Navigation
+ * ------------------------------------------------------------------------ */
+
+/* Full-viewport dim overlay */
+.admin-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0);
+  transition: background 0.35s ease;
+  pointer-events: none;
+  z-index: 900;
+}
+
+.admin-overlay.dim {
+  background: rgba(0,0,0,0.45);
+  pointer-events: all;
+}
+
+/* Nav area — no card, just layout context */
+.admin-nav-area {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 200px;
+  margin-bottom: 28px;
+  position: relative;
+  z-index: 910;
+  transition: min-height 0.5s cubic-bezier(.77,0,.18,1),
+             gap 0.5s cubic-bezier(.77,0,.18,1);
+}
+
+.admin-nav-area.anchored {
+  min-height: 0;
+  gap: 12px;
+  margin-bottom: 24px;
+}
+
+/* Hub root container */
+.admin-nav-root {
+  z-index: 920;
+  transition: all 0.5s cubic-bezier(.77,0,.18,1);
+}
+
+/* Hub button: circle → pill morph */
+.admin-hub {
+  position: relative;
+  z-index: 10;
+  width: 60px;
+  height: 60px;
+  border-radius: 99px;
+  background: var(--bg-card);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: var(--text-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+  transition: all 0.4s cubic-bezier(.34,1.4,.64,1), opacity 0.2s ease;
+  overflow: hidden;
+  gap: 0;
+  padding: 0;
+}
+
+.admin-hub:hover, .admin-hub.pill-mode {
+  border-color: rgba(200, 131, 10, 0.4);
+  background: rgba(200, 131, 10, 0.12);
+  box-shadow: 0 4px 20px rgba(200, 131, 10, 0.2);
+}
+
+.admin-hub.pill-mode {
+  width: auto;
+  height: 40px;
+  padding: 8px 16px;
+  gap: 6px;
+}
+
+.admin-nav-root.state-settling .admin-hub {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.admin-nav-root.state-switch-flying .admin-hub-icon,
+.admin-nav-root.state-switch-flying .admin-hub-label,
+.admin-nav-root.state-switch-collapsing .admin-hub-icon,
+.admin-nav-root.state-switch-collapsing .admin-hub-label {
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+
+.admin-hub-icon {
+  color: rgba(200, 131, 10, 1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: opacity 0.2s ease;
+}
+
+.admin-hub-label {
+  font-size: 13px;
+  font-weight: 500;
+  white-space: nowrap;
+  opacity: 0;
+  width: 0;
+  overflow: hidden;
+  transition: opacity 0.3s ease, width 0.4s cubic-bezier(.34,1.4,.64,1);
+}
+
+.admin-hub.pill-mode .admin-hub-label {
+  opacity: 1;
+  width: auto;
+}
+
+/* Fan nodes container — fixed positioning layer */
+.admin-fan-wrap {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 910;
+}
+
+/* Fan nodes (radial team buttons) */
+.admin-fan-node {
+  position: fixed;
+  transform: translate(-50%, -50%);
+  transition: left 0.36s cubic-bezier(.34,1.4,.64,1),
+             top 0.36s cubic-bezier(.34,1.4,.64,1),
+             opacity 0.25s ease;
+  opacity: 0;
+  pointer-events: none;
+  z-index: 920;
+}
+
+.admin-fan-node.vis {
+  opacity: 1;
+  pointer-events: all;
+}
+
+.admin-fan-btn {
+  padding: 10px 20px;
+  border-radius: 99px;
+  background: var(--bg-card);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 0.5px solid var(--bg-btn-secondary-border);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  cursor: pointer;
+  white-space: nowrap;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: background 0.15s, color 0.15s, border-color 0.15s,
+             box-shadow 0.15s, transform 0.15s;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.2);
+}
+
+.admin-fan-btn:hover {
+  background: rgba(200, 131, 10, 0.12);
+  border-color: rgba(200, 131, 10, 0.4);
+  color: #c8830a;
+  transform: scale(1.06);
+  box-shadow: 0 6px 24px rgba(200, 131, 10, 0.25);
+}
+
+.admin-fan-btn .fan-icon {
+  color: #c8830a;
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.admin-fan-btn.current {
+  color: #c8830a;
+  border-color: rgba(200, 131, 10, 0.4);
+  background: rgba(200, 131, 10, 0.12);
+  box-shadow: 0 4px 20px rgba(200, 131, 10, 0.2);
+}
+
+.admin-fan-btn.becoming-hub {
+  color: var(--text-primary);
+  border-color: rgba(200, 131, 10, 0.4);
+  background: rgba(200, 131, 10, 0.12);
+  box-shadow: 0 4px 20px rgba(200, 131, 10, 0.2);
+  transition: all 0.4s cubic-bezier(.34,1.4,.64,1);
+}
+
+.admin-fan-btn.becoming-hub .fan-icon {
+  color: rgba(200, 131, 10, 1);
+}
+
+/* Function pills (horizontal sub-tab selector) */
+.admin-fn-pills-wrap {
+  display: grid;
+  grid-template-columns: 0fr;
+  transition: grid-template-columns 0.4s cubic-bezier(.34,1.4,.64,1);
+}
+
+.admin-fn-pills-wrap.expanded {
+  grid-template-columns: 1fr;
+}
+
+.admin-fn-pills {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.admin-fn-pill {
+  padding: 8px 14px;
+  border-radius: 99px;
+  background: var(--bg-card);
+  backdrop-filter: blur(10px);
+  border: 0.5px solid var(--bg-btn-secondary-border);
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  cursor: pointer;
+  white-space: nowrap;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  opacity: 0;
+  transform: translateX(-60px) scale(0.9);
+  transition: background 0.15s, color 0.15s, border-color 0.15s,
+             transform 0.4s cubic-bezier(.34,1.4,.64,1),
+             opacity 0.3s ease,
+             box-shadow 0.15s;
+}
+
+.admin-fn-pills-wrap.vis .admin-fn-pill {
+  transform: translateX(0) scale(1);
+  opacity: 1;
+}
+
+.admin-fn-pill:nth-child(1) { transition-delay: 0.05s, 0.05s, 0.05s, 0.05s, 0.05s, 0.05s; }
+.admin-fn-pill:nth-child(2) { transition-delay: 0.1s, 0.1s, 0.1s, 0.1s, 0.1s, 0.1s; }
+.admin-fn-pill:nth-child(3) { transition-delay: 0.15s, 0.15s, 0.15s, 0.15s, 0.15s, 0.15s; }
+.admin-fn-pill:nth-child(4) { transition-delay: 0.2s, 0.2s, 0.2s, 0.2s, 0.2s, 0.2s; }
+
+.admin-fn-pill:hover {
+  background: rgba(200, 131, 10, 0.1);
+  border-color: rgba(200, 131, 10, 0.35);
+  color: #c8830a;
+  box-shadow: 0 2px 10px rgba(200, 131, 10, 0.15);
+}
+
+.admin-fn-pill.active {
+  background: rgba(200, 131, 10, 0.1);
+  border-color: rgba(200, 131, 10, 0.35);
+  color: #c8830a;
+  box-shadow: 0 2px 10px rgba(200, 131, 10, 0.15);
+}
+
+.admin-fn-pill .pill-icon {
+  display: flex;
+  align-items: center;
+}
+
+/* Separator between fn pills and utility buttons */
+.admin-fn-sep {
+  width: 1px;
+  height: 20px;
+  background: var(--bg-btn-secondary-border);
+  margin: 0 4px;
+  flex-shrink: 0;
+  opacity: 0;
+  transition: opacity 0.3s ease 0.2s;
+}
+
+.admin-fn-pills-wrap.vis .admin-fn-sep {
+  opacity: 1;
+}
+
+/* Small utility buttons (回前台, 登出) within fn-pills */
+.admin-fn-util {
+  padding: 6px 12px;
+  border-radius: 99px;
+  background: transparent;
+  border: 0.5px solid var(--bg-btn-secondary-border);
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text-muted);
+  cursor: pointer;
+  white-space: nowrap;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  opacity: 0;
+  transform: translateX(-60px) scale(0.9);
+  transition: background 0.15s, color 0.15s, border-color 0.15s,
+             transform 0.4s cubic-bezier(.34,1.4,.64,1),
+             opacity 0.3s ease;
+}
+
+.admin-fn-pills-wrap.vis .admin-fn-util {
+  transform: translateX(0) scale(1);
+  opacity: 1;
+  transition-delay: 0.05s;
+}
+
+.admin-fn-util:hover {
+  background: var(--bg-btn-secondary-hover);
+  color: var(--text-primary);
+}
+
+.admin-fn-util.danger:hover {
+  background: rgba(239, 68, 68, 0.1);
+  border-color: rgba(239, 68, 68, 0.3);
+  color: #ef4444;
+}
+
+/* Cancel hint during switching */
+.admin-switch-cancel {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.55);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.25s ease 0.3s;
+  white-space: nowrap;
+  z-index: 920;
+}
+
+.admin-switch-cancel.vis {
+  opacity: 1;
+  pointer-events: all;
+  cursor: pointer;
+}
+
+.admin-switch-cancel:hover {
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.light-theme .admin-switch-cancel {
+  color: rgba(0, 0, 0, 0.35);
+}
+
+.light-theme .admin-switch-cancel:hover {
+  color: rgba(0, 0, 0, 0.7);
+}
+
+/* Responsive: mobile adjustments */
+@media (max-width: 768px) {
+  .admin-nav-area {
+    min-height: 160px;
+  }
+  .admin-nav-area.anchored {
+    min-height: 0;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .admin-fn-pills-wrap {
+    flex-wrap: wrap;
+    grid-template-columns: none;
+    display: none;
+  }
+  .admin-fn-pills-wrap.vis {
+    display: block;
+  }
+  .admin-fn-pills {
+    flex-wrap: wrap;
+    justify-content: center;
+    padding: 0;
+    margin: 0;
+  }
+  .admin-hub {
+    width: 60px;
+    height: 60px;
+  }
+  .admin-hub-icon {
+    font-size: 20px;
+  }
+  .admin-hub-label {
+    font-size: 9px;
+  }
+}
+

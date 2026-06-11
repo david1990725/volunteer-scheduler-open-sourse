@@ -23,6 +23,7 @@ import { FormStage } from './components/FormStage';
 import { AdminRosterTeam } from './components/AdminRosterTeam';
 import { AdminRawDataTeam } from './components/AdminRawDataTeam';
 import { AdminSkillTreeTeam } from './components/AdminSkillTreeTeam';
+import { AdminNav } from './components/AdminNav';
 import { HomePage } from './components/HomePage';
 
 // =============================================================================
@@ -86,6 +87,7 @@ function App() {
   
   const [adminTeam, setAdminTeam] = useState<'video' | 'light' | 'stage' | 'audio'>('video');
   const [adminSubTab, setAdminSubTab] = useState<'roster' | 'skills' | 'raw' | 'scheduler'>('roster');
+  const [adminTeamSelected, setAdminTeamSelected] = useState(false);
   const [homeSelectedTeam, setHomeSelectedTeam] = useState<string>('');
   
   const [scheduleStep, setScheduleStep] = useState<1 | 2 | 3>(1);
@@ -830,61 +832,14 @@ function App() {
       )}
 
       {view === 'admin' && currentUser?.role === 'admin' && (
-        <>
-          {/* Desktop Navigation */}
-          <div className="desktop-nav">
-            <button className={adminTeam === 'video' ? 'btn-primary' : 'btn-secondary'} onClick={() => { setAdminTeam('video'); setAdminSubTab('roster'); }}>影視團隊</button>
-            <button className={adminTeam === 'light' ? 'btn-primary' : 'btn-secondary'} onClick={() => { setAdminTeam('light'); setAdminSubTab('roster'); }}>燈光團隊</button>
-            <button className={adminTeam === 'stage' ? 'btn-primary' : 'btn-secondary'} onClick={() => { setAdminTeam('stage'); setAdminSubTab('roster'); }}>舞監團隊</button>
-            <button className={adminTeam === 'audio' ? 'btn-primary' : 'btn-secondary'} onClick={() => { setAdminTeam('audio'); setAdminSubTab('roster'); }}>音控團隊</button>
-            
-            <button className="btn-secondary" onClick={() => setView('home')} style={{ borderColor: 'var(--icon-accent)', color: 'var(--text-primary)', marginLeft: 'auto' }}>回前台</button>
-            <button className="btn-danger" onClick={handleLogout}>登出</button>
-          </div>
-
-          {/* Team Sub Navigation */}
-          {['video', 'light', 'stage', 'audio'].includes(adminTeam) && (
-            <div className="desktop-nav" style={{ marginTop: '-12px', marginBottom: '24px', padding: '10px', background: 'rgba(255,255,255,0.02)', borderRadius: '12px' }}>
-               <button className={adminSubTab === 'roster' ? 'btn-primary' : 'btn-secondary'} onClick={() => setAdminSubTab('roster')} style={{ padding: '6px 16px', fontSize: '0.9rem' }}>義工名冊</button>
-               <button className={adminSubTab === 'raw' ? 'btn-primary' : 'btn-secondary'} onClick={() => setAdminSubTab('raw')} style={{ padding: '6px 16px', fontSize: '0.9rem' }}>RAW 資料表單</button>
-               <button className={adminSubTab === 'skills' ? 'btn-primary' : 'btn-secondary'} onClick={() => setAdminSubTab('skills')} style={{ padding: '6px 16px', fontSize: '0.9rem' }}>技能雷達圖</button>
-               {adminTeam === 'video' && (
-                 <button className={adminSubTab === 'scheduler' ? 'btn-primary' : 'btn-secondary'} onClick={() => setAdminSubTab('scheduler')} style={{ padding: '6px 16px', fontSize: '0.9rem' }}>自動排班系統</button>
-               )}
-            </div>
-          )}
-
-          {/* Mobile Navigation */}
-          <div className="mobile-nav-container">
-            <button className="mobile-menu-btn" onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}>
-              {isMobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
-              功能選單
-            </button>
-
-            {isMobileMenuOpen && (
-              <div className="mobile-nav-menu animate-morph stagger-1">
-                <button className={adminTeam === 'video' ? 'btn-primary' : 'btn-secondary'} onClick={() => { setAdminTeam('video'); setAdminSubTab('roster'); setIsMobileMenuOpen(false); }}>影視團隊</button>
-                <button className={adminTeam === 'light' ? 'btn-primary' : 'btn-secondary'} onClick={() => { setAdminTeam('light'); setAdminSubTab('roster'); setIsMobileMenuOpen(false); }}>燈光團隊</button>
-                <button className={adminTeam === 'stage' ? 'btn-primary' : 'btn-secondary'} onClick={() => { setAdminTeam('stage'); setAdminSubTab('roster'); setIsMobileMenuOpen(false); }}>舞監團隊</button>
-                <button className={adminTeam === 'audio' ? 'btn-primary' : 'btn-secondary'} onClick={() => { setAdminTeam('audio'); setAdminSubTab('roster'); setIsMobileMenuOpen(false); }}>音控團隊</button>
-                
-                {['video', 'light', 'stage', 'audio'].includes(adminTeam) && (
-                  <div style={{ padding: '10px 0', borderTop: '1px solid rgba(255,255,255,0.1)', borderBottom: '1px solid rgba(255,255,255,0.1)', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                    <button className={adminSubTab === 'roster' ? 'btn-primary' : 'btn-secondary'} onClick={() => { setAdminSubTab('roster'); setIsMobileMenuOpen(false); }}>- 義工名冊</button>
-                    <button className={adminSubTab === 'raw' ? 'btn-primary' : 'btn-secondary'} onClick={() => { setAdminSubTab('raw'); setIsMobileMenuOpen(false); }}>- RAW 資料表單</button>
-                    <button className={adminSubTab === 'skills' ? 'btn-primary' : 'btn-secondary'} onClick={() => { setAdminSubTab('skills'); setIsMobileMenuOpen(false); }}>- 技能雷達圖</button>
-                    {adminTeam === 'video' && (
-                      <button className={adminSubTab === 'scheduler' ? 'btn-primary' : 'btn-secondary'} onClick={() => { setAdminSubTab('scheduler'); setIsMobileMenuOpen(false); }}>- 自動排班系統</button>
-                    )}
-                  </div>
-                )}
-                
-                <button className="btn-secondary" onClick={() => { setView('home'); setIsMobileMenuOpen(false); }} style={{ borderColor: 'var(--icon-accent)', color: 'var(--text-primary)' }}>回前台</button>
-                <button className="btn-danger" onClick={() => { handleLogout(); setIsMobileMenuOpen(false); }}>登出</button>
-              </div>
-            )}
-          </div>
-        </>
+        <AdminNav
+          adminTeam={adminTeam}
+          adminSubTab={adminSubTab}
+          onTeamChange={(team) => { setAdminTeam(team); setAdminTeamSelected(true); }}
+          onSubTabChange={(tab) => { setAdminSubTab(tab); }}
+          onBackToHome={() => { setAdminTeamSelected(false); setView('home'); }}
+          onLogout={handleLogout}
+        />
       )}
 
       <main className="animate-morph stagger-1">
@@ -895,7 +850,7 @@ function App() {
               setCurrentUser(user);
               setView('home');
               if (user.role === 'admin') {
-                setAdminTeam('video');
+                setAdminTeamSelected(false);
                 setAdminSubTab('roster');
               }
             }, 3500);
@@ -971,7 +926,7 @@ function App() {
           </>
         )}
 
-        {view === 'admin' && currentUser?.role === 'admin' && (
+        {view === 'admin' && currentUser?.role === 'admin' && adminTeamSelected && (
           <>
             {(() => {
               const teamNameMap: Record<string, string> = {
