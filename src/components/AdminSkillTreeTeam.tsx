@@ -207,19 +207,7 @@ export const AdminSkillTreeTeam: React.FC<AdminSkillTreeTeamProps> = ({ team }) 
                     {isFullTimer ? '同工' : '義工'}
                   </span>
                 </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0, marginRight: '5px' }}>
-                  {vol.lineId ? (
-                    <>
-                      <span className="hide-on-mobile" style={{ fontSize: '0.8rem', color: '#4ade80', fontWeight: 600 }}>已綁定 LINE</span>
-                      <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#4ade80', boxShadow: '0 0 6px #4ade80' }} />
-                    </>
-                  ) : (
-                    <>
-                      <span className="hide-on-mobile" style={{ fontSize: '0.8rem', color: '#f87171', fontWeight: 600, opacity: 0.8 }}>未綁定 LINE</span>
-                      <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#f87171', opacity: 0.5 }} />
-                    </>
-                  )}
-                </div>
+
               </div>
             </div>
             );

@@ -349,6 +349,18 @@ export const AdminNav: React.FC<AdminNavProps> = ({
   // Determine visible sub-tabs
   const visibleSubTabs = SUB_TABS;
 
+  // Prevent page scroll when overlay is active
+  useEffect(() => {
+    if (showOverlay) {
+      document.body.classList.add('admin-no-scroll');
+    } else {
+      document.body.classList.remove('admin-no-scroll');
+    }
+    return () => {
+      document.body.classList.remove('admin-no-scroll');
+    };
+  }, [showOverlay]);
+
   // ── Render ──────────────────────────────────────────────────────────────
 
   return (
@@ -380,6 +392,9 @@ export const AdminNav: React.FC<AdminNavProps> = ({
           </button>
         </div>
 
+        {/* Separator between Hub and Function Pills */}
+        {showPills && <div className="admin-hub-sep" />}
+
         {/* Function pills (visible when anchored) */}
         <div className={`admin-fn-pills-wrap${isLayoutAnchored ? ' expanded' : ''}${showPills ? ' vis' : ''}`}>
           <div className="admin-fn-pills">
@@ -389,7 +404,7 @@ export const AdminNav: React.FC<AdminNavProps> = ({
                 className={`admin-fn-pill${adminSubTab === tab.key ? ' active' : ''}`}
                 onClick={() => onSubTabChange(tab.key)}
               >
-                <span className="pill-icon"><tab.Icon size={13} /></span>
+                <span className="pill-icon"><tab.Icon size={16} /></span>
                 {tab.name}
               </button>
             ))}
@@ -397,10 +412,10 @@ export const AdminNav: React.FC<AdminNavProps> = ({
             {/* Utility / Nav buttons */}
             <div className="admin-fn-sep" />
             <button className="admin-fn-util primary" onClick={onBackToHome}>
-              <LayoutGrid size={14} /> 回前台
+              <LayoutGrid size={16} /> 回前台
             </button>
             <button className="admin-fn-util danger" onClick={onLogout}>
-              <LogOut size={12} /> 登出
+              <LogOut size={16} /> 登出
             </button>
           </div>
         </div>

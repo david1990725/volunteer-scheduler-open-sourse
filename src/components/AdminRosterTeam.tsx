@@ -153,18 +153,29 @@ export const AdminRosterTeam: React.FC<AdminRosterTeamProps> = ({ team }) => {
                   </div>
                 )}
                 
-                <div style={{ flex: 1 }}>
+                <div style={{ flex: 1, minWidth: 0 }}>
                   {isEditing ? (
                     <input 
                       className="glass-input" 
                       value={editForm.name}
                       onChange={e => setEditForm(prev => ({ ...prev, name: e.target.value }))}
-                      style={{ width: '100%', marginBottom: '8px' }}
+                      style={{ marginBottom: '8px' }}
                       placeholder="姓名"
                     />
                   ) : (
-                    <div style={{ fontSize: '1.2rem', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '4px' }}>
-                      {user.name}
+                    <div style={{ fontSize: '1.2rem', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '4px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{user.name}</span>
+                      {user.lineId ? (
+                        <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                          <span style={{ fontSize: '0.8rem', color: '#4ade80', fontWeight: 600 }}>已綁定 LINE</span>
+                          <div title="已綁定 LINE" style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#4ade80', boxShadow: '0 0 6px #4ade80', flexShrink: 0 }} />
+                        </div>
+                      ) : (
+                        <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                          <span style={{ fontSize: '0.8rem', color: '#f87171', fontWeight: 600, opacity: 0.8 }}>未綁定 LINE</span>
+                          <div title="未綁定 LINE" style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#f87171', opacity: 0.5, flexShrink: 0 }} />
+                        </div>
+                      )}
                     </div>
                   )}
                   
@@ -173,7 +184,7 @@ export const AdminRosterTeam: React.FC<AdminRosterTeamProps> = ({ team }) => {
                       className="glass-input"
                       value={editForm.userLevel}
                       onChange={e => setEditForm(prev => ({ ...prev, userLevel: e.target.value }))}
-                      style={{ width: '100%', fontSize: '0.85rem' }}
+                      style={{ fontSize: '0.85rem' }}
                     >
                       <option value="user">User</option>
                       <option value="admin">Admin</option>

@@ -248,6 +248,21 @@ export async function clearFormResponsesInCloud(team?: string): Promise<ApiResul
   }
 }
 
+/** 刪除雲端單筆表單回覆 */
+export async function deleteFormResponseInCloud(team: string, timestamp: string): Promise<ApiResult> {
+  try {
+    const result = await callAppsScript<ApiResult>(
+      'deleteFormResponse',
+      { team, timestamp },
+      { success: false, message: 'Apps Script URL 尚未設定，請聯繫管理員。' },
+    );
+    return { success: result.success ?? false, message: result.message ?? '刪除失敗' };
+  } catch (err) {
+    console.error('[deleteFormResponseInCloud]', err);
+    return { success: false, message: '刪除雲端表單回覆失敗，請稍後再試。' };
+  }
+}
+
 // --- 離線佇列管理 -------------------------------------------------------------
 
 const OFFLINE_QUEUE_KEY = 'offline_form_responses';

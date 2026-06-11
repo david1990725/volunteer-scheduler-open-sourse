@@ -79,6 +79,24 @@ export const AdminRawDataTeam: React.FC<AdminRawDataProps> = ({ team, onStartAut
     }
   };
 
+  const deleteRowData = async (timestamp: string, name: string) => {
+    if (!timestamp) {
+      alert('無法刪除：找不到該筆資料的時間戳記');
+      return;
+    }
+    if (confirm(`確定要刪除 ${name} 的這筆填報紀錄嗎？這將無法復原。`)) {
+      setLoading(true);
+      const res = await cloudService.deleteFormResponseInCloud(team, timestamp);
+      if (res.success) {
+        await loadData();
+        alert('已成功刪除資料。');
+      } else {
+        setLoading(false);
+        alert(res.message);
+      }
+    }
+  };
+
   if (loading) {
     return (
       <div className="glass-card animate-morph stagger-2" style={{ padding: '60px', textAlign: 'center' }}>
@@ -220,8 +238,31 @@ export const AdminRawDataTeam: React.FC<AdminRawDataProps> = ({ team, onStartAut
                 </div>
               </div>
               {formattedTime && (
-                <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
-                  {formattedTime}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                  <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
+                    {formattedTime}
+                  </div>
+                  <button 
+                    onClick={() => deleteRowData(timestamp, name)}
+                    style={{ 
+                      padding: '4px', 
+                      background: 'transparent', 
+                      border: 'none', 
+                      color: 'var(--text-missing)', 
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      borderRadius: '4px',
+                      opacity: 0.7,
+                      transition: 'all 0.2s'
+                    }}
+                    onMouseEnter={e => { e.currentTarget.style.opacity = '1'; e.currentTarget.style.background = 'rgba(239, 68, 68, 0.1)'; }}
+                    onMouseLeave={e => { e.currentTarget.style.opacity = '0.7'; e.currentTarget.style.background = 'transparent'; }}
+                    title="刪除此筆資料"
+                  >
+                    <Trash2 size={16} />
+                  </button>
                 </div>
               )}
             </div>

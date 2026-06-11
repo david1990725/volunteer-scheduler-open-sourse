@@ -989,7 +989,7 @@ function App() {
                   <div className="glass-card animate-morph stagger-2" style={{ padding: '24px', marginBottom: '24px', zIndex: 50, position: 'relative' }}>
                     <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap', alignItems: 'center' }}>
                       <div style={{ flex: 1, minWidth: '200px' }}>
-                        <label className="btn-secondary" style={{ width: '100%', justifyContent: 'center', height: '48px', cursor: 'pointer', overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis' }}>
+                        <label className="btn-secondary" style={{ width: '100%', justifyContent: 'center', cursor: 'pointer', overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis' }}>
                           <Download size={20} style={{ transform: 'rotate(180deg)' }} /> 
                           {uploadedFileName || '上傳排班CSV'}
                           <input type="file" accept=".csv" onChange={handleFileUpload} style={{ display: 'none' }} />
@@ -997,21 +997,21 @@ function App() {
                       </div>
 
                       <div style={{ flex: 1, minWidth: '200px' }}>
-                        <button className="btn-secondary" onClick={() => { if (approvedVersion) { loadApprovedVersion(); } else { alert('尚無審定版本可帶入。'); } }} disabled={!approvedVersion || loading} style={{ width: '100%', justifyContent: 'center', height: '48px' }}>
+                        <button className="btn-secondary" onClick={() => { if (approvedVersion) { loadApprovedVersion(); } else { alert('尚無審定版本可帶入。'); } }} disabled={!approvedVersion || loading} style={{ width: '100%', justifyContent: 'center' }}>
                           <ArchiveRestore size={20} /> 帶入審定版本
                         </button>
                       </div>
 
-                      <button className="btn-primary" onClick={() => generateSchedule()} disabled={loading} style={{ height: '48px', padding: '0 32px' }}>
+                      <button className="btn-primary" onClick={() => generateSchedule()} disabled={loading} style={{ padding: '0 32px' }}>
                         <RefreshCw size={20} className={loading ? 'animate-spin' : ''} /> {loading ? '生成中...' : '自動生成排班'}
                       </button>
 
-                      <button className="btn-secondary" onClick={resetAll} disabled={!hasShifts} style={{ height: '48px' }}>
+                      <button className="btn-secondary" onClick={resetAll} disabled={!hasShifts}>
                         <RotateCcw size={20} /> 清除
                       </button>
 
                       {hasShifts && (
-                        <button className="btn-primary" onClick={() => { setScheduleStep(2); setEditMode(true); }} style={{ height: '48px' }}>
+                        <button className="btn-primary" onClick={() => { setScheduleStep(2); setEditMode(true); }}>
                           下一步 <ArrowRight size={20} />
                         </button>
                       )}
