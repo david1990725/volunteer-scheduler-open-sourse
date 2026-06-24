@@ -97,6 +97,16 @@ export const Login: React.FC<LoginProps> = ({ onLogin }) => {
         }
       }
 
+      // 3. 若仍找不到，以 LINE 顯示名稱直接比對義工名單中的「Name」欄位
+      if (!matchedName) {
+        const nameMatch = Object.keys(volunteers).find(volName => {
+          return volName.trim() === displayName.trim();
+        });
+        if (nameMatch) {
+          matchedName = nameMatch;
+        }
+      }
+
       if (matchedName && volunteers[matchedName]) {
         const user = { ...volunteers[matchedName] };
         

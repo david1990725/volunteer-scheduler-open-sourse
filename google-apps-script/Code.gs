@@ -154,8 +154,23 @@ function handleAddVolunteer(payload) {
   if (lastRow > 1) {
     const allData = sheet.getRange(2, 1, lastRow - 1, sheet.getLastColumn()).getValues();
     for (var i = 0; i < allData.length; i++) {
+      // 檢查 User_ID 是否已存在
       if (String(allData[i][lineIdCol]).trim() === String(payload.lineId).trim()) {
         return jsonResponse({ success: true, message: '此 LINE 帳號已在名單中', existingName: allData[i][nameCol] });
+      }
+    }
+    // 檢查 Name 是否已存在（避免重複新增）
+    var targetName = String(payload.name || payload.lineName || '').trim();
+    if (targetName && targetName !== '未知') {
+      for (var j = 0; j < allData.length; j++) {
+        if (String(allData[j][nameCol]).trim() === targetName) {
+          // 名字已存在，自動綁定 User_ID 與 Avatar 而非新增
+          sheet.getRange(j + 2, lineIdCol + 1).setValue(payload.lineId);
+          if (photoCol !== -1 && payload.pictureUrl) {
+            sheet.getRange(j + 2, photoCol + 1).setValue(payload.pictureUrl);
+          }
+          return jsonResponse({ success: true, message: '已找到同名義工，已自動綁定 LINE 資訊', existingName: allData[j][nameCol] });
+        }
       }
     }
   }
