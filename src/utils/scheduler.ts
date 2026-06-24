@@ -87,9 +87,10 @@ export function parseSkillTreeData(data: any[]): Record<string, Volunteer> {
     const name = typeof rawName === 'string' ? rawName.trim() : (rawName ? String(rawName).trim() : undefined);
     if (!name) continue;
 
-    // Job_Title 為團隊分類（影視/燈光/音控），排班角色來自 Skill_Role
-    const rawRoles = row['Skill_Role'] || row['職能'] || '';
-    const roles = String(rawRoles).split(',').map((r: string) => r.trim()).filter(Boolean);
+    // 合併團隊分類 (Job_Title) 與排班角色 (Skill_Role)，以確保首頁團隊過濾與排班引擎能同時正常運作
+    const jobTitles = String(row['Job_Title'] || '').split(',').map((r: string) => r.trim()).filter(Boolean);
+    const skillRoles = String(row['Skill_Role'] || row['職能'] || '').split(',').map((r: string) => r.trim()).filter(Boolean);
+    const roles = Array.from(new Set([...jobTitles, ...skillRoles]));
 
     const skills: Record<string, number> = {
       '平面': parseInt(row['Photo_Skill']) || parseInt(row['Photo技能值']) || parseInt(row['平面技能值']) || 0,

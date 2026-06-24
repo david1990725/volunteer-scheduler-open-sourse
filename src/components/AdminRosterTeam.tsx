@@ -55,7 +55,7 @@ export const AdminRosterTeam: React.FC<AdminRosterTeamProps> = ({ team }) => {
     setEditingUser(user.name);
     setEditForm({
       name: user.name,
-      jobTitle: [...user.roles], // roles array is populated from Job_Title
+      jobTitle: user.roles.filter(r => JOB_TITLE_OPTIONS.includes(r)), // 只保留團隊分類，過濾掉排班角色
       userLevel: user.role,
       avatar: user.pictureUrl || '',
     });
@@ -221,7 +221,7 @@ export const AdminRosterTeam: React.FC<AdminRosterTeamProps> = ({ team }) => {
                   </div>
                 ) : (
                   <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
-                    {user.roles.map(r => (
+                    {user.roles.filter(r => JOB_TITLE_OPTIONS.includes(r)).map(r => (
                       <span key={r} style={{ padding: '4px 10px', background: 'var(--bg-input)', borderRadius: '12px', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
                         {r}
                       </span>
