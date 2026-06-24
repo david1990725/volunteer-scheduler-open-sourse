@@ -55,9 +55,9 @@ const getRoleSkill = (p: Volunteer, role: string): { hasRole: boolean; skill: nu
     const hasRole = p.roles.includes('AD') || p.roles.includes('HOST') || p.roles.includes('CCU') || (p.skills['AD'] || 0) > 0;
     return { hasRole, skill: p.skills['AD'] || 0 };
   }
-  // 導播：UI 顯示為「導播」，但技能樹分為「山莊導播」和「宣教導播」
+  // 導播：UI 顯示為「導播」，技能樹分為「山莊導播」和「宣教導播」
   if (role === '導播') {
-    const hasRole = p.roles.includes('山莊導播') || p.roles.includes('宣教導播') || p.roles.includes('導播');
+    const hasRole = p.roles.includes('山莊導播') || p.roles.includes('宣教導播');
     return { hasRole, skill: hasRole ? 10 : 0 };
   }
   const hasRole = p.roles.includes(role) || (p.skills[role] || 0) > 0;
@@ -87,7 +87,8 @@ export function parseSkillTreeData(data: any[]): Record<string, Volunteer> {
     const name = typeof rawName === 'string' ? rawName.trim() : (rawName ? String(rawName).trim() : undefined);
     if (!name) continue;
 
-    const rawRoles = row['Job_Title'] || row['Skill_Role'] || row['職能'] || '';
+    // Job_Title 為團隊分類（影視/燈光/音控），排班角色來自 Skill_Role
+    const rawRoles = row['Skill_Role'] || row['職能'] || '';
     const roles = String(rawRoles).split(',').map((r: string) => r.trim()).filter(Boolean);
 
     const skills: Record<string, number> = {
@@ -99,7 +100,7 @@ export function parseSkillTreeData(data: any[]): Record<string, Volunteer> {
     };
 
     // 優先讀取數值，若無則依職能字串給予布林預設值（有 → 10, 無 → 0）
-    skills['導播'] = parseInt(row['D_Skill']) || parseInt(row['導播技能值']) || (roles.includes('山莊導播') || roles.includes('宣教導播') || roles.includes('導播') ? 10 : 0);
+    skills['導播'] = parseInt(row['D_Skill']) || parseInt(row['導播技能值']) || (roles.includes('山莊導播') || roles.includes('宣教導播') ? 10 : 0);
     skills['山莊導播'] = skills['導播']; // 相容舊版判斷
     skills['宣教導播'] = skills['導播']; // 相容舊版判斷
     
@@ -107,7 +108,7 @@ export function parseSkillTreeData(data: any[]): Record<string, Volunteer> {
     skills['HOST/CCU'] = skills['AD']; // 相容舊版判斷
     skills['CCU/HOST'] = skills['AD']; // 相容舊版判斷
 
-    skills['信息版'] = roles.some((r: string) => ['山莊導播', '宣教導播', '導播', 'AD', 'HOST', 'CCU'].includes(r)) ? 10 : 0;
+    skills['信息版'] = roles.some((r: string) => ['山莊導播', '宣教導播', 'AD', 'HOST', 'CCU'].includes(r)) ? 10 : 0;
 
     const rawUserLevel = row['User_Level'] || row['role'] || '';
     const userRole = String(rawUserLevel).trim().toLowerCase() === 'admin' ? 'admin' : 'user';
