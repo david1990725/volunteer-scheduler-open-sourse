@@ -11,7 +11,7 @@ import {
 } from './utils/scheduler';
 import type { Shift, Volunteer } from './utils/scheduler';
 import { parseSpreadsheetFile, fetchCSVAsJson } from './utils/fileUtils';
-import { getCycleDates } from './utils/dateUtils';
+import { getCycleDates, getSundaysForCycle } from './utils/dateUtils';
 import { useInteractiveLighting } from './hooks/useInteractiveLighting';
 import { useLiff } from './hooks/useLiff';
 import * as cloudService from './utils/googleSheets';
@@ -135,6 +135,12 @@ function App() {
     }
     return null;
   });
+  const [approvedVersion1, setApprovedVersion1] = useState<ApprovedVersion | null>(null);
+  const [approvedVersion2, setApprovedVersion2] = useState<ApprovedVersion | null>(null);
+  const [selectedCycle, setSelectedCycle] = useState<[number, number]>(() => getCycleDates().nextMonths);
+  const [cloudSheetExists, setCloudSheetExists] = useState<boolean | null>(null);
+  const [checkingSheet, setCheckingSheet] = useState<boolean>(false);
+  const [schedulerApprovedVersion, setSchedulerApprovedVersion] = useState<ApprovedVersion | null>(null);
   const [darkMode, setDarkMode] = useState(true);
   const [showExportMenu, setShowExportMenu] = useState(false);
   const responseFileInputRef = useRef<HTMLInputElement>(null);
@@ -181,10 +187,44 @@ function App() {
   };
 
   /** 設定為審定版本 */
+  const checkCloudSheetExistence = useCallback(async (cycle: [number, number]) => {
+    setCheckingSheet(true);
+    try {
+      const year = new Date().getFullYear();
+      const sheetName = `${year}年 ${cycle[0]}-${cycle[1]}月排班表`;
+      const res = await cloudService.fetchScheduleFromCloud(sheetName);
+      setCloudSheetExists(res.success && res.data !== null);
+    } catch (err) {
+      setCloudSheetExists(false);
+    } finally {
+      setCheckingSheet(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (view === 'admin' && adminSubTab === 'scheduler') {
+      checkCloudSheetExistence(selectedCycle);
+    }
+  }, [selectedCycle, view, adminSubTab, checkCloudSheetExistence]);
+
+  useEffect(() => {
+    const key = `volunteer_scheduler_approved_${selectedCycle[0]}-${selectedCycle[1]}`;
+    const saved = localStorage.getItem(key);
+    if (saved) {
+      try {
+        setSchedulerApprovedVersion(JSON.parse(saved));
+      } catch (e) {
+        setSchedulerApprovedVersion(null);
+      }
+    } else {
+      setSchedulerApprovedVersion(null);
+    }
+  }, [selectedCycle]);
+
+  /** 設定為審定版本 */
   const setAsApproved = () => {
     const ts = new Date().toLocaleString('zh-TW', { hour12: false });
-    const { currentMonths } = getCycleDates();
-    const label = `${currentMonths[0]}-${currentMonths[1]}月 審定版 (${ts})`;
+    const label = `${selectedCycle[0]}-${selectedCycle[1]}月 審定版 (${ts})`;
     const v: ApprovedVersion = {
       timestamp: ts,
       label,
@@ -192,18 +232,22 @@ function App() {
       edits: { ...manualEdits },
       isLocalAdminEdit: true,
     };
+    
+    const key = `volunteer_scheduler_approved_${selectedCycle[0]}-${selectedCycle[1]}`;
+    localStorage.setItem(key, JSON.stringify(v));
+    setSchedulerApprovedVersion(v);
     setApprovedVersion(v);
     alert(`已設定為審定版本！\n${label}`);
   };
 
   /** 帶入上次審定版本 */
   const loadApprovedVersion = () => {
-    if (!approvedVersion) {
+    if (!schedulerApprovedVersion) {
       alert('尚無審定版本。');
       return;
     }
-    setShifts(JSON.parse(JSON.stringify(approvedVersion.shifts)));
-    setManualEdits({ ...approvedVersion.edits });
+    setShifts(JSON.parse(JSON.stringify(schedulerApprovedVersion.shifts)));
+    setManualEdits({ ...schedulerApprovedVersion.edits });
     setEditMode(false);
   };
 
@@ -227,7 +271,7 @@ function App() {
     if (responseFileInputRef.current) responseFileInputRef.current.value = '';
   };
 
-  const generateSchedule = useCallback(async () => {
+  const generateSchedule = useCallback(async (overrideCycle?: [number, number]) => {
     setLoading(true);
     try {
       let responseData;
@@ -245,8 +289,11 @@ function App() {
       const skillData = await fetchCSVAsJson(SKILL_TREE_URL);
       const volunteers = parseSkillTreeData(skillData);
       
-      const { sundays } = getCycleDates();
-      const newShifts = parseScheduleResponsesData(responseData, volunteers, sundays);
+      const targetCycle = overrideCycle || selectedCycle;
+      const year = new Date().getFullYear();
+      const targetSundays = getSundaysForCycle(year, targetCycle);
+      
+      const newShifts = parseScheduleResponsesData(responseData, volunteers, targetSundays);
       setShifts(newShifts);
       setManualEdits({});
     } catch (err) {
@@ -255,13 +302,12 @@ function App() {
     } finally {
       setLoading(false);
     }
-  }, [responseFile]);
+  }, [responseFile, selectedCycle]);
 
-  const loadCloudApprovedVersion = async (): Promise<ApprovedVersion | null> => {
+  const loadCloudApprovedVersion = async (cycle: [number, number]): Promise<ApprovedVersion | null> => {
     try {
-      const { currentMonths } = getCycleDates();
       const year = new Date().getFullYear();
-      const sheetNamePrefix = `${year}年 ${currentMonths[0]}-${currentMonths[1]}月排班表`;
+      const sheetNamePrefix = `${year}年 ${cycle[0]}-${cycle[1]}月排班表`;
 
       const cloudResult = await cloudService.fetchScheduleFromCloud(sheetNamePrefix);
 
@@ -370,11 +416,22 @@ function App() {
   };
 
   useEffect(() => {
-    // 當使用者登入且在首頁時，如果沒有本地未同步的排班版本，才去雲端拉取
-    if (currentUser && view === 'home' && !approvedVersion?.isLocalAdminEdit) {
-      loadCloudApprovedVersion().then(version => {
+    // 當使用者登入且在首頁時，向雲端拉取當期與下期的排班版本
+    if (currentUser && view === 'home') {
+      const { currentMonths, nextMonths } = getCycleDates();
+      
+      loadCloudApprovedVersion(currentMonths).then(version => {
         if (version) {
-          setApprovedVersion(version);
+          setApprovedVersion1(version);
+          if (!approvedVersion?.isLocalAdminEdit) {
+            setApprovedVersion(version);
+          }
+        }
+      });
+
+      loadCloudApprovedVersion(nextMonths).then(version => {
+        if (version) {
+          setApprovedVersion2(version);
         }
       });
     }
@@ -466,10 +523,9 @@ function App() {
     if (!shifts.length) return;
     setLoading(true);
     
-    // Generate sheet name
-    const { currentMonths } = getCycleDates();
+    // Generate sheet name based on selectedCycle
     const year = new Date().getFullYear();
-    const sheetNamePrefix = `${year}年 ${currentMonths[0]}-${currentMonths[1]}月排班表`;
+    const sheetNamePrefix = `${year}年 ${selectedCycle[0]}-${selectedCycle[1]}月排班表`;
 
     try {
       const shanzhuangData = getSheetData('山莊大堂', SHAN_ZHUANG_ROLES);
@@ -498,6 +554,7 @@ function App() {
         });
 
         await cloudService.syncSchedule({ sheetName: sheetNamePrefix, data: rectangularData });
+        checkCloudSheetExistence(selectedCycle);
         // 同步成功後，解除本地強制覆蓋標記
         setApprovedVersion(prev => prev ? { ...prev, isLocalAdminEdit: false } : prev);
       }
@@ -920,6 +977,8 @@ function App() {
               approvedEdits={approvedVersion?.edits ?? null}
               selectedTeam={homeSelectedTeam || undefined}
               onSelectTeam={setHomeSelectedTeam}
+              approvedVersion1={approvedVersion1}
+              approvedVersion2={approvedVersion2}
             />
           </>
         )}
@@ -959,10 +1018,13 @@ function App() {
                   {adminSubTab === 'raw' && (
                     <AdminRawDataTeam 
                       team={currentTeamName} 
-                      onStartAutoSchedule={() => {
+                      onStartAutoSchedule={(cycle) => {
                         if (adminTeam === 'video') {
+                          if (cycle) {
+                            setSelectedCycle(cycle);
+                          }
                           setAdminSubTab('scheduler');
-                          generateSchedule();
+                          generateSchedule(cycle);
                         } else {
                           alert(`【尚未實裝】目前 ${currentTeamName} 尚未部署排班引擎。`);
                         }
@@ -975,6 +1037,56 @@ function App() {
                   {adminSubTab === 'scheduler' && (
                     adminTeam === 'video' ? (
               <>
+                {/* 週期選擇與雲端狀態 */}
+                <div className="glass-card animate-morph stagger-1" style={{ padding: '20px 24px', marginBottom: '20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    <span style={{ fontWeight: 700, color: 'var(--text-secondary)', fontSize: '0.95rem' }}>排班週期：</span>
+                    <div style={{ display: 'flex', background: 'var(--bg-input)', borderRadius: '12px', padding: '4px', border: '1px solid var(--bg-input-border)' }}>
+                      {(() => {
+                        const { currentMonths, nextMonths } = getCycleDates();
+                        const cycles = [currentMonths, nextMonths];
+                        return cycles.map((c, idx) => {
+                          const isSel = selectedCycle[0] === c[0] && selectedCycle[1] === c[1];
+                          return (
+                            <button
+                              key={idx}
+                              onClick={() => setSelectedCycle(c)}
+                              style={{
+                                border: 'none',
+                                background: isSel ? 'linear-gradient(135deg, var(--icon-accent), #d97706)' : 'transparent',
+                                color: isSel ? '#fff' : 'var(--text-secondary)',
+                                padding: '8px 16px',
+                                borderRadius: '10px',
+                                cursor: 'pointer',
+                                fontWeight: isSel ? 700 : 500,
+                                fontSize: '0.9rem',
+                                transition: 'all 0.2s',
+                              }}
+                            >
+                              {c[0]}-{c[1]}月排班
+                            </button>
+                          );
+                        });
+                      })()}
+                    </div>
+                  </div>
+
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.9rem', color: 'var(--text-secondary)' }}>
+                    <div style={{
+                      width: '8px', height: '8px', borderRadius: '50%',
+                      background: cloudSheetExists === true ? '#10b981' : cloudSheetExists === false ? '#3b82f6' : '#9ca3af'
+                    }} />
+                    <span>
+                      {checkingSheet 
+                        ? '正在檢查工作表...' 
+                        : cloudSheetExists === true 
+                          ? '✅ 雲端已存在工作表 (同步將覆蓋)' 
+                          : 'ℹ️ 雲端尚未建立工作表 (同步將自動新增)'
+                      }
+                    </span>
+                  </div>
+                </div>
+
                 {/* 階段標籤 */}
                 <div className="animate-morph stagger-1" style={{ marginBottom: '24px', display: 'flex', justifyContent: 'center', gap: '20px', flexWrap: 'wrap' }}>
                    <div style={{ fontWeight: scheduleStep === 1 ? 700 : 400, color: scheduleStep === 1 ? 'var(--text-primary)' : 'var(--text-muted)' }}>1. 自動排班</div>
@@ -997,7 +1109,7 @@ function App() {
                       </div>
 
                       <div style={{ flex: 1, minWidth: '200px' }}>
-                        <button className="btn-secondary" onClick={() => { if (approvedVersion) { loadApprovedVersion(); } else { alert('尚無審定版本可帶入。'); } }} disabled={!approvedVersion || loading} style={{ width: '100%', justifyContent: 'center' }}>
+                        <button className="btn-secondary" onClick={() => { if (schedulerApprovedVersion) { loadApprovedVersion(); } else { alert('尚無審定版本可帶入。'); } }} disabled={!schedulerApprovedVersion || loading} style={{ width: '100%', justifyContent: 'center' }}>
                           <ArchiveRestore size={20} /> 帶入審定版本
                         </button>
                       </div>

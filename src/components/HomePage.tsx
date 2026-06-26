@@ -3,7 +3,15 @@ import { createPortal } from 'react-dom';
 import { Calendar, MapPin, Clock, Sparkles, Video, Camera, X } from 'lucide-react';
 import type { Volunteer, Shift } from '../utils/scheduler';
 import { SHAN_ZHUANG_ROLES, XUAN_JIAO_ROLES } from '../utils/scheduler';
-import { getCycleDates } from '../utils/dateUtils';
+import { getCycleDates, getLastSundayOfCycle } from '../utils/dateUtils';
+
+interface ApprovedVersion {
+  timestamp: string;
+  label: string;
+  shifts: Shift[];
+  edits: Record<string, string>;
+  isLocalAdminEdit?: boolean;
+}
 
 interface HomePageProps {
   currentUser: Volunteer;
@@ -12,6 +20,8 @@ interface HomePageProps {
   onGoToAdmin?: () => void;
   selectedTeam?: string;
   onSelectTeam?: (team: string) => void;
+  approvedVersion1?: ApprovedVersion | null;
+  approvedVersion2?: ApprovedVersion | null;
 }
 
 /** 取得最近一個主日（今天或未來） */
@@ -51,12 +61,44 @@ export const HomePage: React.FC<HomePageProps> = ({
   approvedEdits,
   selectedTeam = '影視團隊',
   onSelectTeam = () => { },
+  approvedVersion1 = null,
+  approvedVersion2 = null,
 }) => {
   const days = daysUntilSunday();
   const nextSunday = getNextSunday();
   const nextSundayStr = formatMMDD(nextSunday);
   const [showFullSchedule, setShowFullSchedule] = useState(false);
-  const { currentMonths } = getCycleDates();
+  const { currentMonths, nextMonths } = getCycleDates();
+
+  const [overlayCycle, setOverlayCycle] = useState<[number, number] | null>(null);
+
+  const year = new Date().getFullYear();
+  const lastSundayOfCurrentCycle = getLastSundayOfCycle(year, currentMonths);
+
+  const showCurrentTab = useMemo(() => {
+    const shiftsToUse = approvedVersion1?.shifts ?? approvedShifts;
+    return shiftsToUse !== null && shiftsToUse.length > 0 && new Date() <= lastSundayOfCurrentCycle;
+  }, [approvedVersion1, approvedShifts, lastSundayOfCurrentCycle]);
+
+  const showNextTab = useMemo(() => {
+    return approvedVersion2 !== null && approvedVersion2.shifts && approvedVersion2.shifts.length > 0;
+  }, [approvedVersion2]);
+
+  const overlayShifts = useMemo(() => {
+    if (!overlayCycle) return [];
+    const isNext = overlayCycle[0] === nextMonths[0] && overlayCycle[1] === nextMonths[1];
+    return isNext 
+      ? (approvedVersion2?.shifts ?? []) 
+      : (approvedVersion1?.shifts ?? approvedShifts ?? []);
+  }, [overlayCycle, approvedVersion1, approvedVersion2, approvedShifts, nextMonths]);
+
+  const overlayEdits = useMemo(() => {
+    if (!overlayCycle) return null;
+    const isNext = overlayCycle[0] === nextMonths[0] && overlayCycle[1] === nextMonths[1];
+    return isNext 
+      ? (approvedVersion2?.edits ?? null) 
+      : (approvedVersion1?.edits ?? approvedEdits ?? null);
+  }, [overlayCycle, approvedVersion1, approvedVersion2, approvedEdits, nextMonths]);
 
   const allTeams = ['影視團隊', '燈光團隊', '舞監團隊', '音控團隊'];
 
@@ -334,27 +376,61 @@ export const HomePage: React.FC<HomePageProps> = ({
       )}
 
       {/* === 右側固定頁籤 & 完整班表 Overlay === */}
-      {approvedShifts && approvedShifts.length > 0 && createPortal(
+      {(showCurrentTab || showNextTab) && createPortal(
         <>
-          {/* 右側固定頁籤 */}
-          <div
-            onClick={() => setShowFullSchedule(true)}
-            style={{
-              position: 'fixed', right: 0, top: '50%', transform: 'translateY(-50%)',
-              zIndex: 9000, cursor: 'pointer',
-              writingMode: 'vertical-rl', WebkitWritingMode: 'vertical-rl', textOrientation: 'mixed',
-              background: 'linear-gradient(180deg, #eab308, #d97706)',
-              color: '#fff', fontWeight: 700, fontSize: '0.95rem',
-              padding: '18px 10px', borderRadius: '12px 0 0 12px',
-              boxShadow: '-4px 0 20px rgba(234, 179, 8, 0.35)',
-              letterSpacing: '0.05em',
-              transition: 'all 0.3s',
-            }}
-            onMouseEnter={e => { (e.currentTarget as HTMLElement).style.paddingRight = '16px'; }}
-            onMouseLeave={e => { (e.currentTarget as HTMLElement).style.paddingRight = '10px'; }}
-          >
-            {currentMonths[0]}月~{currentMonths[1]}月班表
-          </div>
+          {/* 右側固定頁籤 - 當期班表 (黃/橘) */}
+          {showCurrentTab && (
+            <div
+              onClick={() => {
+                setOverlayCycle(currentMonths);
+                setShowFullSchedule(true);
+              }}
+              style={{
+                position: 'fixed', right: 0,
+                top: showNextTab ? 'calc(50% - 65px)' : '50%',
+                transform: 'translateY(-50%)',
+                zIndex: 9000, cursor: 'pointer',
+                writingMode: 'vertical-rl', WebkitWritingMode: 'vertical-rl', textOrientation: 'mixed',
+                background: 'linear-gradient(180deg, #eab308, #d97706)',
+                color: '#fff', fontWeight: 700, fontSize: '0.95rem',
+                padding: '18px 10px', borderRadius: '12px 0 0 12px',
+                boxShadow: '-4px 0 20px rgba(234, 179, 8, 0.35)',
+                letterSpacing: '0.05em',
+                transition: 'all 0.3s',
+              }}
+              onMouseEnter={e => { (e.currentTarget as HTMLElement).style.paddingRight = '16px'; }}
+              onMouseLeave={e => { (e.currentTarget as HTMLElement).style.paddingRight = '10px'; }}
+            >
+              {currentMonths[0]}月~{currentMonths[1]}月班表
+            </div>
+          )}
+
+          {/* 右側固定頁籤 - 下期班表 (藍) */}
+          {showNextTab && (
+            <div
+              onClick={() => {
+                setOverlayCycle(nextMonths);
+                setShowFullSchedule(true);
+              }}
+              style={{
+                position: 'fixed', right: 0,
+                top: showCurrentTab ? 'calc(50% + 65px)' : '50%',
+                transform: 'translateY(-50%)',
+                zIndex: 9000, cursor: 'pointer',
+                writingMode: 'vertical-rl', WebkitWritingMode: 'vertical-rl', textOrientation: 'mixed',
+                background: 'linear-gradient(180deg, #3b82f6, #1d4ed8)',
+                color: '#fff', fontWeight: 700, fontSize: '0.95rem',
+                padding: '18px 10px', borderRadius: '12px 0 0 12px',
+                boxShadow: '-4px 0 20px rgba(59, 130, 246, 0.35)',
+                letterSpacing: '0.05em',
+                transition: 'all 0.3s',
+              }}
+              onMouseEnter={e => { (e.currentTarget as HTMLElement).style.paddingRight = '16px'; }}
+              onMouseLeave={e => { (e.currentTarget as HTMLElement).style.paddingRight = '10px'; }}
+            >
+              {nextMonths[0]}月~{nextMonths[1]}月班表
+            </div>
+          )}
 
           {/* 完整班表 Overlay */}
           {showFullSchedule && (
@@ -373,12 +449,14 @@ export const HomePage: React.FC<HomePageProps> = ({
               }}>
                 <h2 style={{
                   margin: 0, fontSize: '1.4rem', fontWeight: 800,
-                  background: 'linear-gradient(135deg, #eab308, #d97706)',
+                  background: overlayCycle && overlayCycle[0] === nextMonths[0]
+                    ? 'linear-gradient(135deg, #3b82f6, #1d4ed8)'
+                    : 'linear-gradient(135deg, #eab308, #d97706)',
                   WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
                 }}>
-                  {currentMonths[0]}月~{currentMonths[1]}月 完整排班表
+                  {overlayCycle ? `${overlayCycle[0]}月~${overlayCycle[1]}月` : ''} 完整排班表
                 </h2>
-                <button onClick={() => setShowFullSchedule(false)} style={{
+                <button onClick={() => { setShowFullSchedule(false); setOverlayCycle(null); }} style={{
                   background: 'var(--bg-input)', border: '1px solid var(--bg-input-border)',
                   borderRadius: '10px', padding: '8px', cursor: 'pointer',
                   color: 'var(--text-primary)', display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -390,9 +468,9 @@ export const HomePage: React.FC<HomePageProps> = ({
               {/* Scrollable content */}
               <div style={{ flex: 1, overflow: 'auto', padding: '24px' }}>
                 <div style={{ maxWidth: '1400px', margin: '0 auto' }}>
-                  {renderFullScheduleTable('山莊大堂', SHAN_ZHUANG_ROLES, approvedShifts, approvedEdits, currentUser.name)}
+                  {renderFullScheduleTable('山莊大堂', SHAN_ZHUANG_ROLES, overlayShifts, overlayEdits, currentUser.name)}
                   <div style={{ height: '24px' }} />
-                  {renderFullScheduleTable('宣教大樓', XUAN_JIAO_ROLES, approvedShifts, approvedEdits, currentUser.name)}
+                  {renderFullScheduleTable('宣教大樓', XUAN_JIAO_ROLES, overlayShifts, overlayEdits, currentUser.name)}
                 </div>
               </div>
             </div>

@@ -6,7 +6,7 @@ import { getCycleDates } from '../utils/dateUtils';
 
 interface AdminRawDataProps {
   team: string;
-  onStartAutoSchedule: () => void;
+  onStartAutoSchedule: (cycle?: [number, number]) => void;
 }
 
 export const AdminRawDataTeam: React.FC<AdminRawDataProps> = ({ team, onStartAutoSchedule }) => {
@@ -16,10 +16,30 @@ export const AdminRawDataTeam: React.FC<AdminRawDataProps> = ({ team, onStartAut
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   const { sundays, nextMonths } = getCycleDates();
-  const validDateColumns = sundays.map(s => `[${s}]`);
+  const [detectedCycle, setDetectedCycle] = useState<[number, number]>(nextMonths);
+  const [detectedSundays, setDetectedSundays] = useState<string[]>(sundays);
+  const [sheetExists, setSheetExists] = useState<boolean | null>(null);
+  const [checkingSheet, setCheckingSheet] = useState<boolean>(false);
+
+  const validDateColumns = detectedSundays.map(s => `[${s}]`);
+
+  const checkCloudSheetExistence = async (cycle: [number, number]) => {
+    setCheckingSheet(true);
+    try {
+      const year = new Date().getFullYear();
+      const sheetName = `${year}年 ${cycle[0]}-${cycle[1]}月排班表`;
+      const res = await cloudService.fetchScheduleFromCloud(sheetName);
+      setSheetExists(res.success && res.data !== null);
+    } catch (err) {
+      setSheetExists(false);
+    } finally {
+      setCheckingSheet(false);
+    }
+  };
 
   const loadData = async () => {
     setLoading(true);
+    setErrorMsg(null);
 
     try {
       const res = await cloudService.fetchFormResponsesFromCloud(team);
@@ -27,9 +47,42 @@ export const AdminRawDataTeam: React.FC<AdminRawDataProps> = ({ team, onStartAut
         if (res.data && res.data.length > 0) {
           setData(res.data);
           setSource('cloud');
+
+          // 動態偵測 RAW 資料中的排班週期
+          const allCols = Array.from(new Set(res.data.flatMap(d => Object.keys(d))));
+          const dateCols = allCols.filter(col => col.includes('[') && col.includes(']'));
+          
+          if (dateCols.length > 0) {
+            const rawDates = dateCols.map(col => col.replace(/[\[\]]/g, '').trim());
+            const monthsSet = new Set<number>();
+            for (const dStr of rawDates) {
+              const parts = dStr.split('/');
+              if (parts.length === 2) {
+                const m = parseInt(parts[0], 10);
+                if (!isNaN(m)) monthsSet.add(m);
+              }
+            }
+
+            if (monthsSet.size > 0) {
+              const sortedMonths = Array.from(monthsSet).sort((a, b) => a - b);
+              const minMonth = sortedMonths[0];
+              const startMonth = minMonth % 2 === 0 ? minMonth - 1 : minMonth;
+              const endMonth = startMonth + 1;
+              const cycle: [number, number] = [startMonth, endMonth];
+              
+              setDetectedCycle(cycle);
+              setDetectedSundays(rawDates);
+              checkCloudSheetExistence(cycle);
+            } else {
+              checkCloudSheetExistence(nextMonths);
+            }
+          } else {
+            checkCloudSheetExistence(nextMonths);
+          }
         } else {
           setData([]);
           setSource('none');
+          checkCloudSheetExistence(nextMonths);
         }
       } else {
         setData([]);
@@ -59,7 +112,7 @@ export const AdminRawDataTeam: React.FC<AdminRawDataProps> = ({ team, onStartAut
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `form_responses_${nextMonths[0]}_${nextMonths[1]}月.csv`;
+    a.download = `form_responses_${detectedCycle[0]}_${detectedCycle[1]}月.csv`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
@@ -125,9 +178,9 @@ export const AdminRawDataTeam: React.FC<AdminRawDataProps> = ({ team, onStartAut
     return (
       <div className="glass-card animate-morph stagger-2" style={{ padding: '40px', textAlign: 'center' }}>
         <Calendar size={48} style={{ color: 'var(--text-muted)', margin: '0 auto 16px', opacity: 0.3 }} />
-        <p style={{ color: 'var(--text-secondary)', marginBottom: '20px' }}>目前尚無 {nextMonths[0]}、{nextMonths[1]} 月份的填報紀錄。</p>
+        <p style={{ color: 'var(--text-secondary)', marginBottom: '20px' }}>目前尚無 {detectedCycle[0]}、{detectedCycle[1]} 月份的填報紀錄。</p>
         <div style={{ display: 'flex', gap: '10px', justifyContent: 'center', flexWrap: 'wrap' }}>
-          <button className="btn-primary" onClick={onStartAutoSchedule}>
+          <button className="btn-primary" onClick={() => onStartAutoSchedule(detectedCycle)}>
             開始自動排班 (使用測試資料)
           </button>
           <button className="btn-secondary" onClick={loadData}>
@@ -142,26 +195,73 @@ export const AdminRawDataTeam: React.FC<AdminRawDataProps> = ({ team, onStartAut
   const allColumns = Array.from(new Set(data.flatMap(d => Object.keys(d))));
   const dateColumns = allColumns.filter(col => col.includes('['));
 
-  // 優先顯示當期（7-8月）日期欄位，其餘的也保留
+  // 優先顯示當期日期欄位，其餘的也保留
   const currentCycleDateCols = dateColumns.filter(col => validDateColumns.includes(col));
   const otherDateCols = dateColumns.filter(col => !validDateColumns.includes(col));
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
 
+      {/* 雲端工作表狀態 Banner */}
+      {source === 'cloud' && (
+        <div 
+          className="glass-card animate-morph stagger-1" 
+          style={{ 
+            padding: '16px 24px', 
+            background: sheetExists === true 
+              ? 'linear-gradient(135deg, rgba(16, 185, 129, 0.08), rgba(16, 185, 129, 0.03))'
+              : sheetExists === false 
+                ? 'linear-gradient(135deg, rgba(59, 130, 246, 0.08), rgba(59, 130, 246, 0.03))'
+                : 'var(--bg-card)',
+            border: sheetExists === true 
+              ? '1px solid rgba(16, 185, 129, 0.25)' 
+              : sheetExists === false 
+                ? '1px solid rgba(59, 130, 246, 0.25)' 
+                : '1px solid var(--bg-card-border)',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '16px',
+            borderRadius: '16px'
+          }}
+        >
+          <div style={{
+            width: '36px', height: '36px', borderRadius: '50%',
+            background: sheetExists === true ? 'rgba(16, 185, 129, 0.15)' : 'rgba(59, 130, 246, 0.15)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            color: sheetExists === true ? '#10b981' : '#3b82f6',
+            fontSize: '1rem', fontWeight: 700, flexShrink: 0
+          }}>
+            {checkingSheet ? <Loader2 className="animate-spin" size={16} /> : sheetExists === true ? '✓' : 'i'}
+          </div>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontWeight: 700, color: 'var(--text-primary)', fontSize: '0.95rem' }}>
+              偵測到後台已開始填寫 {detectedCycle[0]}~{detectedCycle[1]} 月的 RAW 資料。
+            </div>
+            <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginTop: '2px' }}>
+              {checkingSheet 
+                ? '正在檢查雲端排班工作表狀態...' 
+                : sheetExists === true 
+                  ? `雲端狀態：✅ 已建立「${new Date().getFullYear()}年 ${detectedCycle[0]}-${detectedCycle[1]}月排班表」工作表。同步時將覆蓋更新。`
+                  : `雲端狀態：ℹ️ 尚未建立「${new Date().getFullYear()}年 ${detectedCycle[0]}-${detectedCycle[1]}月排班表」工作表。排班同步時系統將自動新增該工作表。`
+              }
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* 標題列 */}
       <div className="glass-card animate-morph stagger-1" style={{ padding: '24px' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
           <div>
             <h2 style={{ margin: '0 0 6px', color: 'var(--text-primary)', fontSize: '1.5rem' }}>
-              {nextMonths[0]}、{nextMonths[1]} 月份表單回覆紀錄
+              {detectedCycle[0]}、{detectedCycle[1]} 月份表單回覆紀錄
             </h2>
             <p style={{ margin: 0, fontSize: '0.9rem', color: 'var(--text-muted)' }}>
               共 {data.length} 筆提交　|　資料來源：{source === 'cloud' ? '☁️ 雲端' : '目前無資料'}
             </p>
           </div>
           <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
-            <button className="btn-primary" onClick={onStartAutoSchedule}>
+            <button className="btn-primary" onClick={() => onStartAutoSchedule(detectedCycle)}>
               開始自動排班
             </button>
             <button className="btn-secondary" onClick={loadData}>
