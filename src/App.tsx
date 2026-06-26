@@ -140,7 +140,7 @@ function App() {
   const [selectedCycle, setSelectedCycle] = useState<[number, number]>(() => getCycleDates().nextMonths);
   const [cloudSheetExists, setCloudSheetExists] = useState<boolean | null>(null);
   const [checkingSheet, setCheckingSheet] = useState<boolean>(false);
-  const [schedulerApprovedVersion, setSchedulerApprovedVersion] = useState<ApprovedVersion | null>(null);
+
   const [darkMode, setDarkMode] = useState(true);
   const [showExportMenu, setShowExportMenu] = useState(false);
   const responseFileInputRef = useRef<HTMLInputElement>(null);
@@ -207,19 +207,7 @@ function App() {
     }
   }, [selectedCycle, view, adminSubTab, checkCloudSheetExistence]);
 
-  useEffect(() => {
-    const key = `volunteer_scheduler_approved_${selectedCycle[0]}-${selectedCycle[1]}`;
-    const saved = localStorage.getItem(key);
-    if (saved) {
-      try {
-        setSchedulerApprovedVersion(JSON.parse(saved));
-      } catch (e) {
-        setSchedulerApprovedVersion(null);
-      }
-    } else {
-      setSchedulerApprovedVersion(null);
-    }
-  }, [selectedCycle]);
+
 
   /** 設定為審定版本 */
   const setAsApproved = () => {
@@ -235,20 +223,30 @@ function App() {
     
     const key = `volunteer_scheduler_approved_${selectedCycle[0]}-${selectedCycle[1]}`;
     localStorage.setItem(key, JSON.stringify(v));
-    setSchedulerApprovedVersion(v);
+
     setApprovedVersion(v);
     alert(`已設定為審定版本！\n${label}`);
   };
 
-  /** 帶入上次審定版本 */
-  const loadApprovedVersion = () => {
-    if (!schedulerApprovedVersion) {
-      alert('尚無審定版本。');
-      return;
+  /** 帶入上次審定版本（從雲端讀取所選週期的工作表內容） */
+  const loadApprovedVersion = async () => {
+    setLoading(true);
+    try {
+      const version = await loadCloudApprovedVersion(selectedCycle);
+      if (version) {
+        setShifts(version.shifts);
+        setManualEdits(version.edits);
+        setEditMode(false);
+        alert(`已成功自雲端帶入 ${selectedCycle[0]}-${selectedCycle[1]}月 審定版本！`);
+      } else {
+        alert(`雲端尚未建立「${new Date().getFullYear()}年 ${selectedCycle[0]}-${selectedCycle[1]}月排班表」工作表。`);
+      }
+    } catch (err) {
+      console.error(err);
+      alert('從雲端帶入版本失敗，請稍後再試。');
+    } finally {
+      setLoading(false);
     }
-    setShifts(JSON.parse(JSON.stringify(schedulerApprovedVersion.shifts)));
-    setManualEdits({ ...schedulerApprovedVersion.edits });
-    setEditMode(false);
   };
 
   // --- Event Handlers -------------------------------------------------------
@@ -1109,7 +1107,7 @@ function App() {
                       </div>
 
                       <div style={{ flex: 1, minWidth: '200px' }}>
-                        <button className="btn-secondary" onClick={() => { if (schedulerApprovedVersion) { loadApprovedVersion(); } else { alert('尚無審定版本可帶入。'); } }} disabled={!schedulerApprovedVersion || loading} style={{ width: '100%', justifyContent: 'center' }}>
+                        <button className="btn-secondary" onClick={loadApprovedVersion} disabled={loading} style={{ width: '100%', justifyContent: 'center' }}>
                           <ArchiveRestore size={20} /> 帶入審定版本
                         </button>
                       </div>
