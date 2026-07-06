@@ -1027,9 +1027,9 @@ body.admin-no-scroll .admin-fan-node {
 
 .admin-hub.pill-mode {
   width: auto;
-  height: 40px;
-  padding: 8px 16px;
-  gap: 6px;
+  height: auto;
+  padding: 10px 20px;
+  gap: 8px;
 }
 
 .admin-nav-root.state-settling .admin-hub {
@@ -1097,12 +1097,12 @@ body.admin-no-scroll .admin-fan-node {
   padding: 10px 20px;
   border-radius: 99px;
   background: var(--bg-card);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  border: 0.5px solid var(--bg-btn-secondary-border);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid var(--bg-card-border);
   font-size: 13px;
   font-weight: 500;
-  color: var(--text-secondary);
+  color: var(--text-primary);
   cursor: pointer;
   white-space: nowrap;
   display: flex;
@@ -1110,7 +1110,7 @@ body.admin-no-scroll .admin-fan-node {
   gap: 8px;
   transition: background 0.15s, color 0.15s, border-color 0.15s,
              box-shadow 0.15s, transform 0.15s;
-  box-shadow: 0 4px 16px rgba(0,0,0,0.2);
+  box-shadow: 0 4px 20px rgba(0,0,0,0.2);
 }
 
 .admin-fan-btn:hover {
@@ -1118,7 +1118,7 @@ body.admin-no-scroll .admin-fan-node {
   border-color: rgba(200, 131, 10, 0.4);
   color: #c8830a;
   transform: scale(1.06);
-  box-shadow: 0 6px 24px rgba(200, 131, 10, 0.25);
+  box-shadow: 0 4px 20px rgba(200, 131, 10, 0.2);
 }
 
 .admin-fan-btn .fan-icon {
@@ -1155,6 +1155,7 @@ body.admin-no-scroll .admin-fan-node {
   background: rgba(217, 119, 6, 0.15);
   border-color: #b45309;
   color: #92400e;
+  box-shadow: 0 4px 20px rgba(217, 119, 6, 0.25);
 }
 
 .light-theme .admin-fan-btn .fan-icon {
@@ -1421,11 +1422,20 @@ body.admin-no-scroll .admin-fan-node {
     width: 60px;
     height: 60px;
   }
+  .admin-hub.pill-mode {
+    width: auto;
+    height: auto;
+    padding: 10px 20px;
+    gap: 8px;
+  }
   .admin-hub-icon {
     font-size: 20px;
   }
   .admin-hub-label {
     font-size: 9px;
+  }
+  .admin-hub.pill-mode .admin-hub-label {
+    font-size: 13px;
   }
 }
 

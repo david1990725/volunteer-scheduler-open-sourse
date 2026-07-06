@@ -206,11 +206,38 @@ export const HomePage: React.FC<HomePageProps> = ({
         </p>
 
         {/* Team Selector Dropdown */}
-        <div style={{ display: 'inline-flex', alignItems: 'center', gap: '10px', background: 'var(--bg-input)', padding: '6px 12px', borderRadius: '12px', border: '1px solid var(--bg-input-border)' }}>
-          <span style={{ color: 'var(--text-muted)', fontSize: '0.9rem', fontWeight: 600 }}>檢視組別：</span>
+        <div style={{
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: '10px',
+          background: 'var(--bg-input)',
+          padding: '6px 12px',
+          borderRadius: '12px',
+          border: '1px solid var(--bg-input-border)',
+          whiteSpace: 'nowrap',
+          flexWrap: 'nowrap'
+        }}>
+          <span style={{
+            color: 'var(--text-muted)',
+            fontSize: '0.9rem',
+            fontWeight: 600,
+            whiteSpace: 'nowrap',
+            flexShrink: 0
+          }}>檢視組別：</span>
           <select
             className="glass-input"
-            style={{ border: 'none', background: 'transparent', fontWeight: 700, color: 'var(--icon-accent)', padding: '4px 8px', fontSize: '1rem', cursor: 'pointer' }}
+            style={{
+              border: 'none',
+              background: 'transparent',
+              fontWeight: 700,
+              color: 'var(--icon-accent)',
+              padding: '4px 8px',
+              fontSize: '1rem',
+              cursor: 'pointer',
+              width: 'auto',
+              flexShrink: 0,
+              whiteSpace: 'nowrap'
+            }}
             value={selectedTeam}
             onChange={(e) => onSelectTeam(e.target.value)}
           >

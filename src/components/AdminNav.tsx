@@ -59,12 +59,12 @@ const getIdleFanConfig = () => {
 const getSwitchFanConfig = () => {
   if (isMobile()) {
     return {
-      rad: [240, 210, 150, 120], // Left-side arc, tighter for mobile
+      rad: [160, 120, 60, 20], // Downward arc for mobile
       r: 130
     };
   }
   return {
-    rad: [225, 195, 165, 135], // Left-side arc (Top to Bottom)
+    rad: [155, 115, 65, 25], // Downward arc (Left to Right) for desktop
     r: 200
   };
 };
@@ -181,8 +181,25 @@ export const AdminNav: React.FC<AdminNavProps> = ({
         const delay = i * 60;
         setTimeout(() => {
           const rad = (radArray[i] * Math.PI) / 180;
-          const tx = c.x + radius * Math.cos(rad);
-          const ty = c.y + radius * Math.sin(rad);
+          let tx = c.x + radius * Math.cos(rad);
+          let ty = c.y + radius * Math.sin(rad);
+
+          // Get button dimensions to prevent overflow from viewport
+          const btnRect = btn.getBoundingClientRect();
+          const w = btnRect.width || 110;
+          const h = btnRect.height || 40;
+
+          const margin = 12; // 12px margin from viewport edges
+          const minX = w / 2 + margin;
+          const maxX = window.innerWidth - w / 2 - margin;
+          const minY = h / 2 + margin;
+          const maxY = window.innerHeight - h / 2 - margin;
+
+          if (tx < minX) tx = minX;
+          if (tx > maxX) tx = maxX;
+          if (ty < minY) ty = minY;
+          if (ty > maxY) ty = maxY;
+
           nd.style.left = tx + 'px';
           nd.style.top = ty + 'px';
           nd.classList.add('vis');
@@ -327,7 +344,11 @@ export const AdminNav: React.FC<AdminNavProps> = ({
       openSwitch();
       return;
     }
-  }, [openFan, closeFan, openSwitch]);
+    if (stateRef.current === 'switching') {
+      cancelSwitch();
+      return;
+    }
+  }, [openFan, closeFan, openSwitch, cancelSwitch]);
 
   // ── Cleanup ─────────────────────────────────────────────────────────────
 
@@ -384,7 +405,7 @@ export const AdminNav: React.FC<AdminNavProps> = ({
             aria-label={activeTeam ? activeTeam.name : '選擇團隊'}
           >
             <span className="admin-hub-icon">
-              <ActiveIcon size={isPillMode ? 15 : 22} />
+              <ActiveIcon size={isPillMode ? 14 : 22} />
             </span>
             <span className="admin-hub-label">
               {activeTeam ? activeTeam.name : '選擇團隊'}
@@ -421,11 +442,7 @@ export const AdminNav: React.FC<AdminNavProps> = ({
         </div>
       </div>
 
-      {/* Fan nodes — fixed position, rendered from hub center */}
-      <div
-        ref={fanWrapRef}
-        className="admin-fan-wrap"
-      />
+
 
       {/* Cancel hint during switching */}
       {state === 'switching' && (
