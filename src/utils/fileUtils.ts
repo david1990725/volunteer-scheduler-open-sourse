@@ -27,7 +27,11 @@ export async function parseSpreadsheetFile(file: File): Promise<any[]> {
     };
 
     reader.onerror = () => reject(new Error('檔案讀取失敗'));
-    isCSV ? reader.readAsText(file) : reader.readAsArrayBuffer(file);
+    if (isCSV) {
+      reader.readAsText(file);
+    } else {
+      reader.readAsArrayBuffer(file);
+    }
   });
 }
 

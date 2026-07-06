@@ -48,7 +48,9 @@ export const AdminRosterTeam: React.FC<AdminRosterTeamProps> = ({ team }) => {
   };
 
   useEffect(() => {
-    loadData();
+    setTimeout(() => {
+      loadData();
+    }, 0);
   }, []);
 
   const handleEdit = (user: Volunteer) => {

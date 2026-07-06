@@ -21,21 +21,21 @@ export const AdminRawDataTeam: React.FC<AdminRawDataProps> = ({ team, onStartAut
   const [checkingSheet, setCheckingSheet] = useState<boolean>(false);
   const [onlyShowSelectedCycle, setOnlyShowSelectedCycle] = useState<boolean>(true);
 
-  const checkCloudSheetExistence = async (cycle: [number, number]) => {
+  const checkCloudSheetExistence = useCallback(async (cycle: [number, number]) => {
     setCheckingSheet(true);
     try {
       const year = new Date().getFullYear();
       const sheetName = `${year}年 ${cycle[0]}-${cycle[1]}月排班表`;
       const res = await cloudService.fetchScheduleFromCloud(sheetName);
       setSheetExists(res.success && res.data !== null);
-    } catch (err) {
+    } catch {
       setSheetExists(false);
     } finally {
       setCheckingSheet(false);
     }
-  };
+  }, []);
 
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     setLoading(true);
     setErrorMsg(null);
 
@@ -51,7 +51,7 @@ export const AdminRawDataTeam: React.FC<AdminRawDataProps> = ({ team, onStartAut
           const dateCols = allCols.filter(col => col.includes('[') && col.includes(']'));
           
           if (dateCols.length > 0) {
-            const rawDates = dateCols.map(col => col.replace(/[\[\]]/g, '').trim());
+            const rawDates = dateCols.map(col => col.replace(/\[|\]/g, '').trim());
             const monthsSet = new Set<number>();
             for (const dStr of rawDates) {
               const parts = dStr.split('/');
@@ -93,11 +93,13 @@ export const AdminRawDataTeam: React.FC<AdminRawDataProps> = ({ team, onStartAut
     }
 
     setLoading(false);
-  };
+  }, [team, selectedCycle, checkCloudSheetExistence]);
 
   useEffect(() => {
-    loadData();
-  }, []);
+    setTimeout(() => {
+      loadData();
+    }, 0);
+  }, [team, loadData]);
 
   const exportCSV = () => {
     if (data.length === 0) return;
@@ -182,7 +184,7 @@ export const AdminRawDataTeam: React.FC<AdminRawDataProps> = ({ team, onStartAut
 
   // 根據目前選擇的週期，篩選出屬於該週期的日期欄位
   const currentCycleDateCols = dateColumns.filter(col => {
-    const dStr = col.replace(/[\[\]]/g, '').trim();
+    const dStr = col.replace(/\[|\]/g, '').trim();
     const parts = dStr.split('/');
     if (parts.length === 2) {
       const m = parseInt(parts[0], 10);
@@ -257,7 +259,7 @@ export const AdminRawDataTeam: React.FC<AdminRawDataProps> = ({ team, onStartAut
               {selectedCycle[0]}、{selectedCycle[1]} 月份表單回覆紀錄
             </h2>
             <p style={{ margin: 0, fontSize: '0.9rem', color: 'var(--text-muted)' }}>
-              本期共 {filteredData.length} 筆提交 (總共 {data.length} 筆)　|　資料來源：{source === 'cloud' ? '☁️ 雲端' : '目前無資料'}
+              本期共 {filteredData.length} 筆提交 (總共 {data.length} 筆) | 資料來源：{source === 'cloud' ? '☁️ 雲端' : '目前無資料'}
             </p>
           </div>
           <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', alignItems: 'center' }}>
@@ -342,7 +344,7 @@ export const AdminRawDataTeam: React.FC<AdminRawDataProps> = ({ team, onStartAut
           for (const col of dateCols) {
             const val = String(row[col] || '').trim();
             if (val) {
-              const dateStr = col.replace(/[\[\]]/g, '');
+              const dateStr = col.replace(/\[|\]/g, '');
               dateEntries.push({ date: dateStr, locations: val });
             }
           }

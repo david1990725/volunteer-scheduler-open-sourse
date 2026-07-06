@@ -31,7 +31,7 @@ export const useLiff = () => {
 
     if (!liffId || liffId === 'your_liff_id_here') {
       console.warn('[useLiff] LIFF ID 未設定，請在 .env 中設定 VITE_LIFF_ID。');
-      setIsReady(true);
+      setTimeout(() => setIsReady(true), 0);
       return;
     }
 

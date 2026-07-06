@@ -1,5 +1,5 @@
 export function getLastSundayOfCycle(year: number, months: [number, number]): Date {
-  const [_, m2] = months;
+  const m2 = months[1];
   // Start from the last day of month m2
   const lastDay = new Date(year, m2, 0); // 0th day of next month is the last day of m2
   // Find the last Sunday of month m2 by walking backwards
@@ -64,8 +64,8 @@ export function getCycleDates(): {
   const isEvenMonth = month % 2 === 0;
 
   // 計算當前所在的雙數月週期結尾 (例如 5月、6月皆屬於 6月結尾的週期)
-  let currentCycleEndMonth = isEvenMonth ? month : month + 1;
-  let currentCycleStartMonth = currentCycleEndMonth - 1;
+  const currentCycleEndMonth = isEvenMonth ? month : month + 1;
+  const currentCycleStartMonth = currentCycleEndMonth - 1;
   
   // 目標週期為下一個雙數月份週期
   let targetMonth1 = currentCycleEndMonth + 1;

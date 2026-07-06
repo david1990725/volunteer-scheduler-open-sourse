@@ -23,10 +23,6 @@ export const AdminSkillTreeTeam: React.FC<AdminSkillTreeTeamProps> = ({ team }) 
   const [editingSkills, setEditingSkills] = useState<Record<string, number>>({});
   const [saving, setSaving] = useState(false);
 
-  useEffect(() => {
-    loadData();
-  }, []);
-
   const loadData = async () => {
     setLoading(true);
     setError(null);
@@ -46,6 +42,12 @@ export const AdminSkillTreeTeam: React.FC<AdminSkillTreeTeamProps> = ({ team }) 
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    setTimeout(() => {
+      loadData();
+    }, 0);
+  }, []);
 
   const handleSelectVol = (vol: Volunteer) => {
     setSelectedVol(vol);

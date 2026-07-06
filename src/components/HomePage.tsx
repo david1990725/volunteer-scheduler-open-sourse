@@ -55,6 +55,8 @@ function getRoleIcon(role: string) {
   return <Sparkles size={16} />;
 }
 
+const allTeams = ['影視團隊', '燈光團隊', '舞監團隊', '音控團隊'];
+
 export const HomePage: React.FC<HomePageProps> = ({
   currentUser,
   approvedShifts,
@@ -65,8 +67,8 @@ export const HomePage: React.FC<HomePageProps> = ({
   approvedVersion2 = null,
 }) => {
   const days = daysUntilSunday();
-  const nextSunday = getNextSunday();
-  const nextSundayStr = formatMMDD(nextSunday);
+  const nextSunday = useMemo(() => getNextSunday(), []);
+  const nextSundayStr = useMemo(() => formatMMDD(nextSunday), [nextSunday]);
   const [showFullSchedule, setShowFullSchedule] = useState(false);
   const { currentMonths, nextMonths } = getCycleDates();
 
@@ -99,8 +101,6 @@ export const HomePage: React.FC<HomePageProps> = ({
       ? (approvedVersion2?.edits ?? null) 
       : (approvedVersion1?.edits ?? approvedEdits ?? null);
   }, [overlayCycle, approvedVersion1, approvedVersion2, approvedEdits, nextMonths]);
-
-  const allTeams = ['影視團隊', '燈光團隊', '舞監團隊', '音控團隊'];
 
   const visibleTeams = useMemo(() => {
     if (currentUser.roles.some(r => r.includes('管理'))) {
@@ -146,7 +146,7 @@ export const HomePage: React.FC<HomePageProps> = ({
           .filter((assignment) => assignment.person === currentUser.name)
           .map(({ location, role }) => ({ location, role }));
       });
-  }, [approvedShifts, approvedEdits, nextSundayStr, currentUser.name]);
+  }, [approvedShifts, approvedEdits, nextSundayStr, currentUser.name, selectedTeam]);
 
   /**
    * 取得該主日所有地點的排班摘要

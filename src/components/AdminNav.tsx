@@ -83,6 +83,7 @@ export const AdminNav: React.FC<AdminNavProps> = ({
 }) => {
   const [state, setState] = useState<NavState>('idle');
   const [activeTeamIdx, setActiveTeamIdx] = useState<number | null>(null);
+  const [cancelPosition, setCancelPosition] = useState<{ top: string; left: string } | null>(null);
 
   const navAreaRef = useRef<HTMLDivElement>(null);
   const navRootRef = useRef<HTMLDivElement>(null);
@@ -90,7 +91,9 @@ export const AdminNav: React.FC<AdminNavProps> = ({
   const hoverTimeoutRef = useRef<number | null>(null);
 
   const stateRef = useRef(state);
-  stateRef.current = state;
+  useEffect(() => {
+    stateRef.current = state;
+  }, [state]);
 
   // No auto-anchor on mount — always start idle, user must click hub
 
@@ -244,7 +247,9 @@ export const AdminNav: React.FC<AdminNavProps> = ({
     }, 400);
   }, [getHubCenter, clearFan, onTeamChange, onSubTabChange]);
 
-  switchSelectTeamRef.current = switchSelectTeam;
+  useEffect(() => {
+    switchSelectTeamRef.current = switchSelectTeam;
+  }, [switchSelectTeam]);
 
   const selectTeam = useCallback((idx: number, clickedNode: HTMLElement) => {
     setState('settling');
@@ -282,6 +287,15 @@ export const AdminNav: React.FC<AdminNavProps> = ({
     requestAnimationFrame(() => {
       const conf = getSwitchFanConfig();
       buildFan(conf.rad, conf.r, (idx, nd) => switchSelectTeamRef.current(idx, nd));
+      
+      // Calculate cancel position outside of render to prevent accessing refs in JSX
+      if (navRootRef.current) {
+        const nr = navRootRef.current.getBoundingClientRect();
+        setCancelPosition({
+          top: (nr.top + nr.height / 2 - conf.r - 30) + 'px',
+          left: (nr.left + nr.width / 2) + 'px'
+        });
+      }
     });
   }, [buildFan]);
 
@@ -325,7 +339,9 @@ export const AdminNav: React.FC<AdminNavProps> = ({
   // Auto-open on mount if no team is selected
   useEffect(() => {
     if (state === 'idle' && activeTeamIdx === null) {
-      openFan();
+      setTimeout(() => {
+        openFan();
+      }, 0);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -354,8 +370,9 @@ export const AdminNav: React.FC<AdminNavProps> = ({
   // ── Cleanup ─────────────────────────────────────────────────────────────
 
   useEffect(() => {
+    const currentTimeout = hoverTimeoutRef.current;
     return () => {
-      if (hoverTimeoutRef.current) clearTimeout(hoverTimeoutRef.current);
+      if (currentTimeout) clearTimeout(currentTimeout);
     };
   }, []);
 
@@ -450,22 +467,14 @@ export const AdminNav: React.FC<AdminNavProps> = ({
       </div>
 
       {/* Cancel hint during switching */}
-      {state === 'switching' && typeof document !== 'undefined' && createPortal(
+      {state === 'switching' && cancelPosition && typeof document !== 'undefined' && createPortal(
         <div
           className="admin-switch-cancel vis"
           onClick={(e) => { e.stopPropagation(); cancelSwitch(); }}
           style={{
             position: 'fixed',
-            top: (() => {
-              if (!navRootRef.current) return '50%';
-              const nr = navRootRef.current.getBoundingClientRect();
-              return (nr.top + nr.height / 2 - getSwitchFanConfig().r - 30) + 'px';
-            })(),
-            left: (() => {
-              if (!navRootRef.current) return '50%';
-              const nr = navRootRef.current.getBoundingClientRect();
-              return (nr.left + nr.width / 2) + 'px';
-            })(),
+            top: cancelPosition.top,
+            left: cancelPosition.left,
             transform: 'translateX(-50%)',
             zIndex: 950,
           }}

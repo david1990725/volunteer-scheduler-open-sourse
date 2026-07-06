@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useCallback } from 'react';
 import * as XLSX from 'xlsx';
 import { parseSkillTreeData, buildLineIdMap } from '../utils/scheduler';
 import type { Volunteer } from '../utils/scheduler';
@@ -23,24 +23,8 @@ export const Login: React.FC<LoginProps> = ({ onLogin }) => {
   // 追蹤是否已嘗試過自動登入，避免重複觸發
   const autoLoginAttempted = useRef(false);
 
-  // 自動登入：僅在 LIFF 就緒、有 profile、且非手動登出狀態時觸發
-  React.useEffect(() => {
-    if (!isReady) return;
-    if (!isLoggedIn || !profile) return;
-    if (loading || registering) return;
-    if (autoLoginAttempted.current) return;
-
-    // 若使用者剛剛手動登出，不要自動登入
-    if (isManualLogout()) {
-      return;
-    }
-
-    autoLoginAttempted.current = true;
-    handleLineLogin();
-  }, [isReady, isLoggedIn, profile]);
-
   /** 載入技能樹並回傳解析結果 (含 Session 快取機制) */
-  const fetchSkillTree = async (): Promise<{ volunteers: Record<string, Volunteer>; lineIdMap: Record<string, string> }> => {
+  const fetchSkillTree = useCallback(async (): Promise<{ volunteers: Record<string, Volunteer>; lineIdMap: Record<string, string> }> => {
     const cacheKey = 'skillTreeCache';
     const cacheTimeKey = 'skillTreeCacheTime';
     const cached = sessionStorage.getItem(cacheKey);
@@ -67,10 +51,10 @@ export const Login: React.FC<LoginProps> = ({ onLogin }) => {
     sessionStorage.setItem(cacheTimeKey, Date.now().toString());
     
     return result;
-  };
+  }, []);
 
   /** LINE 登入：以 profile.userId 比對技能樹中的 user_id 欄位 */
-  const handleLineLogin = async () => {
+  const handleLineLogin = useCallback(async () => {
     if (!profile) return;
     setLoading(true);
     setError('');
@@ -163,7 +147,25 @@ export const Login: React.FC<LoginProps> = ({ onLogin }) => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [profile, onLogin, fetchSkillTree]);
+
+  // 自動登入：僅在 LIFF 就緒、有 profile、且非手動登出狀態時觸發
+  React.useEffect(() => {
+    if (!isReady) return;
+    if (!isLoggedIn || !profile) return;
+    if (loading || registering) return;
+    if (autoLoginAttempted.current) return;
+
+    // 若使用者剛剛手動登出，不要自動登入
+    if (isManualLogout()) {
+      return;
+    }
+
+    autoLoginAttempted.current = true;
+    setTimeout(() => {
+      handleLineLogin();
+    }, 0);
+  }, [isReady, isLoggedIn, profile, loading, registering, isManualLogout, handleLineLogin]);
 
 
 
