@@ -1,4 +1,5 @@
 import React, { useState, useRef, useCallback, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import {
   Video, Lightbulb, Music, Mic,
   BookOpen, Table, Radar, CalendarClock,
@@ -387,10 +388,16 @@ export const AdminNav: React.FC<AdminNavProps> = ({
   return (
     <>
       {/* Dark overlay for fan background */}
-      <div className={`admin-overlay${showOverlay ? ' vis' : ''}`} onClick={handleHubClick} />
+      {typeof document !== 'undefined' && createPortal(
+        <div className={`admin-overlay${showOverlay ? ' vis' : ''}`} onClick={handleHubClick} />,
+        document.body
+      )}
 
       {/* Fan nodes container — fixed positioning layer */}
-      <div ref={fanWrapRef} className="admin-fan-wrap" />
+      {typeof document !== 'undefined' && createPortal(
+        <div ref={fanWrapRef} className="admin-fan-wrap" />,
+        document.body
+      )}
 
       {/* Nav wrapper — no card, just positioning context */}
       <div ref={navAreaRef} className={`admin-nav-area${isLayoutAnchored ? ' anchored' : ''}`}>
@@ -442,10 +449,8 @@ export const AdminNav: React.FC<AdminNavProps> = ({
         </div>
       </div>
 
-
-
       {/* Cancel hint during switching */}
-      {state === 'switching' && (
+      {state === 'switching' && typeof document !== 'undefined' && createPortal(
         <div
           className="admin-switch-cancel vis"
           onClick={(e) => { e.stopPropagation(); cancelSwitch(); }}
@@ -466,7 +471,8 @@ export const AdminNav: React.FC<AdminNavProps> = ({
           }}
         >
           <X size={12} /> 取消切換
-        </div>
+        </div>,
+        document.body
       )}
     </>
   );

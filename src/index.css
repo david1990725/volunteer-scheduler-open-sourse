@@ -941,6 +941,8 @@ tr:hover td {
   transition: background 0.35s ease, backdrop-filter 0.35s ease, -webkit-backdrop-filter 0.35s ease;
   pointer-events: none;
   z-index: 900;
+  transform: translateZ(0);
+  will-change: backdrop-filter, background-color;
 }
 
 .admin-overlay.vis {
@@ -1166,6 +1168,12 @@ body.admin-no-scroll .admin-fan-node {
 .light-theme .admin-fan-btn.current .fan-icon,
 .light-theme .admin-fan-btn.becoming-hub .fan-icon {
   color: #92400e;
+}
+
+.light-theme .admin-overlay.vis {
+  background: rgba(255, 255, 255, 0.5);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
 }
 
 /* Function pills (horizontal sub-tab selector) */
