@@ -35,6 +35,11 @@ export const AdminRawDataTeam: React.FC<AdminRawDataProps> = ({ team, onStartAut
     }
   }, []);
 
+  // 當選擇的週期改變時，自動檢查該週期的雲端工作表狀態
+  useEffect(() => {
+    checkCloudSheetExistence(selectedCycle);
+  }, [selectedCycle, checkCloudSheetExistence]);
+
   const loadData = useCallback(async () => {
     setLoading(true);
     setErrorMsg(null);
@@ -68,18 +73,17 @@ export const AdminRawDataTeam: React.FC<AdminRawDataProps> = ({ team, onStartAut
               const endMonth = startMonth + 1;
               const cycle: [number, number] = [startMonth, endMonth];
               
-              setSelectedCycle(cycle);
-              checkCloudSheetExistence(cycle);
-            } else {
-              checkCloudSheetExistence(selectedCycle);
+              setSelectedCycle(prev => {
+                if (prev[0] === cycle[0] && prev[1] === cycle[1]) {
+                  return prev;
+                }
+                return cycle;
+              });
             }
-          } else {
-            checkCloudSheetExistence(selectedCycle);
           }
         } else {
           setData([]);
           setSource('none');
-          checkCloudSheetExistence(selectedCycle);
         }
       } else {
         setData([]);
@@ -93,7 +97,7 @@ export const AdminRawDataTeam: React.FC<AdminRawDataProps> = ({ team, onStartAut
     }
 
     setLoading(false);
-  }, [team, selectedCycle, checkCloudSheetExistence]);
+  }, [team]);
 
   useEffect(() => {
     setTimeout(() => {
@@ -151,7 +155,6 @@ export const AdminRawDataTeam: React.FC<AdminRawDataProps> = ({ team, onStartAut
 
   const handleCycleChange = (cycle: [number, number]) => {
     setSelectedCycle(cycle);
-    checkCloudSheetExistence(cycle);
   };
 
   if (loading) {
