@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Users, Save, X, Edit2, Shield, User, Loader2 } from 'lucide-react';
+import { Users, Save, X, Edit2, Shield, User, Loader2, Database } from 'lucide-react';
 import type { Volunteer } from '../utils/scheduler';
 import { parseSkillTreeData } from '../utils/scheduler';
 import { fetchCSVAsJson } from '../utils/fileUtils';
@@ -15,6 +15,7 @@ interface AdminRosterTeamProps {
 export const AdminRosterTeam: React.FC<AdminRosterTeamProps> = ({ team }) => {
   const [users, setUsers] = useState<Volunteer[]>([]);
   const [loading, setLoading] = useState(true);
+  const [migrating, setMigrating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [editingUser, setEditingUser] = useState<string | null>(null);
   
@@ -32,18 +33,34 @@ export const AdminRosterTeam: React.FC<AdminRosterTeamProps> = ({ team }) => {
     setError(null);
     try {
       const result = await cloudService.fetchVolunteers();
-      if (result.success && result.data) {
+      if (result.success && result.data && result.data.length > 0) {
         const parsed = parseSkillTreeData(result.data);
         setUsers(Object.values(parsed));
       } else {
+        // 若 Firestore 初次為空，自動從 Google Sheets CSV 載入並解析
         const csvData = await fetchCSVAsJson(SKILL_TREE_URL);
         const parsed = parseSkillTreeData(csvData);
         setUsers(Object.values(parsed));
       }
     } catch (err: any) {
-      setError(err.message || '無法載入使用者資料，請確認試算表權限。');
+      setError(err.message || '無法載入使用者資料，請確認資料庫連線。');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleMigrateFromSheets = async () => {
+    if (confirm('確定要從 Google Sheets 匯入並覆蓋/同步義工名單至 Firebase 嗎？')) {
+      setMigrating(true);
+      try {
+        const res = await cloudService.migrateGoogleSheetsToFirebase();
+        alert(res.message);
+        await loadData();
+      } catch (err: any) {
+        alert(err.message || '遷移失敗');
+      } finally {
+        setMigrating(false);
+      }
     }
   };
 
@@ -130,13 +147,32 @@ export const AdminRosterTeam: React.FC<AdminRosterTeamProps> = ({ team }) => {
 
   return (
     <div style={{ padding: '0 20px', maxWidth: '1200px', margin: '0 auto' }}>
-      <div className="animate-morph stagger-1" style={{ padding: '10px 0', marginBottom: '20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+      <div className="animate-morph stagger-1" style={{ padding: '10px 0', marginBottom: '20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
         <h2 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '12px', color: 'var(--text-primary)' }}>
           <Users size={24} color="var(--icon-accent)" />
           {team} 義工名冊
         </h2>
-        <div style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>
-          共 {users.filter(u => u.roles.some(r => r.includes('管理')) || u.roles.includes(team)).length} 位成員
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <button
+            className="btn-secondary"
+            onClick={handleMigrateFromSheets}
+            disabled={migrating}
+            title="從 Google Sheets 技能樹抓取名單並同步寫入 Firebase Firestore"
+            style={{
+              padding: '6px 14px',
+              fontSize: '0.85rem',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              borderRadius: '8px',
+            }}
+          >
+            {migrating ? <Loader2 size={16} className="animate-spin" /> : <Database size={16} color="var(--icon-accent)" />}
+            {migrating ? '正在匯入中...' : '從 Google Sheets 匯入至 Firebase'}
+          </button>
+          <div style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>
+            共 {users.filter(u => u.roles.some(r => r.includes('管理')) || u.roles.includes(team)).length} 位成員
+          </div>
         </div>
       </div>
 
