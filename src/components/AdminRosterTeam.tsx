@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { Users, Save, X, Edit2, Shield, User, Loader2, Database } from 'lucide-react';
+import { Users, Save, X, Edit2, Shield, Loader2, Database, UserPlus } from 'lucide-react';
 import type { Volunteer } from '../utils/scheduler';
 import { parseSkillTreeData } from '../utils/scheduler';
 import { fetchCSVAsJson } from '../utils/fileUtils';
 import * as cloudService from '../utils/googleSheets';
+import { UserAvatar } from './UserAvatar';
 
 const JOB_TITLE_OPTIONS = ['管理團隊', '影視團隊', '燈光團隊', '舞監團隊', '音控團隊'];
 const SKILL_TREE_URL = 'https://docs.google.com/spreadsheets/d/1L3W6RwrE6gzi_znqNXBww9WVRvi2NVuhDj3-hSYmTZI/export?format=csv';
@@ -27,6 +28,23 @@ export const AdminRosterTeam: React.FC<AdminRosterTeamProps> = ({ team }) => {
   }>({ name: '', jobTitle: [], userLevel: 'user', avatar: '' });
   
   const [saving, setSaving] = useState(false);
+
+  // 新增使用者 Modal 狀態
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [addForm, setAddForm] = useState<{
+    name: string;
+    jobTitle: string[];
+    userLevel: string;
+    avatar: string;
+    teamLevel: number;
+  }>({
+    name: '',
+    jobTitle: [team],
+    userLevel: 'user',
+    avatar: '',
+    teamLevel: 1,
+  });
+  const [creating, setCreating] = useState(false);
 
   const loadData = async () => {
     setLoading(true);
@@ -61,6 +79,55 @@ export const AdminRosterTeam: React.FC<AdminRosterTeamProps> = ({ team }) => {
       } finally {
         setMigrating(false);
       }
+    }
+  };
+
+  const handleCreateUser = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!addForm.name.trim()) {
+      alert('請填寫義工姓名');
+      return;
+    }
+    if (addForm.jobTitle.length === 0) {
+      alert('請至少選擇一個所屬團隊');
+      return;
+    }
+
+    setCreating(true);
+    try {
+      const teamLevels: Record<string, number> = {
+        '燈光團隊': addForm.teamLevel,
+        '音控團隊': addForm.teamLevel,
+        '舞監團隊': addForm.teamLevel,
+      };
+
+      const res = await cloudService.addNewVolunteer({
+        name: addForm.name.trim(),
+        jobTitles: addForm.jobTitle,
+        userLevel: addForm.userLevel,
+        avatar: addForm.avatar.trim(),
+        teamLevels,
+      });
+
+      if (res.success) {
+        alert(res.message || '新增成功！');
+        setShowAddModal(false);
+        setAddForm({
+          name: '',
+          jobTitle: [team],
+          userLevel: 'user',
+          avatar: '',
+          teamLevel: 1,
+        });
+        await loadData();
+      } else {
+        alert(res.message);
+      }
+    } catch (err: any) {
+      console.error(err);
+      alert(err?.message || '新增義工失敗');
+    } finally {
+      setCreating(false);
     }
   };
 
@@ -125,6 +192,17 @@ export const AdminRosterTeam: React.FC<AdminRosterTeamProps> = ({ team }) => {
     });
   };
 
+  const toggleAddJobTitle = (option: string) => {
+    setAddForm(prev => {
+      const current = prev.jobTitle;
+      if (current.includes(option)) {
+        return { ...prev, jobTitle: current.filter(o => o !== option) };
+      } else {
+        return { ...prev, jobTitle: [...current, option] };
+      }
+    });
+  };
+
   if (loading) {
     return (
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '60px' }}>
@@ -152,7 +230,30 @@ export const AdminRosterTeam: React.FC<AdminRosterTeamProps> = ({ team }) => {
           <Users size={24} color="var(--icon-accent)" />
           {team} 義工名冊
         </h2>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+          <button
+            className="btn-primary"
+            onClick={() => {
+              setAddForm({
+                name: '',
+                jobTitle: [team],
+                userLevel: 'user',
+                avatar: '',
+                teamLevel: 1,
+              });
+              setShowAddModal(true);
+            }}
+            style={{
+              padding: '6px 14px',
+              fontSize: '0.85rem',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              borderRadius: '8px',
+            }}
+          >
+            <UserPlus size={16} /> 新增成員
+          </button>
           <button
             className="btn-secondary"
             onClick={handleMigrateFromSheets}
@@ -183,13 +284,11 @@ export const AdminRosterTeam: React.FC<AdminRosterTeamProps> = ({ team }) => {
           return (
             <div key={user.name} className="glass-card" style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-                {user.pictureUrl ? (
-                  <img src={user.pictureUrl} alt="avatar" style={{ width: '60px', height: '60px', borderRadius: '50%', objectFit: 'cover' }} />
-                ) : (
-                  <div style={{ width: '60px', height: '60px', borderRadius: '50%', background: 'var(--bg-input)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <User size={30} color="var(--text-muted)" />
-                  </div>
-                )}
+                <UserAvatar
+                  src={user.pictureUrl}
+                  name={user.name}
+                  size={58}
+                />
                 
                 <div style={{ flex: 1, minWidth: 0 }}>
                   {isEditing ? (
@@ -288,6 +387,159 @@ export const AdminRosterTeam: React.FC<AdminRosterTeamProps> = ({ team }) => {
           );
         })}
       </div>
+
+      {/* 新增義工成員 Modal */}
+      {showAddModal && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(0, 0, 0, 0.75)',
+          backdropFilter: 'blur(8px)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 1000,
+          padding: '20px',
+        }}>
+          <div className="glass-card animate-morph" style={{
+            maxWidth: '520px',
+            width: '100%',
+            padding: '30px',
+            maxHeight: '90vh',
+            overflowY: 'auto',
+            position: 'relative',
+            boxShadow: '0 20px 50px rgba(0,0,0,0.5)',
+            border: '1px solid var(--icon-accent)',
+          }}>
+            <button
+              onClick={() => setShowAddModal(false)}
+              style={{
+                position: 'absolute',
+                top: '20px',
+                right: '20px',
+                background: 'transparent',
+                border: 'none',
+                color: 'var(--text-muted)',
+                cursor: 'pointer',
+              }}
+            >
+              <X size={20} />
+            </button>
+
+            <h3 style={{ margin: '0 0 20px', color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <UserPlus size={22} color="var(--icon-accent)" />
+              新增義工成員
+            </h3>
+
+            <form onSubmit={handleCreateUser} style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
+              <div>
+                <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '6px', fontWeight: 600 }}>
+                  義工姓名 <span style={{ color: 'var(--text-danger)' }}>*</span>
+                </label>
+                <input
+                  type="text"
+                  className="glass-input"
+                  placeholder="請輸入義工姓名"
+                  value={addForm.name}
+                  onChange={e => setAddForm(prev => ({ ...prev, name: e.target.value }))}
+                  required
+                  style={{ width: '100%' }}
+                />
+              </div>
+
+              <div>
+                <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '8px', fontWeight: 600 }}>
+                  所屬團隊分類 <span style={{ color: 'var(--text-danger)' }}>* (可複選)</span>
+                </label>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', background: 'var(--bg-input)', padding: '12px', borderRadius: '10px' }}>
+                  {JOB_TITLE_OPTIONS.map(opt => (
+                    <label key={opt} style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '0.9rem', color: 'var(--text-primary)', cursor: 'pointer' }}>
+                      <input
+                        type="checkbox"
+                        checked={addForm.jobTitle.includes(opt)}
+                        onChange={() => toggleAddJobTitle(opt)}
+                      />
+                      {opt}
+                    </label>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '6px', fontWeight: 600 }}>
+                  系統權限
+                </label>
+                <select
+                  className="glass-input"
+                  value={addForm.userLevel}
+                  onChange={e => setAddForm(prev => ({ ...prev, userLevel: e.target.value }))}
+                  style={{ width: '100%' }}
+                >
+                  <option value="user">user (一般義工)</option>
+                  <option value="admin">admin (系統管理員)</option>
+                </select>
+              </div>
+
+              {/* 若包含燈光、音控或舞監團隊，可設定初始 Level */}
+              {addForm.jobTitle.some(t => ['燈光團隊', '音控團隊', '舞監團隊'].includes(t)) && (
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '6px', fontWeight: 600 }}>
+                    初始服事等級 (燈光 / 音控 / 舞監)
+                  </label>
+                  <select
+                    className="glass-input"
+                    value={addForm.teamLevel}
+                    onChange={e => setAddForm(prev => ({ ...prev, teamLevel: parseInt(e.target.value, 10) || 1 }))}
+                    style={{ width: '100%' }}
+                  >
+                    <option value={1}>🥉 Level 1 (實習 / 助理)</option>
+                    <option value={2}>🥈 Level 2 (獨立主控)</option>
+                    <option value={3}>🥇 Level 3 (資深導師 / 主領)</option>
+                  </select>
+                </div>
+              )}
+
+              <div>
+                <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '6px', fontWeight: 600 }}>
+                  大頭貼圖片網址 (選填，登入 LINE 後亦會自動動態更新)
+                </label>
+                <input
+                  type="text"
+                  className="glass-input"
+                  placeholder="https://..."
+                  value={addForm.avatar}
+                  onChange={e => setAddForm(prev => ({ ...prev, avatar: e.target.value }))}
+                  style={{ width: '100%' }}
+                />
+              </div>
+
+              <div style={{ display: 'flex', gap: '12px', marginTop: '10px' }}>
+                <button
+                  type="button"
+                  className="btn-secondary"
+                  onClick={() => setShowAddModal(false)}
+                  disabled={creating}
+                  style={{ flex: 1 }}
+                >
+                  取消
+                </button>
+                <button
+                  type="submit"
+                  className="btn-primary"
+                  disabled={creating}
+                  style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
+                >
+                  {creating ? <Loader2 size={18} className="animate-spin" /> : <Save size={18} />}
+                  {creating ? '建立中...' : '確認新增'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

@@ -106,7 +106,26 @@ function App() {
     }
     return null;
   });
-  const { logout: liffLogout } = useLiff();
+  const { profile, logout: liffLogout } = useLiff();
+
+  // 動態同步與更新 LINE 最新大頭照 (Avatar Dynamic Auto-Sync)
+  useEffect(() => {
+    if (currentUser && profile?.pictureUrl) {
+      if (currentUser.pictureUrl !== profile.pictureUrl) {
+        console.log('[Avatar] 偵測到使用者更新了 LINE 個人頭像，動態同步中...', profile.pictureUrl);
+        const updatedUser = { ...currentUser, pictureUrl: profile.pictureUrl };
+        setCurrentUser(updatedUser);
+        localStorage.setItem('volunteer_scheduler_user', JSON.stringify(updatedUser));
+        // 同步寫入 Firestore
+        cloudService.updateVolunteerLineId({
+          name: currentUser.name,
+          lineId: profile.userId || currentUser.lineId || '',
+          lineName: profile.displayName || '',
+          pictureUrl: profile.pictureUrl,
+        }).catch(err => console.error('[Avatar Sync Error]:', err));
+      }
+    }
+  }, [currentUser, profile]);
 
   const handleLogout = () => {
     // liffLogout 會設置 sessionStorage 旗標 + 清除 LIFF session

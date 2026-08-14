@@ -9,6 +9,7 @@ export interface Volunteer {
   role: 'admin' | 'user';
   roles: string[];
   skills: Record<string, number>;
+  teamLevels?: Record<string, number>; // 各團隊 Level 1~3 等級 (如 { '燈光團隊': 2, '音控團隊': 1, '舞監團隊': 3 })
   lineId?: string; // LINE platform internal user_id
   lineDisplayName?: string; // from LINE_ID column
   pictureUrl?: string; // LINE profile picture or custom URL
@@ -120,7 +121,16 @@ export function parseSkillTreeData(data: any[]): Record<string, Volunteer> {
     const rawAvatar = row['Avatar'] || row['大頭照'] || row['pictureUrl'] || row['頭像'] || '';
     const pictureUrl = String(rawAvatar).trim() || undefined;
 
-    volunteers[name] = { name, role: userRole, roles, skills, lineId, lineDisplayName, pictureUrl };
+    // 解析各團隊 Level 1~3 (支援 teamLevels 物件或獨立欄位)
+    const teamLevels: Record<string, number> = row['teamLevels'] && typeof row['teamLevels'] === 'object' 
+      ? { ...row['teamLevels'] }
+      : {
+          '燈光團隊': parseInt(row['Light_Level']) || parseInt(row['燈光等級']) || 1,
+          '音控團隊': parseInt(row['Audio_Level']) || parseInt(row['音控等級']) || 1,
+          '舞監團隊': parseInt(row['Stage_Level']) || parseInt(row['舞監等級']) || 1,
+        };
+
+    volunteers[name] = { name, role: userRole, roles, skills, teamLevels, lineId, lineDisplayName, pictureUrl };
   }
 
   return volunteers;

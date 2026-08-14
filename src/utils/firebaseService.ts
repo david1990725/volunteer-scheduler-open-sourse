@@ -97,7 +97,11 @@ export async function fetchVolunteers(): Promise<ApiResultWithData<SheetRow[]>> 
         'Cam4_Skill': String(data.skills?.['CAM4'] ?? data.Cam4_Skill ?? 0),
       };
 
-      // 保留任何其餘自訂欄位
+      // 保留 teamLevels 與自訂欄位
+      (row as any).teamLevels = data.teamLevels || {
+        '燈光團隊': 1, '音控團隊': 1, '舞監團隊': 1
+      };
+
       if (data.raw) {
         Object.assign(row, data.raw);
       }
@@ -109,6 +113,87 @@ export async function fetchVolunteers(): Promise<ApiResultWithData<SheetRow[]>> 
   } catch (err: any) {
     console.error('[fetchVolunteers Error]:', err);
     return { success: false, message: err?.message || '讀取義工名冊失敗', data: null };
+  }
+}
+
+/** 手動新增義工（由後台管理員操作） */
+export async function addNewVolunteer(payload: {
+  name: string;
+  jobTitles: string[];
+  userLevel?: string;
+  avatar?: string;
+  lineId?: string;
+  teamLevels?: Record<string, number>;
+  skills?: Record<string, number>;
+}): Promise<ApiResult> {
+  try {
+    const name = payload.name.trim();
+    if (!name) return { success: false, message: '請輸入義工姓名' };
+
+    const docId = sanitizeDocId(name);
+    const docRef = doc(db, COLLECTIONS.VOLUNTEERS, docId);
+    const docSnap = await getDoc(docRef);
+
+    if (docSnap.exists()) {
+      return { success: false, message: `名單中已存在名為「${name}」的成員` };
+    }
+
+    const defaultSkills = payload.skills || {
+      '導播': 0, 'AD': 0, '平面': 0, 'CAM1': 0, 'CAM2': 0, 'CAM3': 0, 'CAM4': 0
+    };
+    const defaultTeamLevels = payload.teamLevels || {
+      '燈光團隊': 1, '音控團隊': 1, '舞監團隊': 1
+    };
+
+    await setDoc(docRef, {
+      name: name,
+      lineId: payload.lineId || '',
+      lineDisplayName: '',
+      pictureUrl: payload.avatar || '',
+      avatar: payload.avatar || '',
+      userLevel: payload.userLevel || 'user',
+      role: payload.userLevel || 'user',
+      jobTitles: payload.jobTitles || [],
+      skillRoles: [],
+      skills: defaultSkills,
+      teamLevels: defaultTeamLevels,
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+    });
+
+    return { success: true, message: `已成功新增義工「${name}」！` };
+  } catch (err: any) {
+    console.error('[addNewVolunteer Error]:', err);
+    return { success: false, message: err?.message || '新增義工失敗' };
+  }
+}
+
+/** 更新義工特定團隊的等級 (Level 1~3) */
+export async function updateVolunteerTeamLevel(payload: {
+  name: string;
+  team: string;
+  level: number;
+}): Promise<ApiResult> {
+  try {
+    const docId = sanitizeDocId(payload.name.trim());
+    const docRef = doc(db, COLLECTIONS.VOLUNTEERS, docId);
+    const levelNum = Math.max(1, Math.min(3, Number(payload.level) || 1));
+
+    await setDoc(
+      docRef,
+      {
+        teamLevels: {
+          [payload.team]: levelNum,
+        },
+        updatedAt: serverTimestamp(),
+      },
+      { merge: true }
+    );
+
+    return { success: true, message: `${payload.name} 的 ${payload.team} 等級已更新為 Level ${levelNum}！` };
+  } catch (err: any) {
+    console.error('[updateVolunteerTeamLevel Error]:', err);
+    return { success: false, message: err?.message || '更新等級失敗' };
   }
 }
 

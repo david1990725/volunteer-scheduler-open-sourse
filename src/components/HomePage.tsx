@@ -4,6 +4,7 @@ import { Calendar, MapPin, Clock, Sparkles, Video, Camera, X } from 'lucide-reac
 import type { Volunteer, Shift } from '../utils/scheduler';
 import { SHAN_ZHUANG_ROLES, XUAN_JIAO_ROLES } from '../utils/scheduler';
 import { getCycleDates, getLastSundayOfCycle } from '../utils/dateUtils';
+import { UserAvatar } from './UserAvatar';
 
 interface ApprovedVersion {
   timestamp: string;
@@ -190,9 +191,20 @@ export const HomePage: React.FC<HomePageProps> = ({
   return (
     <div style={{ maxWidth: '700px', margin: '30px auto', width: '100%', padding: '0 10px' }}>
       {/* 歡迎卡片 */}
-      <div className="glass-card animate-morph stagger-1" style={{ padding: '40px 30px', textAlign: 'center', marginBottom: '24px' }}>
+      <div className="glass-card animate-morph stagger-1" style={{ padding: '36px 30px', textAlign: 'center', marginBottom: '24px', position: 'relative' }}>
+        <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '16px' }}>
+          <UserAvatar
+            src={currentUser.pictureUrl}
+            name={currentUser.name}
+            size={76}
+            style={{
+              boxShadow: '0 8px 24px rgba(234, 179, 8, 0.25)',
+              border: '3px solid var(--icon-accent)',
+            }}
+          />
+        </div>
         <h2 style={{
-          fontSize: '1.8rem', marginBottom: '12px', color: 'var(--text-primary)',
+          fontSize: '1.8rem', marginBottom: '8px', color: 'var(--text-primary)',
           background: 'linear-gradient(135deg, var(--text-title-from) 0%, var(--text-title-to) 100%)',
           WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
         }}>
