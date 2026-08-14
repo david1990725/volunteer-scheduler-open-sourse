@@ -445,23 +445,56 @@ export async function syncSchedule(payload: {
   }
 }
 
-/** 從 Firestore 讀取指定週期的排班資料 */
-export async function fetchScheduleFromCloud(sheetName: string): Promise<ApiResultWithData<string[][]>> {
+/** 
+ * 從雲端讀取指定週期的排班資料（支援雙向同步）：
+ * 1. 優先從 Firestore 讀取。
+ * 2. 若 Firestore 尚無資料（或指定 forceSyncFromSheets），自動從 Google Sheets 讀取並雙向回寫至 Firestore。
+ */
+export async function fetchScheduleFromCloud(
+  sheetName: string,
+  options?: { forceSyncFromSheets?: boolean }
+): Promise<ApiResultWithData<string[][]>> {
   try {
     const docId = sanitizeDocId(sheetName.trim());
     const docRef = doc(db, COLLECTIONS.SCHEDULES, docId);
-    const snap = await getDoc(docRef);
 
-    if (!snap.exists()) {
-      return { success: false, message: `找不到班表: ${sheetName}`, data: null };
+    // 若非強制從 Google Sheets 重新拉取，先查 Firestore
+    if (!options?.forceSyncFromSheets) {
+      const snap = await getDoc(docRef);
+      if (snap.exists()) {
+        const data = snap.data();
+        if (data.data && Array.isArray(data.data) && data.data.length > 0) {
+          return {
+            success: true,
+            message: '讀取成功 (來自 Firebase)',
+            data: data.data,
+          };
+        }
+      }
     }
 
-    const data = snap.data();
-    return {
-      success: true,
-      message: '讀取成功',
-      data: data.data || null,
-    };
+    // 若 Firestore 沒有或要求強制拉取，從 Google Sheets 讀取並雙向同步回 Firestore
+    if (APPS_SCRIPT_URL) {
+      const sheetRes = await fetchFromOldAppsScript<any>('fetchSchedule', { sheetName });
+      if (sheetRes && sheetRes.success && sheetRes.data && Array.isArray(sheetRes.data) && sheetRes.data.length > 0) {
+        // 雙向同步：將 Google Sheets 的內容自動寫入 Firestore
+        await setDoc(docRef, {
+          sheetName,
+          data: sheetRes.data,
+          updatedAt: serverTimestamp(),
+          syncedFrom: 'GoogleSheets',
+        }, { merge: true });
+
+        console.log(`[Bidirectional Sync] 排班表 [${sheetName}] 已自 Google Sheets 同步至 Firestore`);
+        return {
+          success: true,
+          message: '讀取成功 (自 Google Sheets 同步至 Firebase)',
+          data: sheetRes.data,
+        };
+      }
+    }
+
+    return { success: false, message: `找不到班表: ${sheetName}`, data: null };
   } catch (err: any) {
     console.error('[fetchScheduleFromCloud Error]:', err);
     return { success: false, message: err?.message || '讀取班表失敗', data: null };
@@ -600,39 +633,71 @@ export async function migrateGoogleSheetsToFirebase(): Promise<{
       }
     }
 
-    // 3. 搬遷現有排班表 (測試今年與各雙月排班表)
-    const currentYear = new Date().getFullYear();
-    const cycleNames = [
-      `${currentYear}年 1-2月排班表`,
-      `${currentYear}年 3-4月排班表`,
-      `${currentYear}年 5-6月排班表`,
-      `${currentYear}年 7-8月排班表`,
-      `${currentYear}年 9-10月排班表`,
-      `${currentYear}年 11-12月排班表`,
-      `${currentYear + 1}年 1-2月排班表`,
-    ];
+    // 3. 搬遷所有歷史與當期排班表 (包含過去數年各月份/雙月)
+    const importedSheetNames = new Set<string>();
 
-    for (const sheetName of cycleNames) {
-      const res = await fetchFromOldAppsScript<any>('fetchSchedule', { sheetName });
-      if (res && res.success && res.data && Array.isArray(res.data) && res.data.length > 0) {
-        const docId = sanitizeDocId(sheetName.trim());
-        const docRef = doc(db, COLLECTIONS.SCHEDULES, docId);
+    // 3.1 嘗試從 Apps Script 一次性抓取所有工作表
+    const allSchedRes = await fetchFromOldAppsScript<any>('fetchAllSchedules');
+    if (allSchedRes && allSchedRes.success && Array.isArray(allSchedRes.data)) {
+      for (const item of allSchedRes.data) {
+        if (item.sheetName && Array.isArray(item.data) && item.data.length > 0) {
+          const sName = String(item.sheetName).trim();
+          const docId = sanitizeDocId(sName);
+          const docRef = doc(db, COLLECTIONS.SCHEDULES, docId);
 
-        await setDoc(docRef, {
-          sheetName,
-          data: res.data,
-          updatedAt: serverTimestamp(),
-        }, { merge: true });
+          await setDoc(docRef, {
+            sheetName: sName,
+            data: item.data,
+            updatedAt: serverTimestamp(),
+          }, { merge: true });
 
-        schedCount++;
-        console.log(`[Migration] 排班表 [${sheetName}] 匯入完成！`);
+          importedSheetNames.add(sName);
+          schedCount++;
+          console.log(`[Migration] 排班表 [${sName}] 匯入完成！`);
+        }
+      }
+    }
+
+    // 3.2 補漏掃描：若有舊版 Apps Script 尚未更新 handleFetchAllSchedules，逐一掃描 2024~2027 各週期
+    const yearsToScan = [2024, 2025, 2026, 2027];
+    const cyclesToScan = [[1, 2], [3, 4], [5, 6], [7, 8], [9, 10], [11, 12]];
+
+    for (const yr of yearsToScan) {
+      for (const c of cyclesToScan) {
+        const potentialNames = [
+          `${yr}年 ${c[0]}-${c[1]}月排班表`,
+          `${yr}年${c[0]}-${c[1]}月排班表`,
+          `${yr}年 ${c[0]}~${c[1]}月排班表`,
+          `${yr}年${c[0]}~${c[1]}月排班表`,
+        ];
+
+        for (const sheetName of potentialNames) {
+          if (importedSheetNames.has(sheetName)) continue;
+
+          const res = await fetchFromOldAppsScript<any>('fetchSchedule', { sheetName });
+          if (res && res.success && res.data && Array.isArray(res.data) && res.data.length > 0) {
+            const docId = sanitizeDocId(sheetName.trim());
+            const docRef = doc(db, COLLECTIONS.SCHEDULES, docId);
+
+            await setDoc(docRef, {
+              sheetName,
+              data: res.data,
+              updatedAt: serverTimestamp(),
+            }, { merge: true });
+
+            importedSheetNames.add(sheetName);
+            schedCount++;
+            console.log(`[Migration] 排班表 [${sheetName}] 匯入完成！`);
+            break;
+          }
+        }
       }
     }
 
     console.log(`[Migration] 全部資料搬遷完成！義工: ${volCount}, 表單: ${respCount}, 班表: ${schedCount}`);
     return {
       success: true,
-      message: `全站資料搬遷完成！\n已匯入：\n• 義工名冊：${volCount} 位\n• 各團隊表單回覆：${respCount} 筆\n• 歷史/當期排班表：${schedCount} 份`,
+      message: `全站資料搬遷完成！\n已匯入：\n• 義工名冊：${volCount} 位\n• 各團隊表單回覆：${respCount} 筆\n• 歷史與當期排班表：${schedCount} 份`,
       counts: { volunteers: volCount, responses: respCount, schedules: schedCount },
     };
   } catch (err: any) {

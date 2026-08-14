@@ -65,6 +65,8 @@ function doPost(e) {
       return handleSyncSchedule(payload);
     } else if (payload.action === 'fetchSchedule') {
       return handleFetchSchedule(payload);
+    } else if (payload.action === 'fetchAllSchedules') {
+      return handleFetchAllSchedules();
     } else if (payload.action === 'updateUser') {
       return handleUpdateUser(payload);
     } else if (payload.action === 'submitForm') {
@@ -336,6 +338,38 @@ function handleFetchSchedule(payload) {
   
   return jsonResponse({ success: true, message: '讀取成功', data: data });
 }
+
+/**
+ * 讀取所有歷史與當前排班工作表（包含過去各月份/年份）
+ */
+function handleFetchAllSchedules() {
+  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  const sheets = ss.getSheets();
+  const results = [];
+
+  for (var i = 0; i < sheets.length; i++) {
+    var sName = sheets[i].getName();
+    // 排除名冊與表單回覆工作表
+    if (sName.indexOf('表單回覆') !== -1 || sName === 'Sheet1' || sName === '工作表1' || sName === '義工名單') {
+      continue;
+    }
+    // 抓取包含「排班」或「月」的工作表
+    if (sName.indexOf('排班') !== -1 || sName.indexOf('月') !== -1) {
+      var lastRow = sheets[i].getLastRow();
+      var lastCol = sheets[i].getLastColumn();
+      if (lastRow > 0 && lastCol > 0) {
+        var data = sheets[i].getRange(1, 1, lastRow, lastCol).getDisplayValues();
+        results.push({
+          sheetName: sName,
+          data: data
+        });
+      }
+    }
+  }
+
+  return jsonResponse({ success: true, message: '讀取成功', data: results });
+}
+
 /**
  * 處理義工填報表單提交
  * 將資料寫入「表單回覆」工作表
