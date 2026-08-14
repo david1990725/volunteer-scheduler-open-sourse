@@ -390,6 +390,26 @@ export async function deleteFormResponseInCloud(team: string, timestamp: string)
 // 3. 週期排班表 (Schedules)
 // =============================================================================
 
+/** 解析 Firestore 班表文件中的 2D 矩陣資料（相容 dataJson 字串與舊格式） */
+function parseScheduleDataFromDoc(docData: any): string[][] | null {
+  if (!docData) return null;
+  if (typeof docData.dataJson === 'string') {
+    try {
+      const parsed = JSON.parse(docData.dataJson);
+      if (Array.isArray(parsed)) return parsed;
+    } catch {
+      return null;
+    }
+  }
+  if (Array.isArray(docData.rows)) {
+    return docData.rows.map((r: any) => (Array.isArray(r.cells) ? r.cells : []));
+  }
+  if (Array.isArray(docData.data)) {
+    return docData.data;
+  }
+  return null;
+}
+
 /** 將排班結果矩陣同步寫入 Firestore（主要），並雙重備份寫入 Google Sheets */
 export async function syncSchedule(payload: {
   sheetName: string;
@@ -399,10 +419,10 @@ export async function syncSchedule(payload: {
     const docId = sanitizeDocId(payload.sheetName.trim());
     const docRef = doc(db, COLLECTIONS.SCHEDULES, docId);
 
-    // 1. 主要寫入：Firebase Firestore
+    // 1. 主要寫入：Firebase Firestore（使用 dataJson 避免 Firestore 巢狀陣列限制）
     await setDoc(docRef, {
       sheetName: payload.sheetName,
-      data: payload.data,
+      dataJson: JSON.stringify(payload.data),
       updatedAt: serverTimestamp(),
     });
 
@@ -462,12 +482,12 @@ export async function fetchScheduleFromCloud(
     if (!options?.forceSyncFromSheets) {
       const snap = await getDoc(docRef);
       if (snap.exists()) {
-        const data = snap.data();
-        if (data.data && Array.isArray(data.data) && data.data.length > 0) {
+        const scheduleMatrix = parseScheduleDataFromDoc(snap.data());
+        if (scheduleMatrix && scheduleMatrix.length > 0) {
           return {
             success: true,
             message: '讀取成功 (來自 Firebase)',
-            data: data.data,
+            data: scheduleMatrix,
           };
         }
       }
@@ -477,10 +497,10 @@ export async function fetchScheduleFromCloud(
     if (APPS_SCRIPT_URL) {
       const sheetRes = await fetchFromOldAppsScript<any>('fetchSchedule', { sheetName });
       if (sheetRes && sheetRes.success && sheetRes.data && Array.isArray(sheetRes.data) && sheetRes.data.length > 0) {
-        // 雙向同步：將 Google Sheets 的內容自動寫入 Firestore
+        // 雙向同步：將 Google Sheets 的內容自動寫入 Firestore（序列化為 dataJson）
         await setDoc(docRef, {
           sheetName,
-          data: sheetRes.data,
+          dataJson: JSON.stringify(sheetRes.data),
           updatedAt: serverTimestamp(),
           syncedFrom: 'GoogleSheets',
         }, { merge: true });
@@ -647,7 +667,7 @@ export async function migrateGoogleSheetsToFirebase(): Promise<{
 
           await setDoc(docRef, {
             sheetName: sName,
-            data: item.data,
+            dataJson: JSON.stringify(item.data),
             updatedAt: serverTimestamp(),
           }, { merge: true });
 
@@ -681,7 +701,7 @@ export async function migrateGoogleSheetsToFirebase(): Promise<{
 
             await setDoc(docRef, {
               sheetName,
-              data: res.data,
+              dataJson: JSON.stringify(res.data),
               updatedAt: serverTimestamp(),
             }, { merge: true });
 
