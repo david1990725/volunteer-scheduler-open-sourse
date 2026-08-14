@@ -390,7 +390,7 @@ export async function deleteFormResponseInCloud(team: string, timestamp: string)
 // 3. 週期排班表 (Schedules)
 // =============================================================================
 
-/** 將排班結果矩陣同步寫入 Firestore */
+/** 將排班結果矩陣同步寫入 Firestore（主要），並雙重備份寫入 Google Sheets */
 export async function syncSchedule(payload: {
   sheetName: string;
   data: string[][];
@@ -399,13 +399,46 @@ export async function syncSchedule(payload: {
     const docId = sanitizeDocId(payload.sheetName.trim());
     const docRef = doc(db, COLLECTIONS.SCHEDULES, docId);
 
+    // 1. 主要寫入：Firebase Firestore
     await setDoc(docRef, {
       sheetName: payload.sheetName,
       data: payload.data,
       updatedAt: serverTimestamp(),
     });
 
-    return { success: true, message: '同步成功' };
+    let backupSuccess = false;
+    let backupMessage = '';
+
+    // 2. 雙重備份：寫回 Google Sheets
+    if (APPS_SCRIPT_URL) {
+      try {
+        const backupRes = await fetchFromOldAppsScript<any>('syncSchedule', {
+          sheetName: payload.sheetName,
+          data: payload.data,
+        });
+        if (backupRes && backupRes.success) {
+          backupSuccess = true;
+        } else {
+          backupMessage = backupRes?.message || '未知錯誤';
+        }
+      } catch (err: any) {
+        backupMessage = err?.message || '連線失敗';
+      }
+    }
+
+    if (backupSuccess) {
+      return {
+        success: true,
+        message: `排班資料已成功儲存至 Firebase，並已同步備份至 Google Sheets 工作表 [${payload.sheetName}]！`,
+      };
+    } else if (APPS_SCRIPT_URL) {
+      return {
+        success: true,
+        message: `排班資料已成功儲存至 Firebase！(註：Google Sheets 備份異常: ${backupMessage})`,
+      };
+    }
+
+    return { success: true, message: '排班資料已成功儲存至 Firebase！' };
   } catch (err: any) {
     console.error('[syncSchedule Error]:', err);
     return { success: false, message: err?.message || '同步班表失敗' };
@@ -449,19 +482,40 @@ export async function syncOfflineForms(): Promise<void> {
 // =============================================================================
 
 const SKILL_TREE_CSV_URL = 'https://docs.google.com/spreadsheets/d/1L3W6RwrE6gzi_znqNXBww9WVRvi2NVuhDj3-hSYmTZI/export?format=csv';
+const APPS_SCRIPT_URL = import.meta.env.VITE_APPS_SCRIPT_URL || '';
 
-/** 從 Google Sheets 一鍵搬遷所有義工名冊與表單資料至 Firestore */
+/** 呼叫舊版 Apps Script API 用於資料遷移 */
+async function fetchFromOldAppsScript<T>(action: string, payload: Record<string, unknown> = {}): Promise<T | null> {
+  if (!APPS_SCRIPT_URL) return null;
+  try {
+    const res = await fetch(APPS_SCRIPT_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain' },
+      body: JSON.stringify({ action, ...payload }),
+    });
+    if (!res.ok) return null;
+    const text = await res.text();
+    return JSON.parse(text) as T;
+  } catch (err) {
+    console.warn(`[Migration] 無法從 Apps Script 讀取 "${action}":`, err);
+    return null;
+  }
+}
+
+/** 從 Google Sheets 一鍵搬遷所有資料（義工名冊、各團隊表單紀錄、排班表）至 Firestore */
 export async function migrateGoogleSheetsToFirebase(): Promise<{
   success: boolean;
   message: string;
-  counts: { volunteers: number; responses: number };
+  counts: { volunteers: number; responses: number; schedules: number };
 }> {
   try {
-    console.log('[Migration] 開始從 Google Sheets 匯入資料至 Firestore...');
-
-    // 1. 抓取義工名冊 CSV
-    const csvVolunteers = await fetchCSVAsJson(SKILL_TREE_CSV_URL);
+    console.log('[Migration] 開始從 Google Sheets 匯入全部資料至 Firestore...');
     let volCount = 0;
+    let respCount = 0;
+    let schedCount = 0;
+
+    // 1. 抓取義工名冊 CSV 匯入 Firestore
+    const csvVolunteers = await fetchCSVAsJson(SKILL_TREE_CSV_URL);
 
     if (csvVolunteers && csvVolunteers.length > 0) {
       const batch = writeBatch(db);
@@ -516,20 +570,77 @@ export async function migrateGoogleSheetsToFirebase(): Promise<{
       }
 
       await batch.commit();
+      console.log(`[Migration] 義工名冊匯入完成：${volCount} 筆`);
     }
 
-    console.log(`[Migration] 成功匯入 ${volCount} 位義工資料！`);
+    // 2. 搬遷所有團隊的意願表單 RAW 回覆紀錄
+    const teams = ['影視團隊', '燈光團隊', '音控團隊', '舞監團隊'];
+    for (const team of teams) {
+      const res = await fetchFromOldAppsScript<any>('fetchFormResponses', { team });
+      if (res && res.success && Array.isArray(res.data) && res.data.length > 0) {
+        const batch = writeBatch(db);
+        for (const item of res.data) {
+          const timestamp = item['時間戳記'] || new Date().toISOString();
+          const name = item['姓名'] || '未知';
+          const docId = `${sanitizeDocId(team)}_${sanitizeDocId(name)}_${new Date(timestamp).getTime() || Date.now()}`;
+          const docRef = doc(db, COLLECTIONS.FORM_RESPONSES, docId);
+
+          batch.set(docRef, {
+            team,
+            name,
+            timestamp,
+            data: item,
+            createdAt: serverTimestamp(),
+          }, { merge: true });
+
+          respCount++;
+        }
+        await batch.commit();
+        console.log(`[Migration] ${team} 表單回覆匯入完成：${res.data.length} 筆`);
+      }
+    }
+
+    // 3. 搬遷現有排班表 (測試今年與各雙月排班表)
+    const currentYear = new Date().getFullYear();
+    const cycleNames = [
+      `${currentYear}年 1-2月排班表`,
+      `${currentYear}年 3-4月排班表`,
+      `${currentYear}年 5-6月排班表`,
+      `${currentYear}年 7-8月排班表`,
+      `${currentYear}年 9-10月排班表`,
+      `${currentYear}年 11-12月排班表`,
+      `${currentYear + 1}年 1-2月排班表`,
+    ];
+
+    for (const sheetName of cycleNames) {
+      const res = await fetchFromOldAppsScript<any>('fetchSchedule', { sheetName });
+      if (res && res.success && res.data && Array.isArray(res.data) && res.data.length > 0) {
+        const docId = sanitizeDocId(sheetName.trim());
+        const docRef = doc(db, COLLECTIONS.SCHEDULES, docId);
+
+        await setDoc(docRef, {
+          sheetName,
+          data: res.data,
+          updatedAt: serverTimestamp(),
+        }, { merge: true });
+
+        schedCount++;
+        console.log(`[Migration] 排班表 [${sheetName}] 匯入完成！`);
+      }
+    }
+
+    console.log(`[Migration] 全部資料搬遷完成！義工: ${volCount}, 表單: ${respCount}, 班表: ${schedCount}`);
     return {
       success: true,
-      message: `資料遷移完成！已成功匯入 ${volCount} 位義工資料至 Firebase Firestore。`,
-      counts: { volunteers: volCount, responses: 0 },
+      message: `全站資料搬遷完成！\n已匯入：\n• 義工名冊：${volCount} 位\n• 各團隊表單回覆：${respCount} 筆\n• 歷史/當期排班表：${schedCount} 份`,
+      counts: { volunteers: volCount, responses: respCount, schedules: schedCount },
     };
   } catch (err: any) {
     console.error('[Migration Error]:', err);
     return {
       success: false,
       message: err?.message || '資料遷移過程中發生錯誤',
-      counts: { volunteers: 0, responses: 0 },
+      counts: { volunteers: 0, responses: 0, schedules: 0 },
     };
   }
 }

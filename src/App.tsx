@@ -551,16 +551,15 @@ function App() {
           return newRow;
         });
 
-        await cloudService.syncSchedule({ sheetName: sheetNamePrefix, data: rectangularData });
+        const syncRes = await cloudService.syncSchedule({ sheetName: sheetNamePrefix, data: rectangularData });
         checkCloudSheetExistence(selectedCycle);
         // 同步成功後，解除本地強制覆蓋標記
         setApprovedVersion(prev => prev ? { ...prev, isLocalAdminEdit: false } : prev);
+        alert(syncRes.message || '排班資料已成功儲存至 Firebase，並同步備份至 Google Sheets！');
       }
-
-      alert('排班資料已成功同步到 Google 雲端試算表！');
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
-      alert('同步失敗，請稍後再試。');
+      alert(err?.message || '同步失敗，請稍後再試。');
     } finally {
       setLoading(false);
     }
