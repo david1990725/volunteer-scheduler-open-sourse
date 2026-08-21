@@ -6,6 +6,7 @@ node_modules
 # Production & Build outputs
 dist
 dev-dist
+functions/lib
 
 # Environment files
 .env
