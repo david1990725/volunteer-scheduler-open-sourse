@@ -248,8 +248,18 @@ export async function parseSundaySchedule(targetDate?: Date): Promise<{
 
         // 3. 處理職位崗位列
         const roleName = firstCell;
-        if (!roleName || roleName.includes('數量') || roleName.includes('份數') || roleName.includes('便當') || roleName.includes('早餐')) {
-          continue; // 略過餐點統計列
+        // 略過餐點統計列與備用席位 (備用1、備用2、早餐、午餐等)
+        if (
+          !roleName ||
+          roleName.includes('數量') ||
+          roleName.includes('份數') ||
+          roleName.includes('便當') ||
+          roleName.includes('早餐') ||
+          roleName.includes('午餐') ||
+          roleName.includes('備用') ||
+          roleName.includes('備份')
+        ) {
+          continue;
         }
 
         for (const col of targetCols) {
@@ -367,3 +377,54 @@ export async function applySlotFillToMatrix(
     return { success: false, message: err?.message || '寫入失敗' };
   }
 }
+
+/** 判斷義工是否具備補位該職位的能力或所屬團隊 */
+export function canVolunteerFillVacancy(volunteer: VolunteerRecord, roleName: string, team: string): boolean {
+  // 1. 若該職位為備用席位，不列入推播
+  if (roleName.includes('備用') || roleName.includes('備份')) return false;
+
+  // 2. 全能補位幹部 (Backfill Leader) 或 全職同工 -> 具備所有補位資格
+  if (volunteer.isBackfillLeader || volunteer.isFullTimer) return true;
+
+  // 3. 檢查具體技能樹認證 (skillRoles / videoSkills / audioSkills / lightLevel / stageLevel)
+  if (volunteer.skillRoles && volunteer.skillRoles.includes(roleName)) {
+    return true;
+  }
+  if (volunteer.videoSkills && (volunteer.videoSkills[roleName] || 0) >= 1) {
+    return true;
+  }
+  if (volunteer.audioSkills && (volunteer.audioSkills[roleName] || 0) >= 1) {
+    return true;
+  }
+  if (roleName.includes('燈') && (volunteer.lightLevel || 0) >= 1) {
+    return true;
+  }
+  if (roleName.includes('舞') && (volunteer.stageLevel || 0) >= 1) {
+    return true;
+  }
+
+  // 4. 檢查團隊所屬 (若 jobTitles 包含對應團隊)
+  const titles = volunteer.jobTitles || [];
+  const titlesStr = titles.join(',');
+
+  if (team === 'video' || roleName.includes('導播') || roleName.includes('字卡') || roleName.includes('攝影') || roleName.includes('主控')) {
+    if (titlesStr.includes('影視') || titlesStr.includes('video')) return true;
+  }
+  if (team === 'audio' || roleName.includes('音控') || roleName.includes('PA') || roleName.includes('OB') || roleName.includes('IN')) {
+    if (titlesStr.includes('音控') || titlesStr.includes('audio')) return true;
+  }
+  if (team === 'light' || roleName.includes('燈光') || roleName.includes('燈控')) {
+    if (titlesStr.includes('燈光') || titlesStr.includes('light')) return true;
+  }
+  if (team === 'stage' || roleName.includes('舞監') || roleName.includes('舞台')) {
+    if (titlesStr.includes('舞監') || titlesStr.includes('stage')) return true;
+  }
+
+  // 若義工無特定職稱或屬於通識志工，且無技能限制，預設可支援影視
+  if (titles.length === 0 && (team === 'video' || !team)) {
+    return true;
+  }
+
+  return false;
+}
+

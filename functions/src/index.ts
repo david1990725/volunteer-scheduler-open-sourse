@@ -21,6 +21,7 @@ import {
   parseSundaySchedule,
   formatWeeklyTeamRoster,
   applySlotFillToMatrix,
+  canVolunteerFillVacancy,
 } from './schedulerHelper';
 
 // =============================================================================
@@ -203,13 +204,18 @@ async function handleTextMessageEvent(event: LineEvent) {
     return;
   }
 
-  // 2. 1 對 1 私訊時：無條件主動偵測當週是否有任何空缺！
+  // 2. 1 對 1 私訊時：依據同工的 UID / 技能樹偵測該同工可以補位的空缺 (已排除備用席位)
   if (!isGroup) {
+    const userId = event.source.userId || '';
+    const vol = await getVolunteerByLineId(userId);
     const { vacancies, targetSundayStr } = await parseSundaySchedule();
 
-    if (vacancies.length > 0) {
-      // 依序挑選前 3 個空缺作為 Quick Reply 按鈕
-      const topVacancies = vacancies.slice(0, 3);
+    const matchingVacancies = vol
+      ? vacancies.filter((v) => canVolunteerFillVacancy(vol, v.role, v.team))
+      : vacancies;
+
+    if (matchingVacancies.length > 0) {
+      const topVacancies = matchingVacancies.slice(0, 3);
       const vacancyListText = topVacancies
         .map((v) => `  • ${v.location}【${v.role}】`)
         .join('\n');
@@ -218,15 +224,14 @@ async function handleTextMessageEvent(event: LineEvent) {
         type: 'action',
         action: {
           type: 'postback',
-          label: `${slot.date} 幫忙${slot.role}`,
+          label: `${slot.date} 幫忙${slot.role}`.substring(0, 20),
           data: `action=fill_slot&docId=${encodeURIComponent(slot.docId)}&row=${slot.rowIndex}&col=${slot.colIndex}&date=${encodeURIComponent(
             slot.date
           )}&loc=${encodeURIComponent(slot.location)}&role=${encodeURIComponent(slot.role)}`,
-          displayText: `${slot.date} 我可以幫忙【${slot.role}】！`,
+          displayText: `${slot.date} 我可以幫忙 ${slot.location}【${slot.role}】！`,
         },
       }));
 
-      // 附加一個「本週服事」快捷按鈕
       quickReplyItems.push({
         type: 'action',
         action: {
@@ -239,7 +244,7 @@ async function handleTextMessageEvent(event: LineEvent) {
       const replyWithQuickReply: LineMessage = {
         type: 'text',
         text:
-          `平安！本週日 (${targetSundayStr}) 團隊尚有以下空缺需要支援：\n\n` +
+          `平安 ${vol?.name ? vol.name + ' 同工' : ''}！本週日 (${targetSundayStr}) 您的團隊尚有以下空缺需要支援：\n\n` +
           `${vacancyListText}\n\n` +
           `若您本週方便參與服事，可直接點選下方快捷按鈕即時補位喔！👇`,
         quickReply: {
@@ -444,7 +449,7 @@ export const dailyBirthdayReminder = onSchedule(
 
 /** 
  * 🔔 每週二、四晚上 20:00 空缺急召自動推播
- * 若排班表產生空缺，主動發送 LINE 推播並掛載 Quick Reply 按鈕（一秒點選補位）
+ * 依據使用者的 UID / 技能樹精確比對可補位職位（已排除備用位置）
  */
 export const vacancyAlertReminder = onSchedule(
   {
@@ -454,7 +459,7 @@ export const vacancyAlertReminder = onSchedule(
     secrets: ['LINE_CHANNEL_SECRET', 'LINE_CHANNEL_ACCESS_TOKEN'],
   },
   async () => {
-    const { vacancies, targetSundayStr } = await parseSundaySchedule();
+    const { vacancies, assignmentsByVolunteer, targetSundayStr } = await parseSundaySchedule();
     const { systemUrl } = getLineConfig();
 
     if (vacancies.length === 0) {
@@ -462,61 +467,7 @@ export const vacancyAlertReminder = onSchedule(
       return;
     }
 
-    console.log(`[vacancyAlertReminder] 本週日 (${targetSundayStr}) 偵測到 ${vacancies.length} 個空缺，準備推播...`);
-
-    // 依據地點整理空缺職位清單
-    const locMap: Record<string, string[]> = {};
-    for (const v of vacancies) {
-      if (!locMap[v.location]) locMap[v.location] = [];
-      locMap[v.location].push(v.role);
-    }
-    const locSummary = Object.entries(locMap)
-      .map(([loc, roles]) => `📍 ${loc}：${roles.map((r) => `【${r}】`).join('、')}`)
-      .join('\n');
-
-    // 建立 Quick Reply 按鈕陣列 (最多 10 個空缺按鈕 + 1 個開啟系統按鈕)
-    const quickReplyItems: any[] = vacancies.slice(0, 10).map((slot) => {
-      // LINE Quick Reply label 最多支援 20 個字元
-      const shortRole = slot.role.length > 5 ? slot.role.substring(0, 5) : slot.role;
-      const label = `${slot.date} 幫忙${shortRole}`;
-
-      return {
-        type: 'action',
-        action: {
-          type: 'postback',
-          label: label.substring(0, 20),
-          data: `action=fill_slot&docId=${encodeURIComponent(slot.docId)}&row=${slot.rowIndex}&col=${slot.colIndex}&date=${encodeURIComponent(
-            slot.date
-          )}&loc=${encodeURIComponent(slot.location)}&role=${encodeURIComponent(slot.role)}`,
-          displayText: `${slot.date} 我可以幫忙 ${slot.location}【${slot.role}】！`,
-        },
-      };
-    });
-
-    // 附加 [開啟排班系統] 按鈕
-    if (systemUrl) {
-      quickReplyItems.push({
-        type: 'action',
-        action: {
-          type: 'uri',
-          label: '開啟排班系統',
-          uri: systemUrl,
-        },
-      });
-    }
-
-    const alertMsg: LineMessage = {
-      type: 'text',
-      text:
-        `📢【服事空缺急召提醒】\n\n` +
-        `各位同工平安！\n` +
-        `本週日 (${targetSundayStr}) 目前尚有以下服事空缺需要熱心同工即時支援：\n\n` +
-        `${locSummary}\n\n` +
-        `點選下方按鈕即可一秒完成登記補位：`,
-      quickReply: {
-        items: quickReplyItems,
-      },
-    };
+    console.log(`[vacancyAlertReminder] 本週日 (${targetSundayStr}) 偵測到 ${vacancies.length} 個正式空缺（已排除備用），準備依照各同工 UID / 技能樹分派推播...`);
 
     const volunteers = await getAllVolunteers();
     const activeGroups = await getActiveGroups();
@@ -524,20 +475,125 @@ export const vacancyAlertReminder = onSchedule(
     let userCount = 0;
     let groupCount = 0;
 
-    // 個別推播
+    // 1. 個別同工精準推播：依據每位同工的 UID (lineId) 偵測其團隊與可補位能力
     for (const vol of volunteers) {
-      if (vol.lineId) {
-        const ok = await sendLinePush(vol.lineId, [alertMsg]);
-        if (ok) userCount++;
+      if (!vol.lineId) continue;
+
+      // 若該同工在目標週日已經有服事安排，略過不推播
+      const myAssignments = assignmentsByVolunteer[vol.name];
+      if (myAssignments && myAssignments.length > 0) {
+        continue;
+      }
+
+      // 篩選出該同工有能力且所屬團隊之可補位空缺
+      const myVacancies = vacancies.filter((v) => canVolunteerFillVacancy(vol, v.role, v.team));
+      if (myVacancies.length === 0) continue;
+
+      // 整理該同工專屬的空缺地點摘要
+      const locMap: Record<string, string[]> = {};
+      for (const v of myVacancies) {
+        if (!locMap[v.location]) locMap[v.location] = [];
+        locMap[v.location].push(v.role);
+      }
+      const locSummary = Object.entries(locMap)
+        .map(([loc, roles]) => `📍 ${loc}：${roles.map((r) => `【${r}】`).join('、')}`)
+        .join('\n');
+
+      // 建立該同工專屬的 Quick Reply 按鈕陣列 (最多 10 個職位 + 開啟排班系統)
+      const quickReplyItems: any[] = myVacancies.slice(0, 10).map((slot) => {
+        const shortRole = slot.role.length > 5 ? slot.role.substring(0, 5) : slot.role;
+        const label = `${slot.date} 幫忙${shortRole}`;
+
+        return {
+          type: 'action',
+          action: {
+            type: 'postback',
+            label: label.substring(0, 20),
+            data: `action=fill_slot&docId=${encodeURIComponent(slot.docId)}&row=${slot.rowIndex}&col=${slot.colIndex}&date=${encodeURIComponent(
+              slot.date
+            )}&loc=${encodeURIComponent(slot.location)}&role=${encodeURIComponent(slot.role)}`,
+            displayText: `${slot.date} 我可以幫忙 ${slot.location}【${slot.role}】！`,
+          },
+        };
+      });
+
+      if (systemUrl) {
+        quickReplyItems.push({
+          type: 'action',
+          action: {
+            type: 'uri',
+            label: '開啟排班系統',
+            uri: systemUrl,
+          },
+        });
+      }
+
+      const alertMsg: LineMessage = {
+        type: 'text',
+        text:
+          `📢【服事空缺急召提醒】\n\n` +
+          `平安 ${vol.name} 同工！\n` +
+          `本週日 (${targetSundayStr}) 您的團隊尚有以下服事空缺需要支援：\n\n` +
+          `${locSummary}\n\n` +
+          `點選下方按鈕即可一秒完成登記補位：`,
+        quickReply: {
+          items: quickReplyItems,
+        },
+      };
+
+      const ok = await sendLinePush(vol.lineId, [alertMsg]);
+      if (ok) userCount++;
+    }
+
+    // 2. 群組推播 (公佈全團隊空缺與可點選按鈕)
+    if (activeGroups.length > 0) {
+      const locMap: Record<string, string[]> = {};
+      for (const v of vacancies) {
+        if (!locMap[v.location]) locMap[v.location] = [];
+        locMap[v.location].push(v.role);
+      }
+      const locSummary = Object.entries(locMap)
+        .map(([loc, roles]) => `📍 ${loc}：${roles.map((r) => `【${r}】`).join('、')}`)
+        .join('\n');
+
+      const groupQuickReply: any[] = vacancies.slice(0, 10).map((slot) => ({
+        type: 'action',
+        action: {
+          type: 'postback',
+          label: `${slot.date} 幫忙${slot.role}`.substring(0, 20),
+          data: `action=fill_slot&docId=${encodeURIComponent(slot.docId)}&row=${slot.rowIndex}&col=${slot.colIndex}&date=${encodeURIComponent(
+            slot.date
+          )}&loc=${encodeURIComponent(slot.location)}&role=${encodeURIComponent(slot.role)}`,
+          displayText: `${slot.date} 我可以幫忙 ${slot.location}【${slot.role}】！`,
+        },
+      }));
+
+      if (systemUrl) {
+        groupQuickReply.push({
+          type: 'action',
+          action: { type: 'uri', label: '開啟排班系統', uri: systemUrl },
+        });
+      }
+
+      const groupAlertMsg: LineMessage = {
+        type: 'text',
+        text:
+          `📢【服事空缺急召公告】\n\n` +
+          `各位同工平安！\n` +
+          `本週日 (${targetSundayStr}) 目前尚有以下服事空缺需要支援：\n\n` +
+          `${locSummary}\n\n` +
+          `若有同工方便支援，可點選下方按鈕一秒補位！`,
+        quickReply: {
+          items: groupQuickReply,
+        },
+      };
+
+      for (const groupId of activeGroups) {
+        const ok = await sendLinePush(groupId, [groupAlertMsg]);
+        if (ok) groupCount++;
       }
     }
 
-    // 群組推播
-    for (const groupId of activeGroups) {
-      const ok = await sendLinePush(groupId, [alertMsg]);
-      if (ok) groupCount++;
-    }
-
-    console.log(`[vacancyAlertReminder] 空缺急召推播完成！個別同工: ${userCount} 人，群組: ${groupCount} 個。`);
+    console.log(`[vacancyAlertReminder] 依 UID / 技能樹空缺急召推播完成！個別同工: ${userCount} 人，群組: ${groupCount} 個。`);
   }
 );
