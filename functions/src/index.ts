@@ -441,3 +441,103 @@ export const dailyBirthdayReminder = onSchedule(
     console.log(`[dailyBirthdayReminder] 今日 (${m}/${d}) 壽星名單: ${celebrants.join(', ') || '無'}`);
   }
 );
+
+/** 
+ * 🔔 每週二、四晚上 20:00 空缺急召自動推播
+ * 若排班表產生空缺，主動發送 LINE 推播並掛載 Quick Reply 按鈕（一秒點選補位）
+ */
+export const vacancyAlertReminder = onSchedule(
+  {
+    schedule: '0 20 * * 2,4',
+    timeZone: 'Asia/Taipei',
+    region: 'asia-east1',
+    secrets: ['LINE_CHANNEL_SECRET', 'LINE_CHANNEL_ACCESS_TOKEN'],
+  },
+  async () => {
+    const { vacancies, targetSundayStr } = await parseSundaySchedule();
+    const { systemUrl } = getLineConfig();
+
+    if (vacancies.length === 0) {
+      console.log(`[vacancyAlertReminder] 本週日 (${targetSundayStr}) 目前各崗位均已排滿，無需推播。`);
+      return;
+    }
+
+    console.log(`[vacancyAlertReminder] 本週日 (${targetSundayStr}) 偵測到 ${vacancies.length} 個空缺，準備推播...`);
+
+    // 依據地點整理空缺職位清單
+    const locMap: Record<string, string[]> = {};
+    for (const v of vacancies) {
+      if (!locMap[v.location]) locMap[v.location] = [];
+      locMap[v.location].push(v.role);
+    }
+    const locSummary = Object.entries(locMap)
+      .map(([loc, roles]) => `📍 ${loc}：${roles.map((r) => `【${r}】`).join('、')}`)
+      .join('\n');
+
+    // 建立 Quick Reply 按鈕陣列 (最多 10 個空缺按鈕 + 1 個開啟系統按鈕)
+    const quickReplyItems: any[] = vacancies.slice(0, 10).map((slot) => {
+      // LINE Quick Reply label 最多支援 20 個字元
+      const shortRole = slot.role.length > 5 ? slot.role.substring(0, 5) : slot.role;
+      const label = `${slot.date} 幫忙${shortRole}`;
+
+      return {
+        type: 'action',
+        action: {
+          type: 'postback',
+          label: label.substring(0, 20),
+          data: `action=fill_slot&docId=${encodeURIComponent(slot.docId)}&row=${slot.rowIndex}&col=${slot.colIndex}&date=${encodeURIComponent(
+            slot.date
+          )}&loc=${encodeURIComponent(slot.location)}&role=${encodeURIComponent(slot.role)}`,
+          displayText: `${slot.date} 我可以幫忙 ${slot.location}【${slot.role}】！`,
+        },
+      };
+    });
+
+    // 附加 [開啟排班系統] 按鈕
+    if (systemUrl) {
+      quickReplyItems.push({
+        type: 'action',
+        action: {
+          type: 'uri',
+          label: '開啟排班系統',
+          uri: systemUrl,
+        },
+      });
+    }
+
+    const alertMsg: LineMessage = {
+      type: 'text',
+      text:
+        `📢【服事空缺急召提醒】\n\n` +
+        `各位同工平安！\n` +
+        `本週日 (${targetSundayStr}) 目前尚有以下服事空缺需要熱心同工即時支援：\n\n` +
+        `${locSummary}\n\n` +
+        `點選下方按鈕即可一秒完成登記補位：`,
+      quickReply: {
+        items: quickReplyItems,
+      },
+    };
+
+    const volunteers = await getAllVolunteers();
+    const activeGroups = await getActiveGroups();
+
+    let userCount = 0;
+    let groupCount = 0;
+
+    // 個別推播
+    for (const vol of volunteers) {
+      if (vol.lineId) {
+        const ok = await sendLinePush(vol.lineId, [alertMsg]);
+        if (ok) userCount++;
+      }
+    }
+
+    // 群組推播
+    for (const groupId of activeGroups) {
+      const ok = await sendLinePush(groupId, [alertMsg]);
+      if (ok) groupCount++;
+    }
+
+    console.log(`[vacancyAlertReminder] 空缺急召推播完成！個別同工: ${userCount} 人，群組: ${groupCount} 個。`);
+  }
+);
