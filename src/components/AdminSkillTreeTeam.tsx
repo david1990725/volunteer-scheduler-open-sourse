@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Loader2, Users, AlertCircle, Save, X } from 'lucide-react';
-import { parseSkillTreeData, FULL_TIMERS } from '../utils/scheduler';
+import { Loader2, Users, AlertCircle, Save, X, Shield, Zap } from 'lucide-react';
+import { parseSkillTreeData, FULL_TIMERS, LIAO_NAME } from '../utils/scheduler';
 import type { Volunteer } from '../utils/scheduler';
 import * as cloudService from '../utils/googleSheets';
 import { Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer } from 'recharts';
@@ -75,6 +75,8 @@ export const AdminSkillTreeTeam: React.FC<AdminSkillTreeTeamProps> = ({ team }) 
   // 編輯狀態
   const [selectedVol, setSelectedVol] = useState<Volunteer | null>(null);
   const [editingVideoSkills, setEditingVideoSkills] = useState<Record<string, number>>({});
+  const [editingIsFullTimer, setEditingIsFullTimer] = useState<boolean>(false);
+  const [editingIsBackfillLeader, setEditingIsBackfillLeader] = useState<boolean>(false);
   const [editingLevel, setEditingLevel] = useState<number>(1);
   const [editingAudioSkills, setEditingAudioSkills] = useState<Record<string, number>>({});
   const [saving, setSaving] = useState(false);
@@ -118,6 +120,8 @@ export const AdminSkillTreeTeam: React.FC<AdminSkillTreeTeamProps> = ({ team }) 
         currentSkills[k] = vs[k] || 0;
       });
       setEditingVideoSkills(currentSkills);
+      setEditingIsFullTimer(Boolean(vol.isFullTimer || FULL_TIMERS.includes(vol.name)));
+      setEditingIsBackfillLeader(Boolean(vol.isBackfillLeader || vol.name === LIAO_NAME));
     } else if (isAudioTeam) {
       const as = vol.audioSkills || {};
       setEditingAudioSkills({
@@ -148,15 +152,22 @@ export const AdminSkillTreeTeam: React.FC<AdminSkillTreeTeamProps> = ({ team }) 
     setSaving(true);
     try {
       if (isVideoTeam) {
-        // 影視團隊：更新 videoSkills
+        // 影視團隊：更新 videoSkills 及 特殊機制角色
         const result = await cloudService.updateVolunteerVideoSkills({
           name: selectedVol.name,
           videoSkills: editingVideoSkills,
+          isFullTimer: editingIsFullTimer,
+          isBackfillLeader: editingIsBackfillLeader,
         });
         if (result.success) {
-          alert('影視技能已儲存！');
+          alert('影視技能與排班機制已儲存！');
           await loadData();
-          const updatedVol = { ...selectedVol, videoSkills: { ...selectedVol.videoSkills, ...editingVideoSkills } };
+          const updatedVol = {
+            ...selectedVol,
+            videoSkills: { ...selectedVol.videoSkills, ...editingVideoSkills },
+            isFullTimer: editingIsFullTimer,
+            isBackfillLeader: editingIsBackfillLeader,
+          };
           setSelectedVol(updatedVol);
         } else {
           alert(result.message);
@@ -273,7 +284,8 @@ export const AdminSkillTreeTeam: React.FC<AdminSkillTreeTeamProps> = ({ team }) 
           </div>
           <div style={{ maxHeight: '520px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '10px', paddingRight: '4px' }}>
           {filteredVolunteers.map((vol) => {
-            const isFullTimer = FULL_TIMERS.includes(vol.name);
+            const isFullTimer = Boolean(vol.isFullTimer || FULL_TIMERS.includes(vol.name));
+            const isBackfillLeader = Boolean(vol.isBackfillLeader || vol.name === LIAO_NAME);
             const userTeamLevel = isStageTeam ? (vol.stageLevel || 1) : (vol.lightLevel || 1);
             const levelInfo = LEVEL_DEFINITIONS[userTeamLevel] || LEVEL_DEFINITIONS[1];
 
@@ -307,16 +319,38 @@ export const AdminSkillTreeTeam: React.FC<AdminSkillTreeTeamProps> = ({ team }) 
                 }}
               />
               <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', overflow: 'hidden' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', overflow: 'hidden' }}>
-                  <div style={{ fontWeight: 700, color: 'var(--text-primary)', fontSize: '1.1rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{vol.name}</div>
-                  <span style={{
-                    padding: '2px 8px', borderRadius: '12px', fontSize: '0.75rem', fontWeight: 700, whiteSpace: 'nowrap', flexShrink: 0,
-                    background: isFullTimer ? 'rgba(59, 130, 246, 0.15)' : 'rgba(107, 114, 128, 0.15)',
-                    color: isFullTimer ? '#60a5fa' : 'var(--text-muted)',
-                    border: `1px solid ${isFullTimer ? 'rgba(59, 130, 246, 0.3)' : 'rgba(107, 114, 128, 0.3)'}`
-                  }}>
-                    {isFullTimer ? '同工' : '義工'}
-                  </span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', overflow: 'hidden' }}>
+                  <div style={{ fontWeight: 700, color: 'var(--text-primary)', fontSize: '1.05rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{vol.name}</div>
+                  {isFullTimer && (
+                    <span style={{
+                      padding: '2px 6px', borderRadius: '8px', fontSize: '0.7rem', fontWeight: 700, whiteSpace: 'nowrap', flexShrink: 0,
+                      background: 'rgba(59, 130, 246, 0.15)',
+                      color: '#60a5fa',
+                      border: '1px solid rgba(59, 130, 246, 0.3)'
+                    }}>
+                      全職
+                    </span>
+                  )}
+                  {isBackfillLeader && (
+                    <span style={{
+                      padding: '2px 6px', borderRadius: '8px', fontSize: '0.7rem', fontWeight: 700, whiteSpace: 'nowrap', flexShrink: 0,
+                      background: 'rgba(168, 85, 247, 0.15)',
+                      color: '#c084fc',
+                      border: '1px solid rgba(168, 85, 247, 0.3)'
+                    }}>
+                      補位
+                    </span>
+                  )}
+                  {!isFullTimer && !isBackfillLeader && (
+                    <span style={{
+                      padding: '2px 6px', borderRadius: '8px', fontSize: '0.7rem', fontWeight: 700, whiteSpace: 'nowrap', flexShrink: 0,
+                      background: 'rgba(107, 114, 128, 0.15)',
+                      color: 'var(--text-muted)',
+                      border: '1px solid rgba(107, 114, 128, 0.3)'
+                    }}>
+                      義工
+                    </span>
+                  )}
                 </div>
 
                 {/* 音控團隊：2x2 緊湊格狀 4 軸等級標章 */}
@@ -393,9 +427,6 @@ export const AdminSkillTreeTeam: React.FC<AdminSkillTreeTeamProps> = ({ team }) 
           {selectedVol ? (
             <div className="animate-morph">
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--bg-input-border)', paddingBottom: '20px', marginBottom: '24px', marginTop: '10px', flexWrap: 'wrap', gap: '16px' }}>
-                {(() => {
-                  const isFullTimer = FULL_TIMERS.includes(selectedVol.name);
-                  return (
                 <div style={{ display: 'flex', alignItems: 'center', gap: '16px', flexWrap: 'wrap' }}>
                   <UserAvatar
                     src={selectedVol.pictureUrl}
@@ -407,24 +438,46 @@ export const AdminSkillTreeTeam: React.FC<AdminSkillTreeTeamProps> = ({ team }) 
                     }}
                   />
                   <div>
-                    <h2 style={{ margin: '0 0 4px', fontSize: '2rem', color: 'var(--text-primary)', letterSpacing: '2px', display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    <h2 style={{ margin: '0 0 4px', fontSize: '2rem', color: 'var(--text-primary)', letterSpacing: '2px', display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
                       {selectedVol.name}
-                      <span style={{
-                        padding: '4px 10px', borderRadius: '20px', fontSize: '0.9rem', fontWeight: 700, letterSpacing: 'normal',
-                        background: isFullTimer ? 'rgba(59, 130, 246, 0.15)' : 'rgba(107, 114, 128, 0.15)',
-                        color: isFullTimer ? '#60a5fa' : 'var(--text-muted)',
-                        border: `1px solid ${isFullTimer ? 'rgba(59, 130, 246, 0.3)' : 'rgba(107, 114, 128, 0.3)'}`
-                      }}>
-                        {isFullTimer ? '同工' : '義工'}
-                      </span>
+                      {editingIsFullTimer && (
+                        <span style={{
+                          padding: '4px 10px', borderRadius: '20px', fontSize: '0.85rem', fontWeight: 700, letterSpacing: 'normal',
+                          background: 'rgba(59, 130, 246, 0.15)',
+                          color: '#60a5fa',
+                          border: '1px solid rgba(59, 130, 246, 0.3)',
+                          display: 'inline-flex', alignItems: 'center', gap: '4px'
+                        }}>
+                          <Shield size={14} /> 全職同工
+                        </span>
+                      )}
+                      {editingIsBackfillLeader && (
+                        <span style={{
+                          padding: '4px 10px', borderRadius: '20px', fontSize: '0.85rem', fontWeight: 700, letterSpacing: 'normal',
+                          background: 'rgba(168, 85, 247, 0.15)',
+                          color: '#c084fc',
+                          border: '1px solid rgba(168, 85, 247, 0.3)',
+                          display: 'inline-flex', alignItems: 'center', gap: '4px'
+                        }}>
+                          <Zap size={14} /> 全能補位
+                        </span>
+                      )}
+                      {!editingIsFullTimer && !editingIsBackfillLeader && (
+                        <span style={{
+                          padding: '4px 10px', borderRadius: '20px', fontSize: '0.85rem', fontWeight: 700, letterSpacing: 'normal',
+                          background: 'rgba(107, 114, 128, 0.15)',
+                          color: 'var(--text-muted)',
+                          border: '1px solid rgba(107, 114, 128, 0.3)'
+                        }}>
+                          義工
+                        </span>
+                      )}
                     </h2>
                     <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: '0.95rem' }}>
-                      {teamName} · {isVideoTeam ? '技能雷達評級' : isAudioTeam ? '4 軸獨立等級' : `當前等級: Level ${editingLevel}`}
+                      {teamName} · {isVideoTeam ? '技能雷達評級 & 排班機制' : isAudioTeam ? '4 軸獨立等級' : `當前等級: Level ${editingLevel}`}
                     </p>
                   </div>
                 </div>
-                  );
-                })()}
 
                 <button
                   className="btn-primary"
@@ -438,56 +491,138 @@ export const AdminSkillTreeTeam: React.FC<AdminSkillTreeTeamProps> = ({ team }) 
               </div>
 
               {/* 根據團隊類型切換：
-                  1. 影視團隊：7 軸雷達圖 (0-10)
+                  1. 影視團隊：7 軸雷達圖 (0-10) + 特殊排班機制核選
                   2. 音控團隊：4 軸雷達圖 (0-3) + 各軸獨立 Level 滑桿
                   3. 燈光 / 舞監：Level 1~3 晉升面板 */}
               {isVideoTeam ? (
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '30px' }}>
-                  {/* 雷達圖 (狀態面板) */}
-                  <div style={{ height: '350px', background: 'var(--bg-input)', borderRadius: '20px', padding: '10px', position: 'relative' }}>
-                    <div style={{ position: 'absolute', top: '15px', left: '20px', color: 'var(--text-muted)', fontWeight: 700, letterSpacing: '1px' }}>
-                      技能雷達圖
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '30px' }}>
+                    {/* 雷達圖 (狀態面板) */}
+                    <div style={{ height: '350px', background: 'var(--bg-input)', borderRadius: '20px', padding: '10px', position: 'relative' }}>
+                      <div style={{ position: 'absolute', top: '15px', left: '20px', color: 'var(--text-muted)', fontWeight: 700, letterSpacing: '1px' }}>
+                        技能雷達圖
+                      </div>
+                      <ResponsiveContainer width="100%" height="100%">
+                        <RadarChart cx="50%" cy="50%" outerRadius="65%" data={radarData}>
+                          <PolarGrid stroke="var(--text-muted)" opacity={0.2} />
+                          <PolarAngleAxis dataKey="subject" tick={{ fill: 'var(--icon-accent)', fontSize: 13, fontWeight: 600 }} />
+                          <PolarRadiusAxis angle={30} domain={[0, 10]} tick={false} axisLine={false} />
+                          <Radar name="技能值" dataKey="A" stroke="var(--icon-accent)" strokeWidth={2} fill="var(--icon-accent)" fillOpacity={0.4} isAnimationActive={true} />
+                        </RadarChart>
+                      </ResponsiveContainer>
                     </div>
-                    <ResponsiveContainer width="100%" height="100%">
-                      <RadarChart cx="50%" cy="50%" outerRadius="65%" data={radarData}>
-                        <PolarGrid stroke="var(--text-muted)" opacity={0.2} />
-                        <PolarAngleAxis dataKey="subject" tick={{ fill: 'var(--icon-accent)', fontSize: 13, fontWeight: 600 }} />
-                        <PolarRadiusAxis angle={30} domain={[0, 10]} tick={false} axisLine={false} />
-                        <Radar name="技能值" dataKey="A" stroke="var(--icon-accent)" strokeWidth={2} fill="var(--icon-accent)" fillOpacity={0.4} isAnimationActive={true} />
-                      </RadarChart>
-                    </ResponsiveContainer>
+
+                    {/* 技能配點 (分配面板) */}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', justifyContent: 'center' }}>
+                      <div style={{ color: 'var(--text-secondary)', fontWeight: 600, fontSize: '1.1rem', marginBottom: '10px', borderBottom: '1px solid var(--bg-input-border)', paddingBottom: '10px' }}>
+                        分配技能點數 (0-10)
+                      </div>
+                      {VIDEO_SKILL_KEYS.map(key => (
+                        <div key={key} style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                          <div style={{ width: '70px', color: 'var(--text-primary)', fontWeight: 700, fontSize: '1.1rem' }}>
+                            {VIDEO_SKILL_MAP[key]}
+                          </div>
+                          <input
+                            type="range"
+                            min="0" max="10"
+                            value={editingVideoSkills[key] || 0}
+                            onChange={(e) => handleVideoSkillChange(key, e.target.value)}
+                            className="gradient-slider"
+                            style={{ flex: 1 }}
+                          />
+                          <div style={{
+                            width: '40px', height: '40px',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            background: 'var(--bg-input)', borderRadius: '8px',
+                            color: 'var(--icon-accent)', fontWeight: 800, fontSize: '1.2rem',
+                            border: '1px solid var(--bg-input-border)',
+                            boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.2)'
+                          }}>
+                            {editingVideoSkills[key] || 0}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
                   </div>
 
-                  {/* 技能配點 (分配面板) */}
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', justifyContent: 'center' }}>
-                    <div style={{ color: 'var(--text-secondary)', fontWeight: 600, fontSize: '1.1rem', marginBottom: '10px', borderBottom: '1px solid var(--bg-input-border)', paddingBottom: '10px' }}>
-                      分配技能點數 (0-10)
-                    </div>
-                    {VIDEO_SKILL_KEYS.map(key => (
-                      <div key={key} style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-                        <div style={{ width: '70px', color: 'var(--text-primary)', fontWeight: 700, fontSize: '1.1rem' }}>
-                          {VIDEO_SKILL_MAP[key]}
-                        </div>
-                        <input
-                          type="range"
-                          min="0" max="10"
-                          value={editingVideoSkills[key] || 0}
-                          onChange={(e) => handleVideoSkillChange(key, e.target.value)}
-                          className="gradient-slider"
-                          style={{ flex: 1 }}
-                        />
-                        <div style={{
-                          width: '40px', height: '40px',
-                          display: 'flex', alignItems: 'center', justifyContent: 'center',
-                          background: 'var(--bg-input)', borderRadius: '8px',
-                          color: 'var(--icon-accent)', fontWeight: 800, fontSize: '1.2rem',
-                          border: '1px solid var(--bg-input-border)',
-                          boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.2)'
-                        }}>
-                          {editingVideoSkills[key] || 0}
-                        </div>
+                  {/* 影視特殊機制角色切換核選方塊 */}
+                  <div style={{
+                    padding: '20px 24px',
+                    borderRadius: '16px',
+                    background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.03) 0%, rgba(255, 255, 255, 0.01) 100%)',
+                    border: '1px solid var(--bg-card-border)',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '16px'
+                  }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px' }}>
+                      <div style={{ color: 'var(--text-primary)', fontWeight: 700, fontSize: '1.05rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <span>⚙️ 影視特殊排班機制</span>
+                        <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 500 }}>(以核選方塊開啟/關閉)</span>
                       </div>
-                    ))}
+                    </div>
+
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '16px' }}>
+                      {/* 全職同工核選 */}
+                      <label style={{
+                        display: 'flex',
+                        alignItems: 'flex-start',
+                        gap: '14px',
+                        padding: '16px',
+                        borderRadius: '14px',
+                        background: editingIsFullTimer ? 'rgba(59, 130, 246, 0.1)' : 'var(--bg-input)',
+                        border: `1px solid ${editingIsFullTimer ? 'rgba(59, 130, 246, 0.4)' : 'var(--bg-input-border)'}`,
+                        cursor: 'pointer',
+                        transition: 'all 0.2s',
+                        boxShadow: editingIsFullTimer ? '0 4px 16px rgba(59, 130, 246, 0.12)' : 'none'
+                      }}>
+                        <input
+                          type="checkbox"
+                          checked={editingIsFullTimer}
+                          onChange={(e) => setEditingIsFullTimer(e.target.checked)}
+                          style={{ width: '20px', height: '20px', marginTop: '2px', accentColor: '#3b82f6', cursor: 'pointer' }}
+                        />
+                        <div style={{ flex: 1 }}>
+                          <div style={{ fontWeight: 700, color: editingIsFullTimer ? '#60a5fa' : 'var(--text-primary)', fontSize: '1rem', marginBottom: '4px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                            <Shield size={16} color={editingIsFullTimer ? '#60a5fa' : 'var(--text-muted)'} />
+                            全職同工機制 (Full-Time Staff)
+                          </div>
+                          <div style={{ fontSize: '0.82rem', color: 'var(--text-muted)', lineHeight: '1.45' }}>
+                            享有宣教/山莊導播排班最高優先度，並啟用每週期自動輪休平衡機制。
+                          </div>
+                        </div>
+                      </label>
+
+                      {/* 全能補位核選 */}
+                      <label style={{
+                        display: 'flex',
+                        alignItems: 'flex-start',
+                        gap: '14px',
+                        padding: '16px',
+                        borderRadius: '14px',
+                        background: editingIsBackfillLeader ? 'rgba(168, 85, 247, 0.1)' : 'var(--bg-input)',
+                        border: `1px solid ${editingIsBackfillLeader ? 'rgba(168, 85, 247, 0.4)' : 'var(--bg-input-border)'}`,
+                        cursor: 'pointer',
+                        transition: 'all 0.2s',
+                        boxShadow: editingIsBackfillLeader ? '0 4px 16px rgba(168, 85, 247, 0.12)' : 'none'
+                      }}>
+                        <input
+                          type="checkbox"
+                          checked={editingIsBackfillLeader}
+                          onChange={(e) => setEditingIsBackfillLeader(e.target.checked)}
+                          style={{ width: '20px', height: '20px', marginTop: '2px', accentColor: '#a855f7', cursor: 'pointer' }}
+                        />
+                        <div style={{ flex: 1 }}>
+                          <div style={{ fontWeight: 700, color: editingIsBackfillLeader ? '#c084fc' : 'var(--text-primary)', fontSize: '1rem', marginBottom: '4px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                            <Zap size={16} color={editingIsBackfillLeader ? '#c084fc' : 'var(--text-muted)'} />
+                            全能補位機制 (Backfill Leader)
+                          </div>
+                          <div style={{ fontSize: '0.82rem', color: 'var(--text-muted)', lineHeight: '1.45' }}>
+                            初階排班時保留出勤，於後處理階段為每月最虛弱週次自動補位最關鍵空缺職位。
+                          </div>
+                        </div>
+                      </label>
+                    </div>
                   </div>
                 </div>
               ) : isAudioTeam ? (

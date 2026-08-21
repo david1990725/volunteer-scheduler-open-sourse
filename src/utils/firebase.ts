@@ -7,13 +7,13 @@ import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager
 import { getAnalytics, isSupported } from 'firebase/analytics';
 
 const firebaseConfig = {
-  apiKey: import.meta.env.VITE_FIREBASE_API_KEY || "AIzaSyC5Zd4bpIXCYn5E3dwkdHz0_kxtCa2JAiI",
-  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || "bol-production-tw.firebaseapp.com",
-  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || "bol-production-tw",
-  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || "bol-production-tw.firebasestorage.app",
-  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || "905286896166",
-  appId: import.meta.env.VITE_FIREBASE_APP_ID || "1:905286896166:web:0763503debbea6e25e74e7",
-  measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID || "G-6SQCD1E1FR"
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY || "",
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || "",
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || "",
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || "",
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || "",
+  appId: import.meta.env.VITE_FIREBASE_APP_ID || "",
+  measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID || ""
 };
 
 // 初始化 App (避免在 HMR 重複初始化)

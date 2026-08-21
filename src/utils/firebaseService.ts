@@ -88,6 +88,7 @@ export async function fetchVolunteers(): Promise<ApiResultWithData<SheetRow[]>> 
         'Job_Title': Array.isArray(data.jobTitles) ? data.jobTitles.join(', ') : '',
         'Skill_Role': Array.isArray(data.skillRoles) ? data.skillRoles.join(', ') : '',
         'Avatar': data.pictureUrl || '',
+        'Birthday': data.birthday || '',
         'D_Skill': String(vs.director ?? vs['導播'] ?? 0),
         'AD_Skill': String(vs.ad ?? vs['AD'] ?? 0),
         'Photo_Skill': String(vs.photo ?? vs['平面'] ?? 0),
@@ -103,6 +104,9 @@ export async function fetchVolunteers(): Promise<ApiResultWithData<SheetRow[]>> 
       (row as any).jobTitles = data.jobTitles || [];
       (row as any).skillRoles = data.skillRoles || [];
       (row as any).pictureUrl = data.pictureUrl || '';
+      (row as any).birthday = data.birthday || '';
+      (row as any).isFullTimer = Boolean(data.isFullTimer);
+      (row as any).isBackfillLeader = Boolean(data.isBackfillLeader);
       (row as any).videoSkills = {
         director: vs.director ?? vs['導播'] ?? 0,
         ad: vs.ad ?? vs['AD'] ?? 0,
@@ -139,6 +143,7 @@ export async function addNewVolunteer(payload: {
   pictureUrl?: string;
   avatar?: string;
   lineId?: string;
+  birthday?: string;
   lightLevel?: number;
   stageLevel?: number;
   videoSkills?: Record<string, number>;
@@ -173,6 +178,7 @@ export async function addNewVolunteer(payload: {
       lineId: payload.lineId || '',
       lineDisplayName: '',
       pictureUrl: payload.pictureUrl || payload.avatar || '',
+      birthday: payload.birthday || '',
       userLevel: payload.userLevel || 'user',
       jobTitles: cleanJobTitles,
       skillRoles: [],
@@ -312,6 +318,7 @@ export async function updateUser(payload: {
   userLevel: string;
   pictureUrl?: string;
   avatar?: string;
+  birthday?: string;
 }): Promise<ApiResult> {
   try {
     const oldDocId = sanitizeDocId(payload.oldName.trim());
@@ -327,13 +334,16 @@ export async function updateUser(payload: {
     }
     const cleanJobTitles = Array.from(new Set(rawTitles.map(t => toTeamKey(t)).filter(Boolean)));
 
-    const updateData = {
+    const updateData: Record<string, any> = {
       name: newName,
       jobTitles: cleanJobTitles,
       userLevel: payload.userLevel,
       pictureUrl: payload.pictureUrl || payload.avatar || '',
       updatedAt: serverTimestamp(),
     };
+    if (payload.birthday !== undefined) {
+      updateData.birthday = payload.birthday;
+    }
 
     if (oldDocId === newDocId) {
       const docRef = doc(db, COLLECTIONS.VOLUNTEERS, oldDocId);
@@ -356,11 +366,13 @@ export async function updateUser(payload: {
   }
 }
 
-/** 更新影視義工 7 軸技能評分 (videoSkills) */
+/** 更新影視義工 7 軸技能評分 (videoSkills) 及特殊機制角色 */
 export async function updateVolunteerVideoSkills(payload: {
   name: string;
   skills?: Record<string, number>;
   videoSkills?: Record<string, number>;
+  isFullTimer?: boolean;
+  isBackfillLeader?: boolean;
 }): Promise<ApiResult> {
   try {
     const docId = sanitizeDocId(payload.name.trim());
@@ -378,16 +390,21 @@ export async function updateVolunteerVideoSkills(payload: {
       }
     });
 
-    await setDoc(
-      docRef,
-      {
-        videoSkills: cleanVideoSkills,
-        updatedAt: serverTimestamp(),
-      },
-      { merge: true },
-    );
+    const updateData: Record<string, any> = {
+      videoSkills: cleanVideoSkills,
+      updatedAt: serverTimestamp(),
+    };
 
-    return { success: true, message: '影視技能更新成功！' };
+    if (payload.isFullTimer !== undefined) {
+      updateData.isFullTimer = payload.isFullTimer;
+    }
+    if (payload.isBackfillLeader !== undefined) {
+      updateData.isBackfillLeader = payload.isBackfillLeader;
+    }
+
+    await setDoc(docRef, updateData, { merge: true });
+
+    return { success: true, message: '影視技能與角色設定更新成功！' };
   } catch (err: any) {
     console.error('[updateVolunteerVideoSkills Error]:', err);
     return { success: false, message: err?.message || '更新技能失敗' };

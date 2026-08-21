@@ -22,6 +22,9 @@ export interface Volunteer {
   lineId?: string; // LINE platform internal user_id
   lineDisplayName?: string; // LINE 顯示名稱
   pictureUrl?: string; // LINE profile picture or custom URL
+  birthday?: string; // 生日 (YYYY-MM-DD 或 MM-DD)
+  isFullTimer?: boolean; // 是否為全職同工 (享有專職輪休與優先導播排班)
+  isBackfillLeader?: boolean; // 是否為全能補位 (在後處理階段補位每月最關鍵空缺)
   // 向後相容欄位別名 (相容部分現有介面)
   role?: 'admin' | 'user';
   roles?: string[];
@@ -42,8 +45,18 @@ export const SHAN_ZHUANG_ROLES = ['導播', 'AD', 'CAM1', 'CAM2', 'CAM3', 'CAM4'
 export const XUAN_JIAO_ROLES = ['導播', '信息版'];
 
 const CAM_ROLES = ['CAM1', 'CAM2', 'CAM3', 'CAM4'];
-export const FULL_TIMERS = ['蔡佳翰', '夏翊剛'];
-const LIAO_NAME = '廖亦東';
+
+const envFullTimers = import.meta.env?.VITE_FULL_TIMERS 
+  ? String(import.meta.env.VITE_FULL_TIMERS).split(',').map((s: string) => s.trim()).filter(Boolean)
+  : null;
+
+/** 專職人員名單（可由環境變數 VITE_FULL_TIMERS 覆寫） */
+export const FULL_TIMERS: string[] = envFullTimers && envFullTimers.length > 0 
+  ? envFullTimers 
+  : ['專職同工A', '專職同工B'];
+
+/** 關鍵全能補位人員（可由環境變數 VITE_BACKFILL_LEADER 覆寫） */
+export const LIAO_NAME: string = import.meta.env?.VITE_BACKFILL_LEADER || '全能同工';
 
 /** 缺口嚴重度權重（導播最重要 → AD 相對可調度） */
 const ROLE_PRIORITY: Record<string, number> = {
@@ -200,6 +213,9 @@ export function parseSkillTreeData(data: any[]): Record<string, Volunteer> {
     const lineId = String(row.lineId || row.user_id || row.User_ID || '').trim() || undefined;
     const lineDisplayName = String(row.lineDisplayName || row.LINE_ID || '').trim() || undefined;
     const pictureUrl = String(row.pictureUrl || row.avatar || row.Avatar || '').trim() || undefined;
+    const birthday = String(row.birthday || row.Birthday || row['生日'] || '').trim() || undefined;
+    const isFullTimer = typeof row.isFullTimer === 'boolean' ? row.isFullTimer : FULL_TIMERS.includes(name);
+    const isBackfillLeader = typeof row.isBackfillLeader === 'boolean' ? row.isBackfillLeader : (name === LIAO_NAME);
 
     // 向後相容 roles (中文職能/角色陣列)
     const legacyRoles = [
@@ -222,6 +238,9 @@ export function parseSkillTreeData(data: any[]): Record<string, Volunteer> {
       lineId,
       lineDisplayName,
       pictureUrl,
+      birthday,
+      isFullTimer,
+      isBackfillLeader,
     };
   }
 
@@ -324,8 +343,18 @@ export function parseScheduleResponsesData(
   // Phase 1: Weekly assignment loop
   // -------------------------------------------------------------------------
 
+  const fullTimerList = Object.values(volunteers)
+    .filter(v => v.isFullTimer || FULL_TIMERS.includes(v.name))
+    .map(v => v.name);
+  const effectiveFullTimers = fullTimerList.length > 0 ? fullTimerList : FULL_TIMERS;
+
+  const backfillLeaderList = Object.values(volunteers)
+    .filter(v => v.isBackfillLeader || v.name === LIAO_NAME)
+    .map(v => v.name);
+
   const shifts: Shift[] = [];
-  const restTaken: Record<string, boolean> = { '蔡佳翰': false, '夏翊剛': false };
+  const restTaken: Record<string, boolean> = {};
+  effectiveFullTimers.forEach(ft => { restTaken[ft] = false; });
 
   // Rotation trackers (accumulate across weeks)
   const roleCount: Record<string, Record<string, number>> = {};
@@ -340,14 +369,14 @@ export function parseScheduleResponsesData(
 
     // --- Full-timer rest check ---
     const restingFT = determineRestingFT(
-      field, locationAvailability, volunteers, restTaken,
+      field, locationAvailability, volunteers, restTaken, effectiveFullTimers, backfillLeaderList,
     );
 
     // --- Inner helpers (closures over this week's state) ---
     const canAssign = (name: string, loc: string): boolean => {
       if (assigned.has(name) || name === restingFT) return false;
-      if (name === LIAO_NAME) return false; // handled in post-processing
-      if (FULL_TIMERS.includes(name)) return true;
+      if (backfillLeaderList.includes(name)) return false; // handled in post-processing
+      if (effectiveFullTimers.includes(name)) return true;
       return locationAvailability[field][loc]?.includes(name) ?? false;
     };
 
@@ -359,7 +388,7 @@ export function parseScheduleResponsesData(
     };
 
     const availableCamOps = (): number => {
-      const pool = new Set([...(locationAvailability[field]['山莊'] || []), ...FULL_TIMERS]);
+      const pool = new Set([...(locationAvailability[field]['山莊'] || []), ...effectiveFullTimers]);
       let n = 0;
       for (const c of pool) if (canAssign(c, '山莊') && volunteers[c] && isCamOperator(volunteers[c])) n++;
       return n;
@@ -369,7 +398,7 @@ export function parseScheduleResponsesData(
     {
       let bestFT = '';
       let bestScore = -100;
-      for (const ft of FULL_TIMERS) {
+      for (const ft of effectiveFullTimers) {
         if (!canAssign(ft, '宣教')) continue;
         const p = volunteers[ft];
         if (!p) continue;
@@ -386,7 +415,7 @@ export function parseScheduleResponsesData(
     {
       let bestDir = '';
       let bestScore = -100;
-      const szPool = new Set([...(locationAvailability[field]['山莊'] || []), ...FULL_TIMERS]);
+      const szPool = new Set([...(locationAvailability[field]['山莊'] || []), ...effectiveFullTimers]);
       for (const name of szPool) {
         if (!canAssign(name, '山莊')) continue;
         const p = volunteers[name];
@@ -404,7 +433,7 @@ export function parseScheduleResponsesData(
     for (const role of ['平面', ...CAM_ROLES, 'AD']) {
       let bestPerson = '';
       let bestScore = -100;
-      const candidates = new Set([...(locationAvailability[field]['山莊'] || []), ...FULL_TIMERS]);
+      const candidates = new Set([...(locationAvailability[field]['山莊'] || []), ...effectiveFullTimers]);
 
       for (const name of candidates) {
         if (!canAssign(name, '山莊')) continue;
@@ -439,23 +468,23 @@ export function parseScheduleResponsesData(
     }
 
     // --- Step 4: 信息版 (山莊的專職人員擔任) ---
-    const ftAtSz = FULL_TIMERS.find(ft =>
+    const ftAtSz = effectiveFullTimers.find(ft =>
       SHAN_ZHUANG_ROLES.some(r => szAssign[r] === ft),
     );
     xjAssign['信息版'] = ftAtSz ?? '缺';
 
     // --- Step 5: Override detection ---
-    const overrides = buildOverrides(szAssign, rolePreferences, field);
+    const overrides = buildOverrides(szAssign, rolePreferences, field, effectiveFullTimers, backfillLeaderList);
 
     shifts.push({ date, location: '山莊大堂', assignments: szAssign, roleKeys: SHAN_ZHUANG_ROLES, overrides });
     shifts.push({ date, location: '宣教大樓', assignments: xjAssign, roleKeys: XUAN_JIAO_ROLES, overrides: {} });
   }
 
   // -------------------------------------------------------------------------
-  // Phase 2: 廖亦東全能補位 (post-processing)
+  // Phase 2: 全能補位 (post-processing)
   // -------------------------------------------------------------------------
 
-  applyLiaoBackfill(shifts, volunteers);
+  applyBackfillLeaders(shifts, volunteers, backfillLeaderList);
 
   return shifts;
 }
@@ -500,24 +529,26 @@ function determineRestingFT(
   locAvail: Record<string, Record<string, string[]>>,
   volunteers: Record<string, Volunteer>,
   restTaken: Record<string, boolean>,
+  fullTimers: string[] = FULL_TIMERS,
+  backfillLeaders: string[] = [LIAO_NAME],
 ): string {
-  for (const ft of FULL_TIMERS) {
+  for (const ft of fullTimers) {
     if (restTaken[ft]) continue;
-    const otherFT = FULL_TIMERS.find(f => f !== ft)!;
+    const otherFTs = fullTimers.filter(f => f !== ft);
 
     // Condition 1: 山莊有具備「山莊導播」資格的非專職人員
     const hasOtherDirector = (locAvail[field]['山莊'] || []).some(n => {
-      if (n === ft || n === otherFT || n === LIAO_NAME) return false;
+      if (fullTimers.includes(n) || backfillLeaders.includes(n)) return false;
       const p = volunteers[n];
       return p != null && (p.skillRoles?.includes('director_sz') || p.roles?.includes('山莊導播'));
     });
 
     // Condition 2: 另一位專職仍可出勤
-    const otherAvailable = !restTaken[otherFT];
+    const otherAvailable = otherFTs.length === 0 || otherFTs.some(otherFT => !restTaken[otherFT]);
 
     // Condition 3: 山莊義工 ≥ 7 人 (7 個職位都要有人能填)
     const uniqueVols = new Set(
-      (locAvail[field]['山莊'] || []).filter(n => n !== ft && n !== otherFT && n !== LIAO_NAME),
+      (locAvail[field]['山莊'] || []).filter(n => !fullTimers.includes(n) && !backfillLeaders.includes(n)),
     );
     const enough = uniqueVols.size >= 7;
 
@@ -534,6 +565,8 @@ function buildOverrides(
   szAssign: Record<string, string>,
   prefs: Record<string, Record<string, Set<string>>>,
   field: string,
+  fullTimers: string[] = FULL_TIMERS,
+  backfillLeaders: string[] = [LIAO_NAME],
 ): Record<string, boolean> {
   const overrides: Record<string, boolean> = {};
 
@@ -541,7 +574,7 @@ function buildOverrides(
     const person = szAssign[role];
 
     // 無人、缺席、或為特殊人員 → 不視為違規
-    if (!person || person === '缺' || person === LIAO_NAME || FULL_TIMERS.includes(person)) {
+    if (!person || person === '缺' || backfillLeaders.includes(person) || fullTimers.includes(person)) {
       overrides[role] = false;
       continue;
     }
@@ -565,10 +598,13 @@ function buildOverrides(
   return overrides;
 }
 
-/** 廖亦東後處理補位：每月找最虛弱週，填最關鍵空缺 */
-function applyLiaoBackfill(shifts: Shift[], volunteers: Record<string, Volunteer>) {
-  const liao = volunteers[LIAO_NAME];
-  if (!liao) return;
+/** 全能補位後處理：每月找最虛弱週，填最關鍵空缺 */
+function applyBackfillLeaders(
+  shifts: Shift[],
+  volunteers: Record<string, Volunteer>,
+  backfillLeaders: string[] = [LIAO_NAME],
+) {
+  if (backfillLeaders.length === 0) return;
 
   // Group 山莊 shifts by month
   const groups: Record<string, Shift[]> = {};
@@ -578,28 +614,33 @@ function applyLiaoBackfill(shifts: Shift[], volunteers: Record<string, Volunteer
     (groups[m] ??= []).push(s);
   }
 
-  for (const monthShifts of Object.values(groups)) {
-    // Find the weakest week
-    let worst: Shift | null = null;
-    let worstScore = 0;
+  for (const leaderName of backfillLeaders) {
+    const leader = volunteers[leaderName];
+    if (!leader) continue;
 
-    for (const s of monthShifts) {
-      let score = 0;
-      for (const r of SHAN_ZHUANG_ROLES) {
-        if (s.assignments[r] === '缺') score += ROLE_PRIORITY[r] || 1;
+    for (const monthShifts of Object.values(groups)) {
+      // Find the weakest week
+      let worst: Shift | null = null;
+      let worstScore = 0;
+
+      for (const s of monthShifts) {
+        let score = 0;
+        for (const r of SHAN_ZHUANG_ROLES) {
+          if (s.assignments[r] === '缺') score += ROLE_PRIORITY[r] || 1;
+        }
+        if (score > worstScore) { worstScore = score; worst = s; }
       }
-      if (score > worstScore) { worstScore = score; worst = s; }
-    }
 
-    if (!worst || worstScore === 0) continue;
+      if (!worst || worstScore === 0) continue;
 
-    // Fill the most critical gap
-    const gap = SHAN_ZHUANG_ROLES
-      .filter(r => worst!.assignments[r] === '缺' && getRoleSkill(liao, r).hasRole)
-      .sort((a, b) => (ROLE_PRIORITY[b] || 0) - (ROLE_PRIORITY[a] || 0));
+      // Fill the most critical gap
+      const gap = SHAN_ZHUANG_ROLES
+        .filter(r => worst!.assignments[r] === '缺' && getRoleSkill(leader, r).hasRole)
+        .sort((a, b) => (ROLE_PRIORITY[b] || 0) - (ROLE_PRIORITY[a] || 0));
 
-    if (gap.length > 0) {
-      worst.assignments[gap[0]] = LIAO_NAME;
+      if (gap.length > 0) {
+        worst.assignments[gap[0]] = leader.name;
+      }
     }
   }
 }

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Users, Save, X, Edit2, Shield, Loader2, UserPlus } from 'lucide-react';
+import { Users, Save, X, Edit2, Shield, Loader2, UserPlus, Cake } from 'lucide-react';
 import type { Volunteer } from '../utils/scheduler';
 import { parseSkillTreeData } from '../utils/scheduler';
 import * as cloudService from '../utils/googleSheets';
@@ -29,7 +29,8 @@ export const AdminRosterTeam: React.FC<AdminRosterTeamProps> = ({ team }) => {
     jobTitle: string[];
     userLevel: string;
     avatar: string;
-  }>({ name: '', jobTitle: [], userLevel: 'user', avatar: '' });
+    birthday: string;
+  }>({ name: '', jobTitle: [], userLevel: 'user', avatar: '', birthday: '' });
   
   const [saving, setSaving] = useState(false);
 
@@ -40,12 +41,14 @@ export const AdminRosterTeam: React.FC<AdminRosterTeamProps> = ({ team }) => {
     jobTitle: string[];
     userLevel: string;
     avatar: string;
+    birthday: string;
     teamLevel: number;
   }>({
     name: '',
     jobTitle: [currentTeamName],
     userLevel: 'user',
     avatar: '',
+    birthday: '',
     teamLevel: 1,
   });
   const [creating, setCreating] = useState(false);
@@ -88,6 +91,7 @@ export const AdminRosterTeam: React.FC<AdminRosterTeamProps> = ({ team }) => {
         jobTitles: enJobTitles,
         userLevel: addForm.userLevel,
         pictureUrl: addForm.avatar.trim(),
+        birthday: addForm.birthday.trim(),
         lightLevel: addForm.jobTitle.includes('燈光團隊') ? addForm.teamLevel : 1,
         stageLevel: addForm.jobTitle.includes('舞監團隊') ? addForm.teamLevel : 1,
       });
@@ -100,6 +104,7 @@ export const AdminRosterTeam: React.FC<AdminRosterTeamProps> = ({ team }) => {
           jobTitle: [currentTeamName],
           userLevel: 'user',
           avatar: '',
+          birthday: '',
           teamLevel: 1,
         });
         await loadData();
@@ -129,6 +134,7 @@ export const AdminRosterTeam: React.FC<AdminRosterTeamProps> = ({ team }) => {
       jobTitle: userTeamNames.filter(n => TEAM_OPTIONS.includes(n)),
       userLevel: user.userLevel || user.role || 'user',
       avatar: user.pictureUrl || '',
+      birthday: user.birthday || '',
     });
   };
 
@@ -149,6 +155,7 @@ export const AdminRosterTeam: React.FC<AdminRosterTeamProps> = ({ team }) => {
         jobTitles: editForm.jobTitle.map(t => toTeamKey(t)),
         userLevel: editForm.userLevel,
         pictureUrl: editForm.avatar.trim(),
+        birthday: editForm.birthday.trim(),
       };
       const res = await cloudService.updateUser(payload);
       if (res.success) {
@@ -231,6 +238,7 @@ export const AdminRosterTeam: React.FC<AdminRosterTeamProps> = ({ team }) => {
                 jobTitle: [currentTeamName],
                 userLevel: 'user',
                 avatar: '',
+                birthday: '',
                 teamLevel: 1,
               });
               setShowAddModal(true);
@@ -338,6 +346,25 @@ export const AdminRosterTeam: React.FC<AdminRosterTeamProps> = ({ team }) => {
                         {toTeamName(r)}
                       </span>
                     ))}
+                  </div>
+                )}
+              </div>
+
+              <div>
+                <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '6px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <Cake size={14} color="var(--icon-accent)" /> 生日
+                </div>
+                {isEditing ? (
+                  <input
+                    type="date"
+                    className="glass-input"
+                    value={editForm.birthday}
+                    onChange={e => setEditForm(prev => ({ ...prev, birthday: e.target.value }))}
+                    style={{ fontSize: '0.85rem', width: '100%' }}
+                  />
+                ) : (
+                  <div style={{ fontSize: '0.85rem', color: user.birthday ? 'var(--text-primary)' : 'var(--text-muted)' }}>
+                    {user.birthday ? user.birthday : '尚未填寫生日'}
                   </div>
                 )}
               </div>
@@ -487,6 +514,19 @@ export const AdminRosterTeam: React.FC<AdminRosterTeamProps> = ({ team }) => {
                   placeholder="https://..."
                   value={addForm.avatar}
                   onChange={e => setAddForm(prev => ({ ...prev, avatar: e.target.value }))}
+                  style={{ width: '100%' }}
+                />
+              </div>
+
+              <div>
+                <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '6px', fontWeight: 600 }}>
+                  生日 (選填，用於 LINE 生日祝福)
+                </label>
+                <input
+                  type="date"
+                  className="glass-input"
+                  value={addForm.birthday}
+                  onChange={e => setAddForm(prev => ({ ...prev, birthday: e.target.value }))}
                   style={{ width: '100%' }}
                 />
               </div>
