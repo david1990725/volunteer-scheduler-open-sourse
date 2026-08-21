@@ -3,6 +3,7 @@ import * as XLSX from 'xlsx';
 import { Download, Loader2, RefreshCw, User, Calendar, MapPin, Trash2 } from 'lucide-react';
 import * as cloudService from '../utils/googleSheets';
 import { getCycleDates } from '../utils/dateUtils';
+import { toTeamName } from '../utils/constants';
 
 interface AdminRawDataProps {
   team: string;
@@ -123,7 +124,8 @@ export const AdminRawDataTeam: React.FC<AdminRawDataProps> = ({ team, onStartAut
   };
 
   const clearData = async () => {
-    if (confirm(`確定要清空 ${team} 的所有雲端 RAW 資料嗎？這將無法復原。`)) {
+    const displayName = toTeamName(team);
+    if (confirm(`確定要清空 ${displayName} 的所有雲端 RAW 資料嗎？這將無法復原。`)) {
       const res = await cloudService.clearFormResponsesInCloud(team);
       if (res.success) {
         setData([]);

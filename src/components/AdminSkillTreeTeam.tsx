@@ -1,27 +1,30 @@
 import React, { useState, useEffect } from 'react';
-import { Loader2, ExternalLink, Users, AlertCircle, Save, Shield, X } from 'lucide-react';
-import { fetchCSVAsJson } from '../utils/fileUtils';
+import { Loader2, Users, AlertCircle, Save, X } from 'lucide-react';
 import { parseSkillTreeData, FULL_TIMERS } from '../utils/scheduler';
 import type { Volunteer } from '../utils/scheduler';
 import * as cloudService from '../utils/googleSheets';
 import { Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer } from 'recharts';
 import { UserAvatar } from './UserAvatar';
-
-const SKILL_TREE_URL = 'https://docs.google.com/spreadsheets/d/1L3W6RwrE6gzi_znqNXBww9WVRvi2NVuhDj3-hSYmTZI/export?format=csv';
-const GOOGLE_SHEET_URL = 'https://docs.google.com/spreadsheets/d/1L3W6RwrE6gzi_znqNXBww9WVRvi2NVuhDj3-hSYmTZI/edit';
+import {
+  toTeamKey,
+  toTeamName,
+  VIDEO_SKILL_KEYS,
+  VIDEO_SKILL_MAP,
+  AUDIO_SKILL_AXES,
+} from '../utils/constants';
 
 interface AdminSkillTreeTeamProps {
   team: string;
 }
 
-// 等級定義與說明（適用於 燈光 / 音控 / 舞監）
-const LEVEL_DEFINITIONS: Record<number, { title: string; badge: string; icon: string; color: string; bg: string; desc: string; details: string[] }> = {
+// 等級定義與說明（適用於 燈光 / 舞監）
+const LEVEL_DEFINITIONS: Record<number, { title: string; badge: string; code: string; color: string; bg: string; desc: string; details: string[] }> = {
   1: {
     title: 'Level 1: 實習 / 助理',
-    badge: '🥉 初階見習',
-    icon: '🥉',
-    color: '#cd7f32',
-    bg: 'linear-gradient(135deg, rgba(205, 127, 50, 0.15) 0%, rgba(180, 100, 30, 0.05) 100%)',
+    badge: 'Lv.1 實習助理',
+    code: '01',
+    color: '#94a3b8',
+    bg: 'linear-gradient(135deg, rgba(148, 163, 184, 0.12) 0%, rgba(100, 116, 139, 0.04) 100%)',
     desc: '具備基礎設備認知與開關機操作，能協助主控同工並進行觀摩見習。',
     details: [
       '熟練基本器材開關機與收納整理',
@@ -31,10 +34,10 @@ const LEVEL_DEFINITIONS: Record<number, { title: string; badge: string; icon: st
   },
   2: {
     title: 'Level 2: 獨立主控',
-    badge: '🥈 獨立主控',
-    icon: '🥈',
-    color: '#94a3b8',
-    bg: 'linear-gradient(135deg, rgba(148, 163, 184, 0.18) 0%, rgba(100, 116, 139, 0.06) 100%)',
+    badge: 'Lv.2 獨立主控',
+    code: '02',
+    color: '#38bdf8',
+    bg: 'linear-gradient(135deg, rgba(56, 189, 248, 0.12) 0%, rgba(14, 165, 233, 0.04) 100%)',
     desc: '能獨立負責常態主日控台作業，具備突發狀況即時除錯與應變能力。',
     details: [
       '獨立承擔常態主日控台全流程',
@@ -44,10 +47,10 @@ const LEVEL_DEFINITIONS: Record<number, { title: string; badge: string; icon: st
   },
   3: {
     title: 'Level 3: 資深導師 / 主領',
-    badge: '🥇 資深導師',
-    icon: '🥇',
+    badge: 'Lv.3 資深導師',
+    code: '03',
     color: '#f59e0b',
-    bg: 'linear-gradient(135deg, rgba(245, 158, 11, 0.22) 0%, rgba(217, 119, 6, 0.08) 100%)',
+    bg: 'linear-gradient(135deg, rgba(245, 158, 11, 0.15) 0%, rgba(217, 119, 6, 0.05) 100%)',
     desc: '能主導大型特會與複雜舞台調度，具備系統架構規劃、除錯與新人培訓能力。',
     details: [
       '主導跨部門大型特會與高難度活動',
@@ -57,6 +60,13 @@ const LEVEL_DEFINITIONS: Record<number, { title: string; badge: string; icon: st
   },
 };
 
+const AUDIO_LEVEL_META: Record<number, { label: string; color: string; bg: string }> = {
+  0: { label: 'Lv.0 未接觸', color: 'var(--text-muted)', bg: 'rgba(255, 255, 255, 0.04)' },
+  1: { label: 'Lv.1 實習助理', color: '#94a3b8', bg: 'rgba(148, 163, 184, 0.12)' },
+  2: { label: 'Lv.2 獨立主控', color: '#38bdf8', bg: 'rgba(56, 189, 248, 0.14)' },
+  3: { label: 'Lv.3 資深導師', color: '#f59e0b', bg: 'rgba(245, 158, 11, 0.16)' },
+};
+
 export const AdminSkillTreeTeam: React.FC<AdminSkillTreeTeamProps> = ({ team }) => {
   const [volunteers, setVolunteers] = useState<Volunteer[]>([]);
   const [loading, setLoading] = useState(true);
@@ -64,11 +74,16 @@ export const AdminSkillTreeTeam: React.FC<AdminSkillTreeTeamProps> = ({ team }) 
 
   // 編輯狀態
   const [selectedVol, setSelectedVol] = useState<Volunteer | null>(null);
-  const [editingSkills, setEditingSkills] = useState<Record<string, number>>({});
+  const [editingVideoSkills, setEditingVideoSkills] = useState<Record<string, number>>({});
   const [editingLevel, setEditingLevel] = useState<number>(1);
+  const [editingAudioSkills, setEditingAudioSkills] = useState<Record<string, number>>({});
   const [saving, setSaving] = useState(false);
 
-  const isVideoTeam = team === '影視團隊';
+  const teamKey = toTeamKey(team);
+  const teamName = toTeamName(team);
+  const isVideoTeam = teamKey === 'video';
+  const isAudioTeam = teamKey === 'audio';
+  const isStageTeam = teamKey === 'stage';
 
   const loadData = async () => {
     setLoading(true);
@@ -79,9 +94,7 @@ export const AdminSkillTreeTeam: React.FC<AdminSkillTreeTeamProps> = ({ team }) 
         const parsed = parseSkillTreeData(result.data);
         setVolunteers(Object.values(parsed));
       } else {
-        const csvData = await fetchCSVAsJson(SKILL_TREE_URL);
-        const parsed = parseSkillTreeData(csvData);
-        setVolunteers(Object.values(parsed));
+        setVolunteers([]);
       }
     } catch (err: any) {
       setError(err.message || '無法載入技能樹資料，請確認資料庫連線。');
@@ -99,21 +112,34 @@ export const AdminSkillTreeTeam: React.FC<AdminSkillTreeTeamProps> = ({ team }) 
   const handleSelectVol = (vol: Volunteer) => {
     setSelectedVol(vol);
     if (isVideoTeam) {
-      const editable = ['導播', 'AD', '平面', 'CAM1', 'CAM2', 'CAM3', 'CAM4'];
+      const vs = vol.videoSkills || {};
       const currentSkills: Record<string, number> = {};
-      editable.forEach(s => {
-        currentSkills[s] = vol.skills[s] || 0;
+      VIDEO_SKILL_KEYS.forEach(k => {
+        currentSkills[k] = vs[k] || 0;
       });
-      setEditingSkills(currentSkills);
+      setEditingVideoSkills(currentSkills);
+    } else if (isAudioTeam) {
+      const as = vol.audioSkills || {};
+      setEditingAudioSkills({
+        ih_xj: as.ih_xj || 0,
+        ih_sz: as.ih_sz || 0,
+        ob_xj: as.ob_xj || 0,
+        ob_sz: as.ob_sz || 0,
+      });
     } else {
-      const curLvl = vol.teamLevels?.[team] || 1;
+      const curLvl = isStageTeam ? (vol.stageLevel || 1) : (vol.lightLevel || 1);
       setEditingLevel(curLvl);
     }
   };
 
-  const handleSkillChange = (skill: string, val: string) => {
-    const num = Math.max(0, Math.min(10, parseInt(val) || 0));
-    setEditingSkills(prev => ({ ...prev, [skill]: num }));
+  const handleVideoSkillChange = (key: string, val: string) => {
+    const num = Math.max(0, Math.min(10, parseInt(val, 10) || 0));
+    setEditingVideoSkills(prev => ({ ...prev, [key]: num }));
+  };
+
+  const handleAudioSkillChange = (key: string, val: string) => {
+    const num = Math.max(0, Math.min(3, parseInt(val, 10) || 0));
+    setEditingAudioSkills(prev => ({ ...prev, [key]: num }));
   };
 
   const handleSave = async () => {
@@ -122,31 +148,48 @@ export const AdminSkillTreeTeam: React.FC<AdminSkillTreeTeamProps> = ({ team }) 
     setSaving(true);
     try {
       if (isVideoTeam) {
-        // 影視團隊：更新 7 軸技能分數
-        const result = await cloudService.updateVolunteerSkills({
+        // 影視團隊：更新 videoSkills
+        const result = await cloudService.updateVolunteerVideoSkills({
           name: selectedVol.name,
-          skills: editingSkills
+          videoSkills: editingVideoSkills,
         });
         if (result.success) {
-          alert('角色技能已變更！');
+          alert('影視技能已儲存！');
           await loadData();
-          const updatedVol = { ...selectedVol, skills: { ...selectedVol.skills, ...editingSkills } };
+          const updatedVol = { ...selectedVol, videoSkills: { ...selectedVol.videoSkills, ...editingVideoSkills } };
+          setSelectedVol(updatedVol);
+        } else {
+          alert(result.message);
+        }
+      } else if (isAudioTeam) {
+        // 音控團隊：更新 4 軸獨立 Level 0~3
+        const result = await cloudService.updateVolunteerAudioSkills({
+          name: selectedVol.name,
+          audioSkills: editingAudioSkills,
+        });
+        if (result.success) {
+          alert(result.message || '音控等級已儲存！');
+          await loadData();
+          const updatedVol = { ...selectedVol, audioSkills: { ...selectedVol.audioSkills, ...editingAudioSkills } };
           setSelectedVol(updatedVol);
         } else {
           alert(result.message);
         }
       } else {
-        // 非影視團隊 (燈光/音控/舞監)：更新 Level 1~3
-        const result = await cloudService.updateVolunteerTeamLevel({
+        // 燈光 / 舞監團隊：更新 lightLevel 或 stageLevel
+        const targetField = isStageTeam ? 'stageLevel' : 'lightLevel';
+        const result = await cloudService.updateVolunteerLevel({
           name: selectedVol.name,
-          team: team,
-          level: editingLevel
+          field: targetField,
+          level: editingLevel,
         });
         if (result.success) {
           alert(result.message || '等級變更成功！');
           await loadData();
-          const updatedLevels = { ...(selectedVol.teamLevels || {}), [team]: editingLevel };
-          const updatedVol = { ...selectedVol, teamLevels: updatedLevels };
+          const updatedVol = {
+            ...selectedVol,
+            [targetField]: editingLevel,
+          };
           setSelectedVol(updatedVol);
         } else {
           alert(result.message);
@@ -161,15 +204,18 @@ export const AdminSkillTreeTeam: React.FC<AdminSkillTreeTeamProps> = ({ team }) 
   };
 
   // 為 RadarChart 準備資料格式 (影視團隊用)
-  const radarData = selectedVol ? Object.keys(editingSkills).map(key => ({
-    subject: key,
-    A: editingSkills[key],
+  const radarData = selectedVol ? VIDEO_SKILL_KEYS.map(key => ({
+    subject: VIDEO_SKILL_MAP[key],
+    A: editingVideoSkills[key] || 0,
     fullMark: 10,
   })) : [];
 
-  const hasChanges = isVideoTeam
-    ? selectedVol && Object.keys(editingSkills).some(k => editingSkills[k] !== (selectedVol.skills[k] || 0))
-    : selectedVol && editingLevel !== (selectedVol.teamLevels?.[team] || 1);
+  // 為 RadarChart 準備資料格式 (音控團隊用)
+  const audioRadarData = selectedVol ? AUDIO_SKILL_AXES.map(axis => ({
+    subject: axis.label,
+    A: editingAudioSkills[axis.key] || 0,
+    fullMark: 3,
+  })) : [];
 
   if (loading) {
     return (
@@ -185,14 +231,16 @@ export const AdminSkillTreeTeam: React.FC<AdminSkillTreeTeamProps> = ({ team }) 
       <div className="glass-card animate-morph stagger-2" style={{ padding: '40px', textAlign: 'center' }}>
         <AlertCircle size={48} style={{ color: 'var(--text-missing)', margin: '0 auto 16px' }} />
         <p style={{ color: 'var(--text-primary)', marginBottom: '16px' }}>{error}</p>
-        <a href={GOOGLE_SHEET_URL} target="_blank" rel="noreferrer" className="btn-primary" style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', textDecoration: 'none' }}>
-          前往 Google Sheets <ExternalLink size={16} />
-        </a>
+        <button className="btn-primary" onClick={loadData}>重新載入</button>
       </div>
     );
   }
 
-  const filteredVolunteers = volunteers.filter(v => v.roles.includes('管理') || v.roles.includes(team));
+  const filteredVolunteers = volunteers.filter(v => {
+    const titles = v.jobTitles || [];
+    return titles.includes('admin') || titles.includes(teamKey) ||
+      (v.roles && (v.roles.some(r => r.includes('管理')) || v.roles.includes(teamName)));
+  });
 
   return (
     <div className="rpg-layout animate-morph stagger-1">
@@ -203,11 +251,8 @@ export const AdminSkillTreeTeam: React.FC<AdminSkillTreeTeamProps> = ({ team }) 
           textShadow: '0 2px 10px rgba(234, 179, 8, 0.3)'
         }}>
           <Users size={28} color="var(--icon-accent)" /> 
-          {team} {isVideoTeam ? '技能雷達樹' : '服事等級管理'} ({filteredVolunteers.length} 人)
+          {teamName} {isVideoTeam ? '技能雷達樹' : isAudioTeam ? '4 軸等級雷達' : '服事等級管理'} ({filteredVolunteers.length} 人)
         </h2>
-        <a href={GOOGLE_SHEET_URL} target="_blank" rel="noreferrer" className="btn-secondary" style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', textDecoration: 'none' }}>
-          <ExternalLink size={16} /> 開啟 Google Sheets
-        </a>
       </div>
 
       <div style={{
@@ -229,7 +274,7 @@ export const AdminSkillTreeTeam: React.FC<AdminSkillTreeTeamProps> = ({ team }) 
           <div style={{ maxHeight: '520px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '10px', paddingRight: '4px' }}>
           {filteredVolunteers.map((vol) => {
             const isFullTimer = FULL_TIMERS.includes(vol.name);
-            const userTeamLevel = vol.teamLevels?.[team] || 1;
+            const userTeamLevel = isStageTeam ? (vol.stageLevel || 1) : (vol.lightLevel || 1);
             const levelInfo = LEVEL_DEFINITIONS[userTeamLevel] || LEVEL_DEFINITIONS[1];
 
             return (
@@ -274,8 +319,42 @@ export const AdminSkillTreeTeam: React.FC<AdminSkillTreeTeamProps> = ({ team }) 
                   </span>
                 </div>
 
-                {/* 非影視團隊顯示等級徽章 */}
-                {!isVideoTeam && (
+                {/* 音控團隊：2x2 緊湊格狀 4 軸等級標章 */}
+                {isAudioTeam && (
+                  <div style={{
+                    display: 'grid',
+                    gridTemplateColumns: '1fr 1fr',
+                    gap: '3px',
+                    flexShrink: 0,
+                  }}>
+                    {AUDIO_SKILL_AXES.map(axis => {
+                      const lvl = vol.audioSkills?.[axis.key] || 0;
+                      const meta = AUDIO_LEVEL_META[lvl] || AUDIO_LEVEL_META[0];
+                      return (
+                        <span
+                          key={axis.key}
+                          style={{
+                            padding: '1px 5px',
+                            borderRadius: '5px',
+                            fontSize: '0.65rem',
+                            fontWeight: 700,
+                            color: meta.color,
+                            background: meta.bg,
+                            border: `1px solid ${meta.color}35`,
+                            textAlign: 'center',
+                            whiteSpace: 'nowrap',
+                            lineHeight: 1.3,
+                          }}
+                        >
+                          {axis.short}:L{lvl}
+                        </span>
+                      );
+                    })}
+                  </div>
+                )}
+
+                {/* 燈光 / 舞監團隊：顯示單一等級徽章 */}
+                {!isVideoTeam && !isAudioTeam && (
                   <span style={{
                     padding: '2px 8px',
                     borderRadius: '10px',
@@ -340,15 +419,28 @@ export const AdminSkillTreeTeam: React.FC<AdminSkillTreeTeamProps> = ({ team }) 
                       </span>
                     </h2>
                     <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: '0.95rem' }}>
-                      {team} · {isVideoTeam ? '技能雷達評級' : `當前等級: Level ${editingLevel}`}
+                      {teamName} · {isVideoTeam ? '技能雷達評級' : isAudioTeam ? '4 軸獨立等級' : `當前等級: Level ${editingLevel}`}
                     </p>
                   </div>
                 </div>
                   );
                 })()}
+
+                <button
+                  className="btn-primary"
+                  onClick={handleSave}
+                  disabled={saving}
+                  style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 20px', borderRadius: '12px' }}
+                >
+                  {saving ? <Loader2 className="animate-spin" size={18} /> : <Save size={18} />}
+                  儲存變更
+                </button>
               </div>
 
-              {/* 根據團隊類型切換：影視團隊用 7 軸雷達圖，燈光/音控/舞監使用 Level 1~3 晉升面板 */}
+              {/* 根據團隊類型切換：
+                  1. 影視團隊：7 軸雷達圖 (0-10)
+                  2. 音控團隊：4 軸雷達圖 (0-3) + 各軸獨立 Level 滑桿
+                  3. 燈光 / 舞監：Level 1~3 晉升面板 */}
               {isVideoTeam ? (
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '30px' }}>
                   {/* 雷達圖 (狀態面板) */}
@@ -367,20 +459,20 @@ export const AdminSkillTreeTeam: React.FC<AdminSkillTreeTeamProps> = ({ team }) 
                   </div>
 
                   {/* 技能配點 (分配面板) */}
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', justifyContent: 'center' }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', justifyContent: 'center' }}>
                     <div style={{ color: 'var(--text-secondary)', fontWeight: 600, fontSize: '1.1rem', marginBottom: '10px', borderBottom: '1px solid var(--bg-input-border)', paddingBottom: '10px' }}>
                       分配技能點數 (0-10)
                     </div>
-                    {Object.keys(editingSkills).map(skill => (
-                      <div key={skill} style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                    {VIDEO_SKILL_KEYS.map(key => (
+                      <div key={key} style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
                         <div style={{ width: '70px', color: 'var(--text-primary)', fontWeight: 700, fontSize: '1.1rem' }}>
-                          {skill}
+                          {VIDEO_SKILL_MAP[key]}
                         </div>
                         <input
                           type="range"
                           min="0" max="10"
-                          value={editingSkills[skill] || 0}
-                          onChange={(e) => handleSkillChange(skill, e.target.value)}
+                          value={editingVideoSkills[key] || 0}
+                          onChange={(e) => handleVideoSkillChange(key, e.target.value)}
                           className="gradient-slider"
                           style={{ flex: 1 }}
                         />
@@ -392,14 +484,172 @@ export const AdminSkillTreeTeam: React.FC<AdminSkillTreeTeamProps> = ({ team }) 
                           border: '1px solid var(--bg-input-border)',
                           boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.2)'
                         }}>
-                          {editingSkills[skill]}
+                          {editingVideoSkills[key] || 0}
                         </div>
                       </div>
                     ))}
                   </div>
                 </div>
+              ) : isAudioTeam ? (
+                /* 音控團隊：4 軸雷達圖 + 4 軸獨立 Level 滑桿與等級說明 */
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '28px' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '28px' }}>
+                    {/* 4 軸雷達圖 */}
+                    <div style={{ height: '360px', background: 'var(--bg-input)', borderRadius: '20px', padding: '16px', position: 'relative', display: 'flex', flexDirection: 'column' }}>
+                      <div style={{ color: 'var(--text-primary)', fontWeight: 700, fontSize: '1rem', letterSpacing: '0.5px', marginBottom: '8px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                        <span>音控 4 軸能力雷達</span>
+                        <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 500 }}>等級範圍: 0 ~ 3</span>
+                      </div>
+                      <div style={{ flex: 1, minHeight: 0 }}>
+                        <ResponsiveContainer width="100%" height="100%">
+                          <RadarChart cx="50%" cy="50%" outerRadius="65%" data={audioRadarData}>
+                            <PolarGrid stroke="var(--text-muted)" opacity={0.25} />
+                            <PolarAngleAxis
+                              dataKey="subject"
+                              tick={{ fill: 'var(--text-primary)', fontSize: 12, fontWeight: 600 }}
+                            />
+                            <PolarRadiusAxis
+                              angle={45}
+                              domain={[0, 3]}
+                              tickCount={4}
+                              tick={{ fill: 'var(--text-muted)', fontSize: 10 }}
+                              axisLine={false}
+                            />
+                            <Radar
+                              name="音控等級"
+                              dataKey="A"
+                              stroke="var(--icon-accent)"
+                              strokeWidth={2.5}
+                              fill="var(--icon-accent)"
+                              fillOpacity={0.35}
+                              isAnimationActive={true}
+                            />
+                          </RadarChart>
+                        </ResponsiveContainer>
+                      </div>
+                    </div>
+
+                    {/* 4 軸等級滑桿調整 */}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', justifyContent: 'center' }}>
+                      <div style={{ color: 'var(--text-secondary)', fontWeight: 600, fontSize: '1rem', borderBottom: '1px solid var(--bg-input-border)', paddingBottom: '8px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <span>設定各軸獨立等級</span>
+                        <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>點擊或滑動切換 Lv.0 ~ Lv.3</span>
+                      </div>
+
+                      {AUDIO_SKILL_AXES.map(axis => {
+                        const curLvl = editingAudioSkills[axis.key] || 0;
+                        const meta = AUDIO_LEVEL_META[curLvl] || AUDIO_LEVEL_META[0];
+
+                        return (
+                          <div
+                            key={axis.key}
+                            style={{
+                              padding: '12px 14px',
+                              borderRadius: '12px',
+                              background: 'var(--bg-input)',
+                              border: `1px solid ${curLvl > 0 ? `${meta.color}40` : 'var(--bg-input-border)'}`,
+                              display: 'flex',
+                              flexDirection: 'column',
+                              gap: '8px',
+                              transition: 'all 0.2s ease',
+                            }}
+                          >
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
+                              <div>
+                                <span style={{ fontWeight: 700, color: 'var(--text-primary)', fontSize: '0.95rem' }}>
+                                  {axis.label}
+                                </span>
+                                <span style={{ marginLeft: '8px', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                                  ({axis.sub})
+                                </span>
+                              </div>
+
+                              {/* 當前 Level 標章 */}
+                              <span style={{
+                                padding: '2px 10px',
+                                borderRadius: '10px',
+                                fontSize: '0.8rem',
+                                fontWeight: 800,
+                                color: meta.color,
+                                background: meta.bg,
+                                border: `1px solid ${meta.color}50`,
+                                whiteSpace: 'nowrap',
+                              }}>
+                                {meta.label}
+                              </span>
+                            </div>
+
+                            {/* 滑桿區 */}
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                              <input
+                                type="range"
+                                min="0"
+                                max="3"
+                                step="1"
+                                value={curLvl}
+                                onChange={(e) => handleAudioSkillChange(axis.key, e.target.value)}
+                                className="gradient-slider"
+                                style={{ flex: 1 }}
+                              />
+                              <div style={{
+                                width: '32px',
+                                height: '32px',
+                                borderRadius: '8px',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                fontWeight: 800,
+                                fontSize: '1rem',
+                                color: meta.color,
+                                background: 'rgba(0,0,0,0.2)',
+                                border: `1px solid ${meta.color}50`,
+                              }}>
+                                {curLvl}
+                              </div>
+                            </div>
+
+                            {/* 職能說明 */}
+                            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', lineHeight: '1.4' }}>
+                              {axis.desc}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* 底部：極簡 Level 含義對照表 */}
+                  <div style={{
+                    display: 'grid',
+                    gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
+                    gap: '12px',
+                    padding: '16px',
+                    borderRadius: '16px',
+                    background: 'var(--bg-input)',
+                    border: '1px solid var(--bg-input-border)',
+                  }}>
+                    {[
+                      { lvl: 0, title: 'Lv.0 未接觸', desc: '尚未受訓或未操作過該場地/模式' },
+                      { lvl: 1, title: 'Lv.1 實習助理', desc: '熟悉基礎開關機與接線，可擔任副手觀摩' },
+                      { lvl: 2, title: 'Lv.2 獨立主控', desc: '能獨立負責常態主日控台作業與即時除錯' },
+                      { lvl: 3, title: 'Lv.3 資深導師', desc: '主導大型特會成音、系統架構調試與培訓' },
+                    ].map(item => {
+                      const meta = AUDIO_LEVEL_META[item.lvl];
+                      return (
+                        <div key={item.lvl} style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                          <span style={{ fontSize: '0.85rem', fontWeight: 700, color: meta.color }}>
+                            {item.title}
+                          </span>
+                          <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)', lineHeight: '1.4' }}>
+                            {item.desc}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
               ) : (
-                /* 燈光、音控、舞監：Level 1 ~ 3 晉升里程碑面板 */
+                /* 燈光、舞監：Level 1 ~ 3 晉升里程碑面板 */
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
                   {/* 里程碑進度條 */}
                   <div style={{ position: 'relative', margin: '20px 0 10px' }}>
@@ -416,7 +666,7 @@ export const AdminSkillTreeTeam: React.FC<AdminSkillTreeTeamProps> = ({ team }) 
                       <div style={{
                         height: '100%',
                         width: editingLevel === 1 ? '0%' : editingLevel === 2 ? '50%' : '100%',
-                        background: 'linear-gradient(90deg, #cd7f32, #94a3b8, #f59e0b)',
+                        background: 'linear-gradient(90deg, #94a3b8, #38bdf8, #f59e0b)',
                         borderRadius: '3px',
                         transition: 'all 0.4s ease',
                       }} />
@@ -441,28 +691,31 @@ export const AdminSkillTreeTeam: React.FC<AdminSkillTreeTeamProps> = ({ team }) 
                             }}
                           >
                             <div style={{
-                              width: '50px',
-                              height: '50px',
-                              borderRadius: '50%',
+                              width: '46px',
+                              height: '46px',
+                              borderRadius: '14px',
                               background: isSelected
                                 ? def.color
                                 : isReached
-                                  ? `${def.color}40`
-                                  : 'var(--bg-input)',
-                              border: `3px solid ${isSelected ? '#ffffff' : isReached ? def.color : 'var(--bg-input-border)'}`,
+                                  ? 'var(--bg-input)'
+                                  : 'var(--bg-card)',
+                              border: `2px solid ${isSelected ? def.color : isReached ? def.color : 'var(--bg-input-border)'}`,
+                              color: isSelected ? '#ffffff' : isReached ? def.color : 'var(--text-muted)',
                               display: 'flex',
                               alignItems: 'center',
                               justifyContent: 'center',
-                              fontSize: '1.4rem',
-                              boxShadow: isSelected ? `0 0 20px ${def.color}80` : 'none',
+                              fontSize: '1rem',
+                              fontWeight: 800,
+                              letterSpacing: '0.5px',
+                              boxShadow: isSelected ? `0 0 16px ${def.color}80` : 'none',
                               transition: 'all 0.3s ease',
-                              transform: isSelected ? 'scale(1.15)' : 'scale(1)',
+                              transform: isSelected ? 'scale(1.1)' : 'scale(1)',
                             }}>
-                              {def.icon}
+                              {def.code}
                             </div>
                             <span style={{
                               marginTop: '10px',
-                              fontSize: '0.95rem',
+                              fontSize: '0.9rem',
                               fontWeight: isSelected ? 800 : 600,
                               color: isSelected ? def.color : 'var(--text-secondary)',
                             }}>
@@ -488,8 +741,8 @@ export const AdminSkillTreeTeam: React.FC<AdminSkillTreeTeamProps> = ({ team }) 
                             padding: '20px',
                             borderRadius: '16px',
                             background: isSelected ? def.bg : 'var(--bg-input)',
-                            border: `2px solid ${isSelected ? def.color : 'transparent'}`,
-                            boxShadow: isSelected ? `0 8px 24px ${def.color}30` : 'none',
+                            border: `1.5px solid ${isSelected ? def.color : 'var(--bg-card-border)'}`,
+                            boxShadow: isSelected ? `0 8px 24px ${def.color}25` : 'none',
                             cursor: 'pointer',
                             transition: 'all 0.3s ease',
                             display: 'flex',
@@ -498,35 +751,45 @@ export const AdminSkillTreeTeam: React.FC<AdminSkillTreeTeamProps> = ({ team }) 
                           }}
                         >
                           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                            <span style={{ fontSize: '1.4rem' }}>{def.icon}</span>
+                            <span style={{
+                              padding: '2px 8px',
+                              borderRadius: '6px',
+                              fontSize: '0.75rem',
+                              fontWeight: 800,
+                              color: def.color,
+                              background: 'var(--bg-input)',
+                              border: `1px solid ${def.color}40`,
+                              letterSpacing: '0.5px'
+                            }}>
+                              LEVEL 0{lvl}
+                            </span>
                             <span style={{
                               padding: '3px 10px',
                               borderRadius: '12px',
                               fontSize: '0.8rem',
                               fontWeight: 700,
                               color: def.color,
-                              background: 'rgba(0,0,0,0.3)',
+                              background: 'rgba(0,0,0,0.2)',
                               border: `1px solid ${def.color}50`,
                             }}>
                               {def.badge}
                             </span>
                           </div>
 
-                          <div>
-                            <h4 style={{ margin: '0 0 6px', color: 'var(--text-primary)', fontSize: '1.1rem' }}>
-                              {def.title}
-                            </h4>
-                            <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-secondary)', lineHeight: '1.5' }}>
-                              {def.desc}
-                            </p>
+                          <div style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--text-primary)' }}>
+                            {def.title}
                           </div>
 
-                          <div style={{ marginTop: 'auto', paddingTop: '10px', borderTop: '1px solid rgba(255,255,255,0.06)' }}>
-                            <ul style={{ margin: 0, paddingLeft: '18px', fontSize: '0.8rem', color: 'var(--text-muted)', lineHeight: '1.6' }}>
-                              {def.details.map((item, idx) => (
-                                <li key={idx}>{item}</li>
-                              ))}
-                            </ul>
+                          <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', lineHeight: '1.5', margin: 0 }}>
+                            {def.desc}
+                          </p>
+
+                          <div style={{ borderTop: '1px solid var(--bg-card-border)', paddingTop: '10px', marginTop: 'auto' }}>
+                            {def.details.map((detail, idx) => (
+                              <div key={idx} style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px' }}>
+                                <span style={{ color: def.color }}>•</span> {detail}
+                              </div>
+                            ))}
                           </div>
                         </div>
                       );
@@ -536,24 +799,13 @@ export const AdminSkillTreeTeam: React.FC<AdminSkillTreeTeamProps> = ({ team }) 
               )}
             </div>
           ) : (
-            <div className="animate-morph hide-on-mobile" style={{ height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)' }}>
-              <Shield size={64} style={{ opacity: 0.2, marginBottom: '20px' }} />
-              <h3 style={{ margin: 0, fontSize: '1.5rem', letterSpacing: '1px' }}>等待選擇義工</h3>
-              <p style={{ marginTop: '10px' }}>請從左側名單中點選一位義工以檢視狀態</p>
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', minHeight: '300px', color: 'var(--text-muted)' }}>
+              <Users size={48} style={{ marginBottom: '16px', opacity: 0.4 }} />
+              <p>請由左側點選義工以檢視或設定技能與等級</p>
             </div>
           )}
         </div>
       </div>
-
-      {/* Floating Save FAB */}
-      {hasChanges && (
-        <div className="save-fab-container">
-          <button className="animate-morph save-fab" onClick={handleSave} disabled={saving}>
-            {saving ? <Loader2 size={28} className="animate-spin" /> : <Save size={28} />}
-            <span className="save-fab-text">儲存變更</span>
-          </button>
-        </div>
-      )}
     </div>
   );
 };

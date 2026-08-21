@@ -1,7 +1,7 @@
 // =============================================================================
 // Firebase Firestore 服務層（義工排班系統核心資料庫）
 //
-// 提供與 googleSheets.ts 100% 相容的 API 簽名，全面轉移至 Firestore。
+// 遵循純英文資料結構儲存規範，並提供與前端中文介面對接的雙向轉換層。
 // 支援 Firestore 離線持久化快取、即時同步與高效讀寫。
 // =============================================================================
 
@@ -19,7 +19,14 @@ import {
   serverTimestamp,
 } from 'firebase/firestore';
 import { db } from './firebase';
-import { fetchCSVAsJson } from './fileUtils';
+import {
+  toTeamKey,
+  VIDEO_SKILL_KEYS,
+  REVERSE_VIDEO_SKILL_MAP,
+  AUDIO_SKILL_KEYS,
+  type VideoSkillKey,
+  type AudioSkillKey,
+} from './constants';
 
 // --- Types -------------------------------------------------------------------
 
@@ -48,17 +55,6 @@ const COLLECTIONS = {
   SCHEDULES: 'schedules',
 };
 
-// 技能欄位名稱對應字典
-const SKILL_COLUMN_MAP: Record<string, string> = {
-  '導播': 'D_Skill',
-  'AD': 'AD_Skill',
-  '平面': 'Photo_Skill',
-  'CAM1': 'Cam1_Skill',
-  'CAM2': 'Cam2_Skill',
-  'CAM3': 'Cam3_Skill',
-  'CAM4': 'Cam4_Skill',
-};
-
 /** 安全清理 Document ID（移除斜線等非法字元） */
 function sanitizeDocId(id: string): string {
   return id.replace(/[\/\s]/g, '_').trim();
@@ -81,30 +77,49 @@ export async function fetchVolunteers(): Promise<ApiResultWithData<SheetRow[]>> 
     const result: SheetRow[] = [];
     snap.forEach(d => {
       const data = d.data();
+      const vs = data.videoSkills || data.skills || {};
+      const as = data.audioSkills || {};
+
       const row: SheetRow = {
         'Name': data.name || d.id,
         'User_ID': data.lineId || '',
-        'User_Level': data.userLevel || data.role || 'user',
-        'Job_Title': Array.isArray(data.jobTitles) ? data.jobTitles.join(', ') : (data.jobTitle || ''),
-        'Skill_Role': Array.isArray(data.skillRoles) ? data.skillRoles.join(', ') : (data.skillRole || ''),
-        'Avatar': data.avatar || data.pictureUrl || '',
-        'D_Skill': String(data.skills?.['導播'] ?? data.D_Skill ?? 0),
-        'AD_Skill': String(data.skills?.['AD'] ?? data.AD_Skill ?? 0),
-        'Photo_Skill': String(data.skills?.['平面'] ?? data.Photo_Skill ?? 0),
-        'Cam1_Skill': String(data.skills?.['CAM1'] ?? data.Cam1_Skill ?? 0),
-        'Cam2_Skill': String(data.skills?.['CAM2'] ?? data.Cam2_Skill ?? 0),
-        'Cam3_Skill': String(data.skills?.['CAM3'] ?? data.Cam3_Skill ?? 0),
-        'Cam4_Skill': String(data.skills?.['CAM4'] ?? data.Cam4_Skill ?? 0),
+        'LINE_ID': data.lineDisplayName || '',
+        'User_Level': data.userLevel || 'user',
+        'Job_Title': Array.isArray(data.jobTitles) ? data.jobTitles.join(', ') : '',
+        'Skill_Role': Array.isArray(data.skillRoles) ? data.skillRoles.join(', ') : '',
+        'Avatar': data.pictureUrl || '',
+        'D_Skill': String(vs.director ?? vs['導播'] ?? 0),
+        'AD_Skill': String(vs.ad ?? vs['AD'] ?? 0),
+        'Photo_Skill': String(vs.photo ?? vs['平面'] ?? 0),
+        'Cam1_Skill': String(vs.cam1 ?? vs['CAM1'] ?? 0),
+        'Cam2_Skill': String(vs.cam2 ?? vs['CAM2'] ?? 0),
+        'Cam3_Skill': String(vs.cam3 ?? vs['CAM3'] ?? 0),
+        'Cam4_Skill': String(vs.cam4 ?? vs['CAM4'] ?? 0),
       };
 
-      // 保留 teamLevels 與自訂欄位
-      (row as any).teamLevels = data.teamLevels || {
-        '燈光團隊': 1, '音控團隊': 1, '舞監團隊': 1
+      // 附加原生結構物件
+      (row as any).name = data.name || d.id;
+      (row as any).userLevel = data.userLevel || 'user';
+      (row as any).jobTitles = data.jobTitles || [];
+      (row as any).skillRoles = data.skillRoles || [];
+      (row as any).pictureUrl = data.pictureUrl || '';
+      (row as any).videoSkills = {
+        director: vs.director ?? vs['導播'] ?? 0,
+        ad: vs.ad ?? vs['AD'] ?? 0,
+        photo: vs.photo ?? vs['平面'] ?? 0,
+        cam1: vs.cam1 ?? vs['CAM1'] ?? 0,
+        cam2: vs.cam2 ?? vs['CAM2'] ?? 0,
+        cam3: vs.cam3 ?? vs['CAM3'] ?? 0,
+        cam4: vs.cam4 ?? vs['CAM4'] ?? 0,
       };
-
-      if (data.raw) {
-        Object.assign(row, data.raw);
-      }
+      (row as any).lightLevel = data.lightLevel || 1;
+      (row as any).stageLevel = data.stageLevel || 1;
+      (row as any).audioSkills = {
+        ih_xj: as.ih_xj ?? as.IH_XJ ?? 0,
+        ih_sz: as.ih_sz ?? as.IH_SZ ?? 0,
+        ob_xj: as.ob_xj ?? as.OB_XJ ?? 0,
+        ob_sz: as.ob_sz ?? as.OB_SZ ?? 0,
+      };
 
       result.push(row);
     });
@@ -121,10 +136,13 @@ export async function addNewVolunteer(payload: {
   name: string;
   jobTitles: string[];
   userLevel?: string;
+  pictureUrl?: string;
   avatar?: string;
   lineId?: string;
-  teamLevels?: Record<string, number>;
-  skills?: Record<string, number>;
+  lightLevel?: number;
+  stageLevel?: number;
+  videoSkills?: Record<string, number>;
+  audioSkills?: Record<string, number>;
 }): Promise<ApiResult> {
   try {
     const name = payload.name.trim();
@@ -138,25 +156,30 @@ export async function addNewVolunteer(payload: {
       return { success: false, message: `名單中已存在名為「${name}」的成員` };
     }
 
-    const defaultSkills = payload.skills || {
-      '導播': 0, 'AD': 0, '平面': 0, 'CAM1': 0, 'CAM2': 0, 'CAM3': 0, 'CAM4': 0
+    const defaultVideoSkills = payload.videoSkills || {
+      director: 0, ad: 0, photo: 0, cam1: 0, cam2: 0, cam3: 0, cam4: 0
     };
-    const defaultTeamLevels = payload.teamLevels || {
-      '燈光團隊': 1, '音控團隊': 1, '舞監團隊': 1
+    const defaultAudioSkills = payload.audioSkills || {
+      ih_xj: 0, ih_sz: 0, ob_xj: 0, ob_sz: 0
     };
+
+    // 轉換 jobTitles 為英文
+    const cleanJobTitles = Array.from(new Set(
+      (payload.jobTitles || []).map(t => toTeamKey(t)).filter(Boolean)
+    ));
 
     await setDoc(docRef, {
       name: name,
       lineId: payload.lineId || '',
       lineDisplayName: '',
-      pictureUrl: payload.avatar || '',
-      avatar: payload.avatar || '',
+      pictureUrl: payload.pictureUrl || payload.avatar || '',
       userLevel: payload.userLevel || 'user',
-      role: payload.userLevel || 'user',
-      jobTitles: payload.jobTitles || [],
+      jobTitles: cleanJobTitles,
       skillRoles: [],
-      skills: defaultSkills,
-      teamLevels: defaultTeamLevels,
+      videoSkills: defaultVideoSkills,
+      lightLevel: payload.lightLevel || 1,
+      stageLevel: payload.stageLevel || 1,
+      audioSkills: defaultAudioSkills,
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
     });
@@ -168,34 +191,45 @@ export async function addNewVolunteer(payload: {
   }
 }
 
-/** 更新義工特定團隊的等級 (Level 1~3) */
-export async function updateVolunteerTeamLevel(payload: {
+/** 更新義工特定團隊的等級 (Level 1~3: lightLevel 或 stageLevel) */
+export async function updateVolunteerLevel(payload: {
   name: string;
-  team: string;
+  field: 'lightLevel' | 'stageLevel' | string;
   level: number;
 }): Promise<ApiResult> {
   try {
     const docId = sanitizeDocId(payload.name.trim());
     const docRef = doc(db, COLLECTIONS.VOLUNTEERS, docId);
     const levelNum = Math.max(1, Math.min(3, Number(payload.level) || 1));
+    
+    // 支援直接傳入 '燈光團隊' 或 'lightLevel'
+    let targetField = 'lightLevel';
+    if (payload.field === 'stageLevel' || payload.field === '舞監團隊' || payload.field === 'stage') {
+      targetField = 'stageLevel';
+    }
 
     await setDoc(
       docRef,
       {
-        teamLevels: {
-          [payload.team]: levelNum,
-        },
+        [targetField]: levelNum,
         updatedAt: serverTimestamp(),
       },
       { merge: true }
     );
 
-    return { success: true, message: `${payload.name} 的 ${payload.team} 等級已更新為 Level ${levelNum}！` };
+    const teamLabel = targetField === 'lightLevel' ? '燈光團隊' : '舞監團隊';
+    return { success: true, message: `${payload.name} 的 ${teamLabel} 等級已更新為 Level ${levelNum}！` };
   } catch (err: any) {
-    console.error('[updateVolunteerTeamLevel Error]:', err);
+    console.error('[updateVolunteerLevel Error]:', err);
     return { success: false, message: err?.message || '更新等級失敗' };
   }
 }
+
+/** 向後相容別名 */
+export const updateVolunteerTeamLevel = async (payload: { name: string; team: string; level: number }) => {
+  const field = (payload.team === '舞監團隊' || payload.team === 'stage') ? 'stageLevel' : 'lightLevel';
+  return updateVolunteerLevel({ name: payload.name, field, level: payload.level });
+};
 
 /** 註冊新義工（LINE 登入且尚未在名冊中時調用） */
 export async function registerNewVolunteer(payload: NewVolunteerPayload): Promise<ApiResult> {
@@ -218,17 +252,19 @@ export async function registerNewVolunteer(payload: NewVolunteerPayload): Promis
       return { success: true, message: '已找到同名義工，已自動綁定 LINE 資訊' };
     }
 
-    // 新增義工
+    // 新增義工（純淨英文結構）
     await setDoc(docRef, {
       name: name,
       lineId: payload.lineId || '',
       lineDisplayName: payload.lineName || '',
       pictureUrl: payload.pictureUrl || '',
       userLevel: 'user',
-      role: 'user',
       jobTitles: [],
       skillRoles: [],
-      skills: {},
+      videoSkills: { director: 0, ad: 0, photo: 0, cam1: 0, cam2: 0, cam3: 0, cam4: 0 },
+      lightLevel: 1,
+      stageLevel: 1,
+      audioSkills: { ih_xj: 0, ih_sz: 0, ob_xj: 0, ob_sz: 0 },
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
     });
@@ -257,10 +293,7 @@ export async function updateVolunteerLineId(payload: {
       updatedAt: serverTimestamp(),
     };
     if (payload.lineName) updateData.lineDisplayName = payload.lineName;
-    if (payload.pictureUrl) {
-      updateData.pictureUrl = payload.pictureUrl;
-      updateData.avatar = payload.pictureUrl;
-    }
+    if (payload.pictureUrl) updateData.pictureUrl = payload.pictureUrl;
 
     await setDoc(docRef, updateData, { merge: true });
     return { success: true, message: '已成功更新 LINE 資訊與大頭照' };
@@ -274,29 +307,35 @@ export async function updateVolunteerLineId(payload: {
 export async function updateUser(payload: {
   oldName: string;
   newName: string;
-  jobTitle: string;
+  jobTitles?: string[];
+  jobTitle?: string;
   userLevel: string;
-  avatar: string;
+  pictureUrl?: string;
+  avatar?: string;
 }): Promise<ApiResult> {
   try {
     const oldDocId = sanitizeDocId(payload.oldName.trim());
     const newName = payload.newName.trim();
     const newDocId = sanitizeDocId(newName);
 
-    const jobTitles = payload.jobTitle.split(',').map(s => s.trim()).filter(Boolean);
+    // 解析英文 jobTitles
+    let rawTitles: string[] = [];
+    if (payload.jobTitles && Array.isArray(payload.jobTitles)) {
+      rawTitles = payload.jobTitles;
+    } else if (payload.jobTitle) {
+      rawTitles = payload.jobTitle.split(',').map(s => s.trim()).filter(Boolean);
+    }
+    const cleanJobTitles = Array.from(new Set(rawTitles.map(t => toTeamKey(t)).filter(Boolean)));
+
     const updateData = {
       name: newName,
-      jobTitles: jobTitles,
-      jobTitle: payload.jobTitle,
+      jobTitles: cleanJobTitles,
       userLevel: payload.userLevel,
-      role: payload.userLevel,
-      avatar: payload.avatar,
-      pictureUrl: payload.avatar,
+      pictureUrl: payload.pictureUrl || payload.avatar || '',
       updatedAt: serverTimestamp(),
     };
 
     if (oldDocId === newDocId) {
-      // 原義工更動資料
       const docRef = doc(db, COLLECTIONS.VOLUNTEERS, oldDocId);
       await setDoc(docRef, updateData, { merge: true });
     } else {
@@ -317,39 +356,80 @@ export async function updateUser(payload: {
   }
 }
 
-/** 更新義工技能評分 */
-export async function updateVolunteerSkills(payload: {
+/** 更新影視義工 7 軸技能評分 (videoSkills) */
+export async function updateVolunteerVideoSkills(payload: {
   name: string;
-  skills: Record<string, number>;
+  skills?: Record<string, number>;
+  videoSkills?: Record<string, number>;
 }): Promise<ApiResult> {
   try {
     const docId = sanitizeDocId(payload.name.trim());
     const docRef = doc(db, COLLECTIONS.VOLUNTEERS, docId);
 
-    const cleanSkills: Record<string, number> = {};
-    const columnSkills: Record<string, number> = {};
+    const inputSkills = payload.videoSkills || payload.skills || {};
+    const cleanVideoSkills: Record<string, number> = {
+      director: 0, ad: 0, photo: 0, cam1: 0, cam2: 0, cam3: 0, cam4: 0
+    };
 
-    Object.entries(payload.skills).forEach(([skillName, val]) => {
-      const numVal = Math.max(0, Math.min(10, Number(val) || 0));
-      cleanSkills[skillName] = numVal;
-      const colName = SKILL_COLUMN_MAP[skillName] || `${skillName}_Skill`;
-      columnSkills[colName] = numVal;
+    Object.entries(inputSkills).forEach(([key, val]) => {
+      const enKey = (REVERSE_VIDEO_SKILL_MAP[key] || key.toLowerCase()) as VideoSkillKey;
+      if (VIDEO_SKILL_KEYS.includes(enKey)) {
+        cleanVideoSkills[enKey] = Math.max(0, Math.min(10, Number(val) || 0));
+      }
     });
 
     await setDoc(
       docRef,
       {
-        skills: cleanSkills,
-        ...columnSkills,
+        videoSkills: cleanVideoSkills,
         updatedAt: serverTimestamp(),
       },
       { merge: true },
     );
 
-    return { success: true, message: '技能更新成功' };
+    return { success: true, message: '影視技能更新成功！' };
   } catch (err: any) {
-    console.error('[updateVolunteerSkills Error]:', err);
+    console.error('[updateVolunteerVideoSkills Error]:', err);
     return { success: false, message: err?.message || '更新技能失敗' };
+  }
+}
+
+/** 向後相容別名 */
+export const updateVolunteerSkills = updateVolunteerVideoSkills;
+
+/** 更新音控義工 4 軸獨立等級 (Level 0~3) */
+export async function updateVolunteerAudioSkills(payload: {
+  name: string;
+  audioSkills: Record<string, number>;
+}): Promise<ApiResult> {
+  try {
+    const docId = sanitizeDocId(payload.name.trim());
+    const docRef = doc(db, COLLECTIONS.VOLUNTEERS, docId);
+
+    const cleanAudioSkills: Record<string, number> = {
+      ih_xj: 0, ih_sz: 0, ob_xj: 0, ob_sz: 0
+    };
+    
+    Object.entries(payload.audioSkills || {}).forEach(([k, val]) => {
+      const enKey = k.toLowerCase() as AudioSkillKey;
+      if (AUDIO_SKILL_KEYS.includes(enKey)) {
+        cleanAudioSkills[enKey] = Math.max(0, Math.min(3, Number(val) || 0));
+      }
+    });
+
+    await setDoc(
+      docRef,
+      {
+        audioSkills: cleanAudioSkills,
+        updatedAt: serverTimestamp(),
+      },
+      { merge: true },
+    );
+
+    return { success: true, message: `${payload.name} 的音控 4 軸等級已更新！` };
+  } catch (err: any) {
+    console.error('[updateVolunteerAudioSkills Error]:', err);
+    return { success: false, message: err?.message || '更新音控等級失敗' };
   }
 }
 
@@ -363,14 +443,14 @@ export async function submitVolunteerForm(payload: {
   team?: string;
 }): Promise<ApiResult> {
   try {
-    const team = payload.team || '影視團隊';
+    const enTeam = toTeamKey(payload.team || 'video');
     const timestamp = payload.data['時間戳記'] || new Date().toISOString();
     const name = payload.data['姓名'] || '未知';
-    const docId = `${sanitizeDocId(team)}_${sanitizeDocId(name)}_${new Date(timestamp).getTime() || Date.now()}`;
+    const docId = `${sanitizeDocId(enTeam)}_${sanitizeDocId(name)}_${new Date(timestamp).getTime() || Date.now()}`;
 
     const docRef = doc(db, COLLECTIONS.FORM_RESPONSES, docId);
     await setDoc(docRef, {
-      team,
+      team: enTeam,
       name,
       timestamp,
       data: payload.data, // 包含 [9/7], [9/14] 等動態日期地點
@@ -380,7 +460,6 @@ export async function submitVolunteerForm(payload: {
     return { success: true, message: '表單已成功提交' };
   } catch (err: any) {
     console.error('[submitVolunteerForm Error]:', err);
-    // 若出錯仍可嘗試保底回傳成功訊息，Firestore SDK 仍會在背景嘗試離線同步
     return { success: true, message: '表單已暫存於本地快取，連線時將自動送出' };
   }
 }
@@ -389,8 +468,8 @@ export async function submitVolunteerForm(payload: {
 export async function fetchFormResponsesFromCloud(team?: string): Promise<ApiResultWithData<Record<string, string>[]>> {
   try {
     const colRef = collection(db, COLLECTIONS.FORM_RESPONSES);
-    const targetTeam = team || '影視團隊';
-    const q = query(colRef, where('team', '==', targetTeam));
+    const enTeam = toTeamKey(team || 'video');
+    const q = query(colRef, where('team', '==', enTeam));
     const snap = await getDocs(q);
 
     if (snap.empty) {
@@ -416,8 +495,8 @@ export async function fetchFormResponsesFromCloud(team?: string): Promise<ApiRes
 export async function clearFormResponsesInCloud(team?: string): Promise<ApiResult> {
   try {
     const colRef = collection(db, COLLECTIONS.FORM_RESPONSES);
-    const targetTeam = team || '影視團隊';
-    const q = query(colRef, where('team', '==', targetTeam));
+    const enTeam = toTeamKey(team || 'video');
+    const q = query(colRef, where('team', '==', enTeam));
     const snap = await getDocs(q);
 
     if (snap.empty) {
@@ -441,12 +520,13 @@ export async function clearFormResponsesInCloud(team?: string): Promise<ApiResul
 export async function deleteFormResponseInCloud(team: string, timestamp: string): Promise<ApiResult> {
   try {
     const colRef = collection(db, COLLECTIONS.FORM_RESPONSES);
-    const q = query(colRef, where('team', '==', team), where('timestamp', '==', timestamp));
+    const enTeam = toTeamKey(team);
+    const q = query(colRef, where('team', '==', enTeam), where('timestamp', '==', timestamp));
     const snap = await getDocs(q);
 
     if (snap.empty) {
       // 嘗試從內層 data['時間戳記'] 查詢
-      const allTeamQ = query(colRef, where('team', '==', team));
+      const allTeamQ = query(colRef, where('team', '==', enTeam));
       const allSnap = await getDocs(allTeamQ);
       const matched = allSnap.docs.filter(d => d.data().data?.['時間戳記'] === timestamp);
 
@@ -472,10 +552,30 @@ export async function deleteFormResponseInCloud(team: string, timestamp: string)
 }
 
 // =============================================================================
-// 3. 週期排班表 (Schedules)
+// 3. 週期排班表 (Schedules & Google Sheets 備份)
 // =============================================================================
 
-/** 解析 Firestore 班表文件中的 2D 矩陣資料（相容 dataJson 字串與舊格式） */
+const APPS_SCRIPT_URL = import.meta.env.VITE_APPS_SCRIPT_URL || '';
+
+/** 呼叫舊版 Apps Script API 用於 Google Sheets 雙向備份 */
+async function fetchFromOldAppsScript<T>(action: string, payload: Record<string, unknown> = {}): Promise<T | null> {
+  if (!APPS_SCRIPT_URL) return null;
+  try {
+    const res = await fetch(APPS_SCRIPT_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain' },
+      body: JSON.stringify({ action, ...payload }),
+    });
+    if (!res.ok) return null;
+    const text = await res.text();
+    return JSON.parse(text) as T;
+  } catch (err) {
+    console.warn(`[Apps Script Backup] 無法連線至 "${action}":`, err);
+    return null;
+  }
+}
+
+/** 解析 Firestore 班表文件中的 2D 矩陣資料 */
 function parseScheduleDataFromDoc(docData: any): string[][] | null {
   if (!docData) return null;
   if (typeof docData.dataJson === 'string') {
@@ -553,7 +653,7 @@ export async function syncSchedule(payload: {
 /** 
  * 從雲端讀取指定週期的排班資料（支援雙向同步）：
  * 1. 優先從 Firestore 讀取。
- * 2. 若 Firestore 尚無資料（或指定 forceSyncFromSheets），自動從 Google Sheets 讀取並雙向回寫至 Firestore。
+ * 2. 若 Firestore 尚無資料，自動從 Google Sheets 讀取並雙向回寫至 Firestore。
  */
 export async function fetchScheduleFromCloud(
   sheetName: string,
@@ -582,7 +682,6 @@ export async function fetchScheduleFromCloud(
     if (APPS_SCRIPT_URL) {
       const sheetRes = await fetchFromOldAppsScript<any>('fetchSchedule', { sheetName });
       if (sheetRes && sheetRes.success && sheetRes.data && Array.isArray(sheetRes.data) && sheetRes.data.length > 0) {
-        // 雙向同步：將 Google Sheets 的內容自動寫入 Firestore（序列化為 dataJson）
         await setDoc(docRef, {
           sheetName,
           dataJson: JSON.stringify(sheetRes.data),
@@ -611,206 +710,5 @@ export async function fetchScheduleFromCloud(
 // =============================================================================
 
 export async function syncOfflineForms(): Promise<void> {
-  // Firestore 離線持久化自動在後台處理同步，此函數保留以相容舊版呼叫點
   console.log('[Firebase] 離線快取與同步已由 Firestore SDK 自動管理');
-}
-
-// =============================================================================
-// 5. 資料一鍵遷移工具 (從現有 Google Sheets 匯入至 Firebase Firestore)
-// =============================================================================
-
-const SKILL_TREE_CSV_URL = 'https://docs.google.com/spreadsheets/d/1L3W6RwrE6gzi_znqNXBww9WVRvi2NVuhDj3-hSYmTZI/export?format=csv';
-const APPS_SCRIPT_URL = import.meta.env.VITE_APPS_SCRIPT_URL || '';
-
-/** 呼叫舊版 Apps Script API 用於資料遷移 */
-async function fetchFromOldAppsScript<T>(action: string, payload: Record<string, unknown> = {}): Promise<T | null> {
-  if (!APPS_SCRIPT_URL) return null;
-  try {
-    const res = await fetch(APPS_SCRIPT_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'text/plain' },
-      body: JSON.stringify({ action, ...payload }),
-    });
-    if (!res.ok) return null;
-    const text = await res.text();
-    return JSON.parse(text) as T;
-  } catch (err) {
-    console.warn(`[Migration] 無法從 Apps Script 讀取 "${action}":`, err);
-    return null;
-  }
-}
-
-/** 從 Google Sheets 一鍵搬遷所有資料（義工名冊、各團隊表單紀錄、排班表）至 Firestore */
-export async function migrateGoogleSheetsToFirebase(): Promise<{
-  success: boolean;
-  message: string;
-  counts: { volunteers: number; responses: number; schedules: number };
-}> {
-  try {
-    console.log('[Migration] 開始從 Google Sheets 匯入全部資料至 Firestore...');
-    let volCount = 0;
-    let respCount = 0;
-    let schedCount = 0;
-
-    // 1. 抓取義工名冊 CSV 匯入 Firestore
-    const csvVolunteers = await fetchCSVAsJson(SKILL_TREE_CSV_URL);
-
-    if (csvVolunteers && csvVolunteers.length > 0) {
-      const batch = writeBatch(db);
-
-      for (const row of csvVolunteers) {
-        const rawName = row['Name'] || row['姓名'];
-        const name = typeof rawName === 'string' ? rawName.trim() : (rawName ? String(rawName).trim() : '');
-        if (!name) continue;
-
-        const docId = sanitizeDocId(name);
-        const docRef = doc(db, COLLECTIONS.VOLUNTEERS, docId);
-
-        const jobTitles = String(row['Job_Title'] || '').split(',').map((r: string) => r.trim()).filter(Boolean);
-        const skillRoles = String(row['Skill_Role'] || row['職能'] || '').split(',').map((r: string) => r.trim()).filter(Boolean);
-
-        const skills: Record<string, number> = {
-          '導播': parseInt(row['D_Skill']) || parseInt(row['導播技能值']) || 0,
-          'AD': parseInt(row['AD_Skill']) || parseInt(row['AD技能值']) || 0,
-          '平面': parseInt(row['Photo_Skill']) || parseInt(row['Photo技能值']) || parseInt(row['平面技能值']) || 0,
-          'CAM1': parseInt(row['Cam1_Skill']) || parseInt(row['Cam1技能值']) || 0,
-          'CAM2': parseInt(row['Cam2_Skill']) || parseInt(row['Cam2技能值']) || 0,
-          'CAM3': parseInt(row['Cam3_Skill']) || parseInt(row['Cam3技能值']) || 0,
-          'CAM4': parseInt(row['Cam4_Skill']) || parseInt(row['Cam4技能值']) || 0,
-        };
-
-        batch.set(
-          docRef,
-          {
-            name: name,
-            lineId: row['User_ID'] || row['lineId'] || '',
-            userLevel: row['User_Level'] || 'user',
-            role: row['User_Level'] || 'user',
-            jobTitles: jobTitles,
-            skillRoles: skillRoles,
-            avatar: row['Avatar'] || '',
-            pictureUrl: row['Avatar'] || '',
-            skills: skills,
-            D_Skill: skills['導播'],
-            AD_Skill: skills['AD'],
-            Photo_Skill: skills['平面'],
-            Cam1_Skill: skills['CAM1'],
-            Cam2_Skill: skills['CAM2'],
-            Cam3_Skill: skills['CAM3'],
-            Cam4_Skill: skills['CAM4'],
-            raw: row,
-            updatedAt: serverTimestamp(),
-          },
-          { merge: true },
-        );
-
-        volCount++;
-      }
-
-      await batch.commit();
-      console.log(`[Migration] 義工名冊匯入完成：${volCount} 筆`);
-    }
-
-    // 2. 搬遷所有團隊的意願表單 RAW 回覆紀錄
-    const teams = ['影視團隊', '燈光團隊', '音控團隊', '舞監團隊'];
-    for (const team of teams) {
-      const res = await fetchFromOldAppsScript<any>('fetchFormResponses', { team });
-      if (res && res.success && Array.isArray(res.data) && res.data.length > 0) {
-        const batch = writeBatch(db);
-        for (const item of res.data) {
-          const timestamp = item['時間戳記'] || new Date().toISOString();
-          const name = item['姓名'] || '未知';
-          const docId = `${sanitizeDocId(team)}_${sanitizeDocId(name)}_${new Date(timestamp).getTime() || Date.now()}`;
-          const docRef = doc(db, COLLECTIONS.FORM_RESPONSES, docId);
-
-          batch.set(docRef, {
-            team,
-            name,
-            timestamp,
-            data: item,
-            createdAt: serverTimestamp(),
-          }, { merge: true });
-
-          respCount++;
-        }
-        await batch.commit();
-        console.log(`[Migration] ${team} 表單回覆匯入完成：${res.data.length} 筆`);
-      }
-    }
-
-    // 3. 搬遷所有歷史與當期排班表 (包含過去數年各月份/雙月)
-    const importedSheetNames = new Set<string>();
-
-    // 3.1 嘗試從 Apps Script 一次性抓取所有工作表
-    const allSchedRes = await fetchFromOldAppsScript<any>('fetchAllSchedules');
-    if (allSchedRes && allSchedRes.success && Array.isArray(allSchedRes.data)) {
-      for (const item of allSchedRes.data) {
-        if (item.sheetName && Array.isArray(item.data) && item.data.length > 0) {
-          const sName = String(item.sheetName).trim();
-          const docId = sanitizeDocId(sName);
-          const docRef = doc(db, COLLECTIONS.SCHEDULES, docId);
-
-          await setDoc(docRef, {
-            sheetName: sName,
-            dataJson: JSON.stringify(item.data),
-            updatedAt: serverTimestamp(),
-          }, { merge: true });
-
-          importedSheetNames.add(sName);
-          schedCount++;
-          console.log(`[Migration] 排班表 [${sName}] 匯入完成！`);
-        }
-      }
-    }
-
-    // 3.2 補漏掃描：若有舊版 Apps Script 尚未更新 handleFetchAllSchedules，逐一掃描 2024~2027 各週期
-    const yearsToScan = [2024, 2025, 2026, 2027];
-    const cyclesToScan = [[1, 2], [3, 4], [5, 6], [7, 8], [9, 10], [11, 12]];
-
-    for (const yr of yearsToScan) {
-      for (const c of cyclesToScan) {
-        const potentialNames = [
-          `${yr}年 ${c[0]}-${c[1]}月排班表`,
-          `${yr}年${c[0]}-${c[1]}月排班表`,
-          `${yr}年 ${c[0]}~${c[1]}月排班表`,
-          `${yr}年${c[0]}~${c[1]}月排班表`,
-        ];
-
-        for (const sheetName of potentialNames) {
-          if (importedSheetNames.has(sheetName)) continue;
-
-          const res = await fetchFromOldAppsScript<any>('fetchSchedule', { sheetName });
-          if (res && res.success && res.data && Array.isArray(res.data) && res.data.length > 0) {
-            const docId = sanitizeDocId(sheetName.trim());
-            const docRef = doc(db, COLLECTIONS.SCHEDULES, docId);
-
-            await setDoc(docRef, {
-              sheetName,
-              dataJson: JSON.stringify(res.data),
-              updatedAt: serverTimestamp(),
-            }, { merge: true });
-
-            importedSheetNames.add(sheetName);
-            schedCount++;
-            console.log(`[Migration] 排班表 [${sheetName}] 匯入完成！`);
-            break;
-          }
-        }
-      }
-    }
-
-    console.log(`[Migration] 全部資料搬遷完成！義工: ${volCount}, 表單: ${respCount}, 班表: ${schedCount}`);
-    return {
-      success: true,
-      message: `全站資料搬遷完成！\n已匯入：\n• 義工名冊：${volCount} 位\n• 各團隊表單回覆：${respCount} 筆\n• 歷史與當期排班表：${schedCount} 份`,
-      counts: { volunteers: volCount, responses: respCount, schedules: schedCount },
-    };
-  } catch (err: any) {
-    console.error('[Migration Error]:', err);
-    return {
-      success: false,
-      message: err?.message || '資料遷移過程中發生錯誤',
-      counts: { volunteers: 0, responses: 0, schedules: 0 },
-    };
-  }
 }

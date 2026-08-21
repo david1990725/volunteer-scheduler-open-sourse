@@ -1,0 +1,2644 @@
+{
+  "volunteers": {
+    "以理": {
+      "user_id": null,
+      "姓名": "以理",
+      "大頭照": null,
+      "teamLevels": {
+        "燈光團隊": 2
+      },
+      "Photo_Skill": 0,
+      "skillRoles": [
+        "宣教燈光"
+      ],
+      "Cam1_Skill": 0,
+      "raw": {
+        "Cam4_Skill": "",
+        "User_ID": "",
+        "User_Level": "user",
+        "Skill_Role": "宣教燈光",
+        "Cam3_Skill": "",
+        "Name": "以理",
+        "Photo_Skill": "",
+        "Cam1_Skill": "",
+        "D_Skill": "",
+        "Job_Title": "燈光團隊",
+        "Cam2_Skill": "",
+        "Avatar": "",
+        "AD_Skill": ""
+      },
+      "職能": [
+        "燈控"
+      ],
+      "updatedAt": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1787055062,
+        "nanoseconds": 749000000
+      },
+      "role": "user",
+      "Cam4_Skill": 0,
+      "pictureUrl": "",
+      "name": "以理",
+      "Cam3_Skill": 0,
+      "userLevel": "user",
+      "jobTitles": [
+        "燈光團隊"
+      ],
+      "LINE_ID": "",
+      "avatar": "",
+      "lineId": "",
+      "Cam2_Skill": 0,
+      "skills": {
+        "導播": 0,
+        "CAM3": 0,
+        "CAM1": 0,
+        "AD": 0,
+        "CAM4": 0,
+        "平面": 0,
+        "CAM2": 0
+      },
+      "AD_Skill": 0,
+      "D_Skill": 0,
+      "技能值": {
+        "Photo": null,
+        "Cam4": null,
+        "AD": null,
+        "Cam3": null,
+        "導播": null,
+        "Cam1": null,
+        "Cam2": null
+      }
+    },
+    "伍皇誠": {
+      "raw": {
+        "AD_Skill": "",
+        "Avatar": "",
+        "Cam2_Skill": "",
+        "Cam1_Skill": "",
+        "User_ID": "",
+        "Cam3_Skill": "",
+        "Name": "伍皇誠",
+        "Skill_Role": "山莊燈光, 宣教燈光, 山莊IN HOUSE, 宣教IN HOUSE",
+        "User_Level": "user",
+        "D_Skill": "",
+        "Job_Title": "燈光團隊, 音控團隊",
+        "Photo_Skill": "",
+        "Cam4_Skill": ""
+      },
+      "skillRoles": [
+        "山莊燈光",
+        "宣教燈光",
+        "山莊IN HOUSE",
+        "宣教IN HOUSE"
+      ],
+      "Cam1_Skill": 0,
+      "jobTitles": [
+        "燈光團隊",
+        "音控團隊"
+      ],
+      "role": "user",
+      "AD_Skill": 0,
+      "updatedAt": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1787283883,
+        "nanoseconds": 922000000
+      },
+      "Cam2_Skill": 0,
+      "Photo_Skill": 0,
+      "audioSkills": {
+        "OB_XJ": 0,
+        "IH_XJ": 2,
+        "IH_SZ": 2,
+        "OB_SZ": 0
+      },
+      "name": "伍皇誠",
+      "pictureUrl": "",
+      "Cam4_Skill": 0,
+      "avatar": "",
+      "lineId": "",
+      "skills": {
+        "AD": 0,
+        "平面": 0,
+        "CAM1": 0,
+        "CAM3": 0,
+        "CAM4": 0,
+        "導播": 0,
+        "CAM2": 0
+      },
+      "userLevel": "user",
+      "Cam3_Skill": 0,
+      "D_Skill": 0,
+      "teamLevels": {
+        "音控團隊": 2,
+        "燈光團隊": 3
+      }
+    },
+    "何世峰": {
+      "raw": {
+        "Skill_Role": "Cam2, Cam1, Cam3, Cam4, AD",
+        "D_Skill": 0,
+        "Cam3_Skill": 5,
+        "Cam4_Skill": 5,
+        "Job_Title": "影視團隊",
+        "Photo_Skill": 0,
+        "User_Level": "user",
+        "Avatar": "",
+        "Name": "何世峰",
+        "User_ID": "",
+        "Cam2_Skill": 5,
+        "Cam1_Skill": 5,
+        "AD_Skill": 5
+      },
+      "Cam3_Skill": 5,
+      "jobTitles": [
+        "影視團隊"
+      ],
+      "role": "user",
+      "職能": [
+        "Cam2",
+        "Cam1",
+        "Cam3",
+        "Cam4",
+        "AD"
+      ],
+      "skills": {
+        "CAM4": 5,
+        "CAM3": 5,
+        "CAM1": 5,
+        "平面": 0,
+        "AD": 5,
+        "CAM2": 5,
+        "導播": 0
+      },
+      "技能值": {
+        "Cam2": 5,
+        "Cam1": 5,
+        "AD": 5,
+        "Cam4": 5,
+        "導播": 0,
+        "Cam3": 5,
+        "Photo": 0
+      },
+      "avatar": "",
+      "lineId": "",
+      "user_id": null,
+      "Photo_Skill": 0,
+      "pictureUrl": "",
+      "Cam4_Skill": 5,
+      "updatedAt": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1786699299,
+        "nanoseconds": 966000000
+      },
+      "Cam2_Skill": 5,
+      "D_Skill": 0,
+      "姓名": "何世峰",
+      "AD_Skill": 5,
+      "Cam1_Skill": 5,
+      "skillRoles": [
+        "Cam2",
+        "Cam1",
+        "Cam3",
+        "Cam4",
+        "AD"
+      ],
+      "LINE_ID": "Hank Hur IBO",
+      "大頭照": null,
+      "name": "何世峰",
+      "userLevel": "user"
+    },
+    "劉員杰": {
+      "role": "user",
+      "updatedAt": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1787283896,
+        "nanoseconds": 173000000
+      },
+      "skillRoles": [
+        "山莊IN HOUSE",
+        "宣教IN HOUSE"
+      ],
+      "Cam1_Skill": 0,
+      "jobTitles": [
+        "音控團隊"
+      ],
+      "Cam2_Skill": 0,
+      "AD_Skill": 0,
+      "Cam4_Skill": 0,
+      "pictureUrl": "",
+      "skills": {
+        "平面": 0,
+        "CAM4": 0,
+        "CAM3": 0,
+        "CAM1": 0,
+        "AD": 0,
+        "導播": 0,
+        "CAM2": 0
+      },
+      "userLevel": "user",
+      "avatar": "",
+      "lineId": "",
+      "raw": {
+        "User_Level": "user",
+        "Name": "劉員杰",
+        "Cam4_Skill": "",
+        "Photo_Skill": "",
+        "D_Skill": "",
+        "Cam3_Skill": "",
+        "Skill_Role": "山莊IN HOUSE, 宣教IN HOUSE",
+        "Cam1_Skill": "",
+        "Avatar": "",
+        "Job_Title": "音控團隊",
+        "AD_Skill": "",
+        "Cam2_Skill": "",
+        "User_ID": ""
+      },
+      "audioSkills": {
+        "OB_XJ": 2,
+        "IH_XJ": 3,
+        "IH_SZ": 3,
+        "OB_SZ": 2
+      },
+      "D_Skill": 0,
+      "teamLevels": {
+        "音控團隊": 3
+      },
+      "Photo_Skill": 0,
+      "name": "劉員杰",
+      "Cam3_Skill": 0
+    },
+    "吳奕祥": {
+      "skillRoles": [
+        "Cam2",
+        "Cam1",
+        "Cam3",
+        "Cam4",
+        "AD"
+      ],
+      "Cam1_Skill": 6,
+      "LINE_ID": "Ivy",
+      "userLevel": "user",
+      "lineId": "",
+      "avatar": "",
+      "大頭照": null,
+      "skills": {
+        "CAM4": 4,
+        "CAM1": 6,
+        "CAM3": 4,
+        "導播": 0,
+        "CAM2": 6,
+        "平面": 0,
+        "AD": 6
+      },
+      "Cam2_Skill": 6,
+      "職能": [
+        "Cam2",
+        "Cam1",
+        "Cam3",
+        "Cam4",
+        "AD"
+      ],
+      "D_Skill": 0,
+      "role": "user",
+      "AD_Skill": 6,
+      "name": "吳奕祥",
+      "user_id": null,
+      "技能值": {
+        "AD": 6,
+        "Cam2": 6,
+        "Cam1": 6,
+        "導播": 0,
+        "Cam4": 4,
+        "Cam3": 4,
+        "Photo": 0
+      },
+      "updatedAt": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1786699299,
+        "nanoseconds": 966000000
+      },
+      "pictureUrl": "",
+      "Cam4_Skill": 4,
+      "Cam3_Skill": 4,
+      "jobTitles": [
+        "影視團隊"
+      ],
+      "姓名": "吳奕祥",
+      "raw": {
+        "User_ID": "",
+        "Cam4_Skill": 4,
+        "Photo_Skill": 0,
+        "User_Level": "user",
+        "Skill_Role": "Cam2, Cam1, Cam3, Cam4, AD",
+        "Job_Title": "影視團隊",
+        "Cam3_Skill": 4,
+        "AD_Skill": 6,
+        "Cam1_Skill": 6,
+        "D_Skill": 0,
+        "Avatar": "",
+        "Name": "吳奕祥",
+        "Cam2_Skill": 6
+      },
+      "Photo_Skill": 0
+    },
+    "吳翊榮": {
+      "raw": {
+        "User_Level": "user",
+        "Name": "吳翊榮",
+        "Cam4_Skill": 9,
+        "Cam3_Skill": 9,
+        "Skill_Role": "Cam2, Cam1, Cam3, Cam4, AD, 山莊導播",
+        "User_ID": "U0fb5e97ff8c1a7b667f779dd25c9563f",
+        "Cam1_Skill": 9,
+        "AD_Skill": 9,
+        "Avatar": "https://profile.line-scdn.net/0hqlzsnMsRLkNXCjwecPNQPCdaLSl0e3dRLG5icjVdInNrPm1Gf2piJTACJHBtaW0QfGk1dTZeIntbGVklSVzSd1A6c3JrMmERf2VopQ",
+        "Cam2_Skill": 9,
+        "D_Skill": 8,
+        "Photo_Skill": 0,
+        "Job_Title": "影視團隊"
+      },
+      "Cam1_Skill": 9,
+      "職能": [
+        "Cam2",
+        "Cam1",
+        "Cam3",
+        "Cam4",
+        "AD",
+        "山莊導播"
+      ],
+      "skillRoles": [
+        "Cam2",
+        "Cam1",
+        "Cam3",
+        "Cam4",
+        "AD",
+        "山莊導播"
+      ],
+      "updatedAt": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1786699299,
+        "nanoseconds": 966000000
+      },
+      "技能值": {
+        "AD": 9,
+        "導播": 8,
+        "Photo": 0,
+        "Cam2": 9,
+        "Cam1": 9,
+        "Cam3": 9,
+        "Cam4": 9
+      },
+      "Cam2_Skill": 9,
+      "skills": {
+        "CAM4": 9,
+        "CAM3": 9,
+        "CAM1": 9,
+        "導播": 8,
+        "平面": 0,
+        "CAM2": 9,
+        "AD": 9
+      },
+      "Photo_Skill": 0,
+      "name": "吳翊榮",
+      "jobTitles": [
+        "影視團隊"
+      ],
+      "avatar": "https://profile.line-scdn.net/0hqlzsnMsRLkNXCjwecPNQPCdaLSl0e3dRLG5icjVdInNrPm1Gf2piJTACJHBtaW0QfGk1dTZeIntbGVklSVzSd1A6c3JrMmERf2VopQ",
+      "user_id": null,
+      "lineId": "U0fb5e97ff8c1a7b667f779dd25c9563f",
+      "姓名": "吳翊榮",
+      "大頭照": null,
+      "role": "user",
+      "userLevel": "user",
+      "Cam4_Skill": 9,
+      "pictureUrl": "https://profile.line-scdn.net/0hqlzsnMsRLkNXCjwecPNQPCdaLSl0e3dRLG5icjVdInNrPm1Gf2piJTACJHBtaW0QfGk1dTZeIntbGVklSVzSd1A6c3JrMmERf2VopQ",
+      "D_Skill": 8,
+      "AD_Skill": 9,
+      "Cam3_Skill": 9,
+      "LINE_ID": "吳翊榮"
+    },
+    "夏翊剛": {
+      "pictureUrl": "",
+      "Cam4_Skill": 8,
+      "姓名": "夏翊剛",
+      "大頭照": null,
+      "raw": {
+        "Cam2_Skill": 7,
+        "D_Skill": 4,
+        "Cam1_Skill": 7,
+        "Name": "夏翊剛",
+        "User_ID": "",
+        "Cam3_Skill": 8,
+        "AD_Skill": 7,
+        "Skill_Role": "Cam2, Cam1, Cam3, Cam4, AD, 信息版, 宣教導播",
+        "User_Level": "admin",
+        "Avatar": "",
+        "Photo_Skill": 0,
+        "Cam4_Skill": 8,
+        "Job_Title": "影視團隊"
+      },
+      "userLevel": "admin",
+      "Cam3_Skill": 8,
+      "user_id": null,
+      "role": "admin",
+      "Photo_Skill": 0,
+      "name": "夏翊剛",
+      "Cam1_Skill": 7,
+      "D_Skill": 4,
+      "skillRoles": [
+        "Cam2",
+        "Cam1",
+        "Cam3",
+        "Cam4",
+        "AD",
+        "信息版",
+        "宣教導播"
+      ],
+      "職能": [
+        "Cam2",
+        "Cam1",
+        "Cam3",
+        "Cam4",
+        "AD",
+        "信息版",
+        "宣教導播"
+      ],
+      "jobTitles": [
+        "影視團隊"
+      ],
+      "lineId": "",
+      "avatar": "",
+      "updatedAt": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1786699299,
+        "nanoseconds": 966000000
+      },
+      "skills": {
+        "CAM2": 7,
+        "平面": 0,
+        "AD": 7,
+        "CAM4": 8,
+        "導播": 4,
+        "CAM1": 7,
+        "CAM3": 8
+      },
+      "技能值": {
+        "AD": 7,
+        "Cam2": 7,
+        "Cam1": 7,
+        "導播": 4,
+        "Cam3": 8,
+        "Photo": 0,
+        "Cam4": 8
+      },
+      "Cam2_Skill": 7,
+      "LINE_ID": "夏翊剛",
+      "AD_Skill": 7
+    },
+    "宜雯": {
+      "lineId": "",
+      "Cam4_Skill": 0,
+      "pictureUrl": "",
+      "avatar": "",
+      "skills": {
+        "平面": 0,
+        "CAM2": 0,
+        "AD": 0,
+        "導播": 0,
+        "CAM1": 0,
+        "CAM3": 0,
+        "CAM4": 0
+      },
+      "技能值": {
+        "Cam3": null,
+        "AD": null,
+        "Cam4": null,
+        "Photo": null,
+        "導播": null,
+        "Cam2": null,
+        "Cam1": null
+      },
+      "AD_Skill": 0,
+      "raw": {
+        "Job_Title": "燈光團隊",
+        "Cam3_Skill": "",
+        "Name": "宜雯",
+        "Skill_Role": "宣教燈光",
+        "User_Level": "user",
+        "AD_Skill": "",
+        "Photo_Skill": "",
+        "D_Skill": "",
+        "Cam4_Skill": "",
+        "Avatar": "",
+        "Cam2_Skill": "",
+        "Cam1_Skill": "",
+        "User_ID": ""
+      },
+      "Cam3_Skill": 0,
+      "jobTitles": [
+        "燈光團隊"
+      ],
+      "userLevel": "user",
+      "LINE_ID": "",
+      "name": "宜雯",
+      "D_Skill": 0,
+      "Cam2_Skill": 0,
+      "updatedAt": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1787055069,
+        "nanoseconds": 661000000
+      },
+      "user_id": null,
+      "Photo_Skill": 0,
+      "teamLevels": {
+        "燈光團隊": 2
+      },
+      "role": "user",
+      "職能": [
+        "燈控"
+      ],
+      "大頭照": null,
+      "skillRoles": [
+        "宣教燈光"
+      ],
+      "Cam1_Skill": 0,
+      "姓名": "宜雯"
+    },
+    "康恩得": {
+      "avatar": "",
+      "D_Skill": 0,
+      "lineId": "",
+      "技能值": {
+        "導播": 0,
+        "AD": 3,
+        "Photo": 10,
+        "Cam1": 4,
+        "Cam2": 5,
+        "Cam3": 5,
+        "Cam4": 5
+      },
+      "skills": {
+        "CAM4": 5,
+        "CAM3": 5,
+        "CAM1": 4,
+        "導播": 0,
+        "AD": 3,
+        "平面": 10,
+        "CAM2": 5
+      },
+      "Cam1_Skill": 4,
+      "skillRoles": [
+        "Cam2",
+        "Photo"
+      ],
+      "AD_Skill": 3,
+      "raw": {
+        "Cam1_Skill": 4,
+        "Avatar": "",
+        "User_ID": "",
+        "Job_Title": "影視團隊",
+        "Cam2_Skill": 5,
+        "User_Level": "user",
+        "Name": "康恩得",
+        "D_Skill": 0,
+        "AD_Skill": 3,
+        "Cam4_Skill": 5,
+        "Cam3_Skill": 5,
+        "Photo_Skill": 10,
+        "Skill_Role": "Cam2, Photo"
+      },
+      "updatedAt": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1786699299,
+        "nanoseconds": 966000000
+      },
+      "role": "user",
+      "LINE_ID": "Andre Kang - 康恩得",
+      "Photo_Skill": 10,
+      "Cam2_Skill": 5,
+      "jobTitles": [
+        "影視團隊"
+      ],
+      "職能": [
+        "Cam2",
+        "Photo"
+      ],
+      "大頭照": null,
+      "name": "康恩得",
+      "userLevel": "user",
+      "pictureUrl": "",
+      "Cam4_Skill": 5,
+      "user_id": null,
+      "Cam3_Skill": 5,
+      "姓名": "康恩得"
+    },
+    "廖亦東": {
+      "updatedAt": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1786699299,
+        "nanoseconds": 966000000
+      },
+      "Photo_Skill": 8,
+      "D_Skill": 9,
+      "Cam1_Skill": 9,
+      "raw": {
+        "Skill_Role": "Cam2, Photo, Cam1, Cam3, Cam4, AD, 山莊導播, 宣教導播",
+        "D_Skill": 9,
+        "AD_Skill": 9,
+        "Cam3_Skill": 9,
+        "Cam4_Skill": 9,
+        "User_Level": "admin",
+        "Avatar": "https://profile.line-scdn.net/0hGTSu3lFmGHt-DA3D4jdmBA5cGxFdfUFpADoCH0hfEk8TaVovV2kEGh8EQxhANVYuUz9TShgFR0lyH28dYFrkT3k8RUpCNFcpVmNenQ",
+        "User_ID": "U5eb2b7deb36ab2b824f4c9bb206d1222",
+        "Cam2_Skill": 9,
+        "Photo_Skill": 8,
+        "Name": "廖亦東",
+        "Cam1_Skill": 9,
+        "Job_Title": "管理團隊"
+      },
+      "大頭照": "https://profile.line-scdn.net/0hGTSu3lFmGHt-DA3D4jdmBA5cGxFdfUFpADoCH0hfEk8TaVovV2kEGh8EQxhANVYuUz9TShgFR0lyH28dYFrkT3k8RUpCNFcpVmNenQ",
+      "skillRoles": [
+        "Cam2",
+        "Photo",
+        "Cam1",
+        "Cam3",
+        "Cam4",
+        "AD",
+        "山莊導播",
+        "宣教導播"
+      ],
+      "lineId": "U5eb2b7deb36ab2b824f4c9bb206d1222",
+      "avatar": "https://profile.line-scdn.net/0hGTSu3lFmGHt-DA3D4jdmBA5cGxFdfUFpADoCH0hfEk8TaVovV2kEGh8EQxhANVYuUz9TShgFR0lyH28dYFrkT3k8RUpCNFcpVmNenQ",
+      "role": "admin",
+      "LINE_ID": "David Liao",
+      "skills": {
+        "CAM1": 9,
+        "CAM3": 9,
+        "AD": 9,
+        "CAM4": 9,
+        "平面": 8,
+        "導播": 9,
+        "CAM2": 9
+      },
+      "Cam3_Skill": 9,
+      "姓名": "廖亦東",
+      "name": "廖亦東",
+      "jobTitles": [
+        "管理團隊"
+      ],
+      "lineName": "David Liao",
+      "Cam4_Skill": 9,
+      "pictureUrl": "https://profile.line-scdn.net/0hGTSu3lFmGHt-DA3D4jdmBA5cGxFdfUFpADoCH0hfEk8TaVovV2kEGh8EQxhANVYuUz9TShgFR0lyH28dYFrkT3k8RUpCNFcpVmNenQ",
+      "技能值": {
+        "AD": 9,
+        "導播": 9,
+        "Photo": 8,
+        "Cam3": 9,
+        "Cam4": 9,
+        "Cam1": 9,
+        "Cam2": 9
+      },
+      "AD_Skill": 9,
+      "user_id": "U5eb2b7deb36ab2b824f4c9bb206d1222",
+      "Cam2_Skill": 9,
+      "職能": [
+        "Cam2",
+        "Photo",
+        "Cam1",
+        "Cam3",
+        "Cam4",
+        "AD",
+        "山莊導播",
+        "宣教導播"
+      ],
+      "userLevel": "admin"
+    },
+    "廖偉翔": {
+      "技能值": {
+        "AD": null,
+        "導播": null,
+        "Cam2": null,
+        "Cam1": null,
+        "Cam3": null,
+        "Photo": null,
+        "Cam4": null
+      },
+      "姓名": "廖偉翔",
+      "Cam2_Skill": 0,
+      "raw": {
+        "Cam2_Skill": "",
+        "User_ID": "",
+        "Photo_Skill": "",
+        "Cam1_Skill": "",
+        "Job_Title": "舞監團隊",
+        "Cam3_Skill": "",
+        "D_Skill": "",
+        "Avatar": "",
+        "Skill_Role": "山莊舞監, 宣教舞監",
+        "AD_Skill": "",
+        "Name": "廖偉翔",
+        "User_Level": "user",
+        "Cam4_Skill": ""
+      },
+      "updatedAt": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1786699299,
+        "nanoseconds": 966000000
+      },
+      "LINE_ID": "James偉翔",
+      "jobTitles": [
+        "舞監團隊"
+      ],
+      "skillRoles": [
+        "山莊舞監",
+        "宣教舞監"
+      ],
+      "role": "user",
+      "Cam1_Skill": 0,
+      "D_Skill": 0,
+      "職能": [],
+      "Cam3_Skill": 0,
+      "AD_Skill": 0,
+      "userLevel": "user",
+      "大頭照": null,
+      "user_id": null,
+      "name": "廖偉翔",
+      "avatar": "",
+      "lineId": "",
+      "skills": {
+        "CAM3": 0,
+        "CAM1": 0,
+        "CAM4": 0,
+        "AD": 0,
+        "導播": 0,
+        "平面": 0,
+        "CAM2": 0
+      },
+      "pictureUrl": "",
+      "Cam4_Skill": 0,
+      "Photo_Skill": 0
+    },
+    "張志彬": {
+      "技能值": {
+        "AD": 7,
+        "Cam4": 9,
+        "Cam3": 9,
+        "Photo": 0,
+        "Cam2": 8,
+        "Cam1": 8,
+        "導播": 7
+      },
+      "role": "user",
+      "職能": [
+        "Cam2",
+        "Cam1",
+        "Cam3",
+        "Cam4",
+        "AD",
+        "山莊導播"
+      ],
+      "AD_Skill": 7,
+      "jobTitles": [
+        "影視團隊"
+      ],
+      "Photo_Skill": 0,
+      "user_id": null,
+      "skillRoles": [
+        "Cam2",
+        "Cam1",
+        "Cam3",
+        "Cam4",
+        "AD",
+        "山莊導播"
+      ],
+      "Cam1_Skill": 8,
+      "姓名": "張志彬",
+      "userLevel": "user",
+      "raw": {
+        "Avatar": "",
+        "Cam1_Skill": 8,
+        "D_Skill": 7,
+        "Job_Title": "影視團隊",
+        "Cam2_Skill": 8,
+        "User_Level": "user",
+        "User_ID": "",
+        "AD_Skill": 7,
+        "Cam4_Skill": 9,
+        "Photo_Skill": 0,
+        "Cam3_Skill": 9,
+        "Name": "張志彬",
+        "Skill_Role": "Cam2, Cam1, Cam3, Cam4, AD, 山莊導播"
+      },
+      "Cam2_Skill": 8,
+      "updatedAt": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1787022371,
+        "nanoseconds": 880000000
+      },
+      "lineDisplayName": "Shawn.B",
+      "skills": {
+        "平面": 0,
+        "CAM2": 8,
+        "導播": 7,
+        "CAM4": 9,
+        "CAM1": 8,
+        "CAM3": 9,
+        "AD": 7
+      },
+      "avatar": "https://profile.line-scdn.net/0hJV35DgTWFXkeTAugpkxrR24cFhM9PUxrOioPHykcHEEmKAEuNnkNTClPSE8gfwAuMHlTSCoYQ0o8HjYvV31Tb2oOCBJ8HipvcnwlGUwSHhN0PRF0YF8YYFkeHRlgAjptNG8Td14VFiJEIhRPVlQKQUgsJRx_NShtYRt5Lxt-e_pxTmIsMytSFy9IQkCj",
+      "lineId": "U0b784d0d4530b32ff87ca479dadbe099",
+      "D_Skill": 7,
+      "Cam3_Skill": 9,
+      "大頭照": null,
+      "Cam4_Skill": 9,
+      "pictureUrl": "https://profile.line-scdn.net/0hJV35DgTWFXkeTAugpkxrR24cFhM9PUxrOioPHykcHEEmKAEuNnkNTClPSE8gfwAuMHlTSCoYQ0o8HjYvV31Tb2oOCBJ8HipvcnwlGUwSHhN0PRF0YF8YYFkeHRlgAjptNG8Td14VFiJEIhRPVlQKQUgsJRx_NShtYRt5Lxt-e_pxTmIsMytSFy9IQkCj",
+      "LINE_ID": "Shawn.B",
+      "name": "張志彬"
+    },
+    "星州": {
+      "updatedAt": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1787055076,
+        "nanoseconds": 539000000
+      },
+      "role": "user",
+      "AD_Skill": 0,
+      "姓名": "星州",
+      "teamLevels": {
+        "燈光團隊": 2
+      },
+      "大頭照": null,
+      "Cam1_Skill": 0,
+      "skillRoles": [
+        "宣教燈光"
+      ],
+      "user_id": null,
+      "職能": [
+        "燈控"
+      ],
+      "raw": {
+        "Cam1_Skill": "",
+        "Photo_Skill": "",
+        "User_ID": "",
+        "Cam2_Skill": "",
+        "Name": "星州",
+        "Avatar": "",
+        "AD_Skill": "",
+        "User_Level": "user",
+        "Job_Title": "燈光團隊",
+        "Cam4_Skill": "",
+        "D_Skill": "",
+        "Cam3_Skill": "",
+        "Skill_Role": "宣教燈光"
+      },
+      "D_Skill": 0,
+      "Photo_Skill": 0,
+      "Cam4_Skill": 0,
+      "pictureUrl": "",
+      "技能值": {
+        "Cam2": null,
+        "Cam1": null,
+        "導播": null,
+        "Photo": null,
+        "Cam4": null,
+        "Cam3": null,
+        "AD": null
+      },
+      "Cam3_Skill": 0,
+      "LINE_ID": "",
+      "jobTitles": [
+        "燈光團隊"
+      ],
+      "skills": {
+        "平面": 0,
+        "AD": 0,
+        "CAM2": 0,
+        "導播": 0,
+        "CAM3": 0,
+        "CAM1": 0,
+        "CAM4": 0
+      },
+      "lineId": "",
+      "userLevel": "user",
+      "avatar": "",
+      "Cam2_Skill": 0,
+      "name": "星州"
+    },
+    "曉平": {
+      "職能": [
+        "燈控"
+      ],
+      "姓名": "曉平",
+      "大頭照": null,
+      "LINE_ID": "",
+      "user_id": null,
+      "role": "user",
+      "技能值": {
+        "導播": null,
+        "Cam1": null,
+        "Cam2": null,
+        "Photo": null,
+        "Cam3": null,
+        "AD": null,
+        "Cam4": null
+      }
+    },
+    "朱平": {
+      "Cam1_Skill": 5,
+      "大頭照": null,
+      "Photo_Skill": 0,
+      "skillRoles": [
+        "Cam2",
+        "Cam1",
+        "AD"
+      ],
+      "userLevel": "user",
+      "職能": [
+        "Cam2",
+        "Cam1",
+        "AD"
+      ],
+      "avatar": "https://profile.line-scdn.net/0hHq24gKbYF14fTQJPLeRpIW8dFDQ8PE5MMnwPPihFTjp1egIIZCkMPSMYTGd3dVINMiILOnlLHGgTXmA4ARvrahh9Sm8jdVgMNyJRuA",
+      "Cam2_Skill": 5,
+      "role": "user",
+      "lineId": "U302cabf5bedb41fa9c0ff479a5b37501",
+      "skills": {
+        "CAM4": 0,
+        "導播": 0,
+        "CAM1": 5,
+        "CAM3": 0,
+        "平面": 0,
+        "CAM2": 5,
+        "AD": 5
+      },
+      "user_id": null,
+      "AD_Skill": 5,
+      "updatedAt": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1786699299,
+        "nanoseconds": 966000000
+      },
+      "name": "朱平",
+      "raw": {
+        "Cam3_Skill": 0,
+        "Job_Title": "影視團隊",
+        "Skill_Role": "Cam2, Cam1, AD",
+        "User_Level": "user",
+        "User_ID": "U302cabf5bedb41fa9c0ff479a5b37501",
+        "Avatar": "https://profile.line-scdn.net/0hHq24gKbYF14fTQJPLeRpIW8dFDQ8PE5MMnwPPihFTjp1egIIZCkMPSMYTGd3dVINMiILOnlLHGgTXmA4ARvrahh9Sm8jdVgMNyJRuA",
+        "Cam4_Skill": 0,
+        "Cam2_Skill": 5,
+        "AD_Skill": 5,
+        "Cam1_Skill": 5,
+        "Name": "朱平",
+        "Photo_Skill": 0,
+        "D_Skill": 0
+      },
+      "pictureUrl": "https://profile.line-scdn.net/0hHq24gKbYF14fTQJPLeRpIW8dFDQ8PE5MMnwPPihFTjp1egIIZCkMPSMYTGd3dVINMiILOnlLHGgTXmA4ARvrahh9Sm8jdVgMNyJRuA",
+      "Cam4_Skill": 0,
+      "技能值": {
+        "AD": 5,
+        "Photo": 0,
+        "Cam2": 4,
+        "Cam1": 4,
+        "Cam3": 0,
+        "導播": 0,
+        "Cam4": 0
+      },
+      "D_Skill": 0,
+      "姓名": "朱平",
+      "Cam3_Skill": 0,
+      "LINE_ID": "朱平",
+      "jobTitles": [
+        "影視團隊"
+      ]
+    },
+    "李宜真": {
+      "技能值": {
+        "Cam2": 0,
+        "Cam1": 0,
+        "Photo": 0,
+        "AD": 5,
+        "Cam3": 0,
+        "導播": 0,
+        "Cam4": 0
+      },
+      "姓名": "李宜真",
+      "name": "李宜真",
+      "updatedAt": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1786699299,
+        "nanoseconds": 966000000
+      },
+      "raw": {
+        "Cam1_Skill": 0,
+        "Avatar": "https://profile.line-scdn.net/0hRpuSg0w3DV9YKhO56hNzYSh6DjV7W1RNcUgSbT4oB2phGE0AcEhGOTkjUTptSR1bI0lAa2kuUz96RRZuMRZBX2t4MQE_UktTLiIYYRJ9MioTXhlNfEsDfSVYTyccbhRKIkwmXm5fJhERZDJ2MzwLUWxEODolRhVJKX1hCV0YY9w3KHoKdU1KMWkuWmbl",
+        "User_ID": "Ufaa5344af15af34c2d36239f44707f7e",
+        "Job_Title": "影視團隊",
+        "Cam2_Skill": 0,
+        "User_Level": "user",
+        "Name": "李宜真",
+        "D_Skill": 0,
+        "AD_Skill": 5,
+        "Cam4_Skill": 0,
+        "Cam3_Skill": 0,
+        "Photo_Skill": 0,
+        "Skill_Role": "AD"
+      },
+      "Cam3_Skill": 0,
+      "LINE_ID": "Naomi",
+      "Photo_Skill": 0,
+      "jobTitles": [
+        "影視團隊"
+      ],
+      "Cam4_Skill": 0,
+      "pictureUrl": "https://profile.line-scdn.net/0hRpuSg0w3DV9YKhO56hNzYSh6DjV7W1RNcUgSbT4oB2phGE0AcEhGOTkjUTptSR1bI0lAa2kuUz96RRZuMRZBX2t4MQE_UktTLiIYYRJ9MioTXhlNfEsDfSVYTyccbhRKIkwmXm5fJhERZDJ2MzwLUWxEODolRhVJKX1hCV0YY9w3KHoKdU1KMWkuWmbl",
+      "D_Skill": 0,
+      "職能": [
+        "AD"
+      ],
+      "AD_Skill": 5,
+      "userLevel": "user",
+      "Cam2_Skill": 0,
+      "大頭照": null,
+      "user_id": null,
+      "role": "user",
+      "avatar": "https://profile.line-scdn.net/0hRpuSg0w3DV9YKhO56hNzYSh6DjV7W1RNcUgSbT4oB2phGE0AcEhGOTkjUTptSR1bI0lAa2kuUz96RRZuMRZBX2t4MQE_UktTLiIYYRJ9MioTXhlNfEsDfSVYTyccbhRKIkwmXm5fJhERZDJ2MzwLUWxEODolRhVJKX1hCV0YY9w3KHoKdU1KMWkuWmbl",
+      "lineId": "Ufaa5344af15af34c2d36239f44707f7e",
+      "skills": {
+        "CAM2": 0,
+        "AD": 5,
+        "平面": 0,
+        "導播": 0,
+        "CAM3": 0,
+        "CAM1": 0,
+        "CAM4": 0
+      },
+      "skillRoles": [
+        "AD"
+      ],
+      "Cam1_Skill": 0
+    },
+    "林人偉": {
+      "name": "林人偉",
+      "D_Skill": 0,
+      "AD_Skill": 5,
+      "Cam3_Skill": 7,
+      "pictureUrl": "https://profile.line-scdn.net/0hWkXuKal_CER1DBez-vh2egVcCy5WfVFWUGlBcEReVSNBaEgaUWsQKhNbA31OOUwSXz8UcRQEVnJXTiphHzc_cSJlHnExehtZKQk_dQR-L2gwPUwXPRUfd0FnXiNIWQl8ECwQJgVUBRwaSx0SEm8HZDVfFjw8dy95MVtkEnA-ZscaDn8RWGtPKkQIX33I",
+      "Cam4_Skill": 7,
+      "姓名": "林人偉",
+      "LINE_ID": "林人偉",
+      "大頭照": null,
+      "userLevel": "user",
+      "jobTitles": [
+        "影視團隊"
+      ],
+      "lineId": "Uc3357f41218e7d19837daf6e90a10fb4",
+      "avatar": "https://profile.line-scdn.net/0hWkXuKal_CER1DBez-vh2egVcCy5WfVFWUGlBcEReVSNBaEgaUWsQKhNbA31OOUwSXz8UcRQEVnJXTiphHzc_cSJlHnExehtZKQk_dQR-L2gwPUwXPRUfd0FnXiNIWQl8ECwQJgVUBRwaSx0SEm8HZDVfFjw8dy95MVtkEnA-ZscaDn8RWGtPKkQIX33I",
+      "Cam2_Skill": 7,
+      "skills": {
+        "CAM4": 7,
+        "平面": 6,
+        "CAM3": 7,
+        "CAM1": 7,
+        "導播": 0,
+        "AD": 5,
+        "CAM2": 7
+      },
+      "raw": {
+        "Cam1_Skill": 7,
+        "Photo_Skill": 6,
+        "Name": "林人偉",
+        "Cam2_Skill": 7,
+        "Avatar": "https://profile.line-scdn.net/0hWkXuKal_CER1DBez-vh2egVcCy5WfVFWUGlBcEReVSNBaEgaUWsQKhNbA31OOUwSXz8UcRQEVnJXTiphHzc_cSJlHnExehtZKQk_dQR-L2gwPUwXPRUfd0FnXiNIWQl8ECwQJgVUBRwaSx0SEm8HZDVfFjw8dy95MVtkEnA-ZscaDn8RWGtPKkQIX33I",
+        "D_Skill": 0,
+        "Job_Title": "影視團隊",
+        "User_Level": "user",
+        "Cam4_Skill": 7,
+        "User_ID": "Uc3357f41218e7d19837daf6e90a10fb4",
+        "Cam3_Skill": 7,
+        "AD_Skill": 5,
+        "Skill_Role": "Cam2, Photo, Cam1, Cam3, Cam4, AD"
+      },
+      "技能值": {
+        "Cam3": 7,
+        "導播": 0,
+        "Cam4": 7,
+        "Photo": 6,
+        "AD": 5,
+        "Cam1": 7,
+        "Cam2": 7
+      },
+      "職能": [
+        "Cam2",
+        "Photo",
+        "Cam1",
+        "Cam3",
+        "Cam4",
+        "AD"
+      ],
+      "user_id": null,
+      "Photo_Skill": 6,
+      "updatedAt": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1786699299,
+        "nanoseconds": 966000000
+      },
+      "Cam1_Skill": 7,
+      "role": "user",
+      "skillRoles": [
+        "Cam2",
+        "Photo",
+        "Cam1",
+        "Cam3",
+        "Cam4",
+        "AD"
+      ]
+    },
+    "林建宇": {
+      "skillRoles": [
+        "Cam2",
+        "Cam1",
+        "Cam3",
+        "Cam4",
+        "AD",
+        "山莊導播"
+      ],
+      "LINE_ID": "林建宇",
+      "Cam1_Skill": 9,
+      "userLevel": "user",
+      "skills": {
+        "AD": 9,
+        "導播": 9,
+        "CAM2": 9,
+        "CAM3": 9,
+        "CAM1": 9,
+        "CAM4": 9,
+        "平面": 0
+      },
+      "大頭照": null,
+      "lineId": "U39cd3b0d826e727161b24fff85ec09e2",
+      "role": "user",
+      "avatar": "https://profile.line-scdn.net/0m002e122872510d5f3773962a2083a62cfcb8730aedbf",
+      "職能": [
+        "Cam2",
+        "Cam1",
+        "Cam3",
+        "Cam4",
+        "AD",
+        "山莊導播"
+      ],
+      "D_Skill": 9,
+      "raw": {
+        "Avatar": "https://profile.line-scdn.net/0m002e122872510d5f3773962a2083a62cfcb8730aedbf",
+        "User_ID": "U39cd3b0d826e727161b24fff85ec09e2",
+        "Cam1_Skill": 9,
+        "Job_Title": "影視團隊",
+        "Cam2_Skill": 9,
+        "Cam4_Skill": 9,
+        "D_Skill": 9,
+        "Photo_Skill": 0,
+        "Name": "林建宇",
+        "User_Level": "user",
+        "AD_Skill": 9,
+        "Skill_Role": "Cam2, Cam1, Cam3, Cam4, AD, 山莊導播",
+        "Cam3_Skill": 9
+      },
+      "Cam2_Skill": 9,
+      "user_id": null,
+      "技能值": {
+        "Photo": 0,
+        "導播": 9,
+        "Cam3": 9,
+        "AD": 9,
+        "Cam4": 9,
+        "Cam1": 9,
+        "Cam2": 9
+      },
+      "updatedAt": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1786699299,
+        "nanoseconds": 966000000
+      },
+      "Photo_Skill": 0,
+      "pictureUrl": "https://profile.line-scdn.net/0m002e122872510d5f3773962a2083a62cfcb8730aedbf",
+      "Cam4_Skill": 9,
+      "姓名": "林建宇",
+      "AD_Skill": 9,
+      "jobTitles": [
+        "影視團隊"
+      ],
+      "Cam3_Skill": 9,
+      "name": "林建宇"
+    },
+    "梅驊": {
+      "pictureUrl": "https://profile.line-scdn.net/0hLscJbKIzE1xOMw0F-CdtIz5jEDZtQkpOYFdfaHw3Gjx2BVFZY1JVaClgSmomCwEIZlddbnMzHm1CIGQ6UGXvaEkDTm1yC1wOZlxVug",
+      "Cam4_Skill": 0,
+      "name": "梅驊",
+      "user_id": null,
+      "大頭照": null,
+      "姓名": "梅驊",
+      "Cam3_Skill": 0,
+      "userLevel": "admin",
+      "lineId": "Uf2bf860395feedf6000dec45257b838a",
+      "D_Skill": 0,
+      "avatar": "https://profile.line-scdn.net/0hLscJbKIzE1xOMw0F-CdtIz5jEDZtQkpOYFdfaHw3Gjx2BVFZY1JVaClgSmomCwEIZlddbnMzHm1CIGQ6UGXvaEkDTm1yC1wOZlxVug",
+      "jobTitles": [],
+      "Photo_Skill": 0,
+      "skills": {
+        "CAM2": 0,
+        "平面": 0,
+        "導播": 0,
+        "AD": 0,
+        "CAM4": 0,
+        "CAM3": 0,
+        "CAM1": 0
+      },
+      "Cam1_Skill": 0,
+      "skillRoles": [],
+      "技能值": {
+        "AD": null,
+        "Cam2": null,
+        "Cam1": null,
+        "導播": null,
+        "Photo": null,
+        "Cam4": null,
+        "Cam3": null
+      },
+      "LINE_ID": "Jacob Mei",
+      "raw": {
+        "Skill_Role": "",
+        "Cam3_Skill": "",
+        "D_Skill": "",
+        "Cam4_Skill": "",
+        "Job_Title": "",
+        "Photo_Skill": "",
+        "User_Level": "admin",
+        "Avatar": "https://profile.line-scdn.net/0hLscJbKIzE1xOMw0F-CdtIz5jEDZtQkpOYFdfaHw3Gjx2BVFZY1JVaClgSmomCwEIZlddbnMzHm1CIGQ6UGXvaEkDTm1yC1wOZlxVug",
+        "Name": "梅驊",
+        "User_ID": "Uf2bf860395feedf6000dec45257b838a",
+        "Cam2_Skill": "",
+        "Cam1_Skill": "",
+        "AD_Skill": ""
+      },
+      "AD_Skill": 0,
+      "updatedAt": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1786699299,
+        "nanoseconds": 966000000
+      },
+      "職能": [],
+      "Cam2_Skill": 0,
+      "role": "admin"
+    },
+    "樊家琪": {
+      "LINE_ID": "家琪（珍妮花）",
+      "Photo_Skill": 6,
+      "skills": {
+        "CAM4": 0,
+        "CAM1": 0,
+        "CAM3": 0,
+        "平面": 6,
+        "CAM2": 0,
+        "導播": 0,
+        "AD": 0
+      },
+      "Cam2_Skill": 0,
+      "lineId": "U35b75d4e63cf0a8be80934f16f48b126",
+      "role": "user",
+      "avatar": "https://profile.line-scdn.net/0hj-1KHAboNQIcMiZri-tLfWxiNmg_Q2wQOFd4Z3thaDN0BiBQNgF4MCg0PmUiAHNVMgcqbSlhOzIQIUJkAmTJNhsCaDMgCnpQNF1z5A",
+      "職能": [
+        "Photo"
+      ],
+      "大頭照": null,
+      "raw": {
+        "Name": "樊家琪",
+        "Job_Title": "影視團隊",
+        "Skill_Role": "Photo",
+        "Cam3_Skill": 0,
+        "Cam4_Skill": 0,
+        "User_Level": "user",
+        "D_Skill": 0,
+        "Cam2_Skill": 0,
+        "User_ID": "U35b75d4e63cf0a8be80934f16f48b126",
+        "Photo_Skill": 6,
+        "Avatar": "https://profile.line-scdn.net/0hj-1KHAboNQIcMiZri-tLfWxiNmg_Q2wQOFd4Z3thaDN0BiBQNgF4MCg0PmUiAHNVMgcqbSlhOzIQIUJkAmTJNhsCaDMgCnpQNF1z5A",
+        "AD_Skill": 0,
+        "Cam1_Skill": 0
+      },
+      "userLevel": "user",
+      "D_Skill": 0,
+      "Cam1_Skill": 0,
+      "skillRoles": [
+        "Photo"
+      ],
+      "user_id": null,
+      "Cam3_Skill": 0,
+      "jobTitles": [
+        "影視團隊"
+      ],
+      "姓名": "樊家琪",
+      "AD_Skill": 0,
+      "pictureUrl": "https://profile.line-scdn.net/0hj-1KHAboNQIcMiZri-tLfWxiNmg_Q2wQOFd4Z3thaDN0BiBQNgF4MCg0PmUiAHNVMgcqbSlhOzIQIUJkAmTJNhsCaDMgCnpQNF1z5A",
+      "Cam4_Skill": 0,
+      "updatedAt": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1786699299,
+        "nanoseconds": 966000000
+      },
+      "name": "樊家琪",
+      "技能值": {
+        "Cam2": 0,
+        "Cam1": 0,
+        "導播": 0,
+        "Photo": 6,
+        "Cam4": 0,
+        "Cam3": 0,
+        "AD": 0
+      }
+    },
+    "王士誠": {
+      "pictureUrl": "",
+      "Cam4_Skill": 0,
+      "jobTitles": [
+        "影視團隊"
+      ],
+      "D_Skill": 0,
+      "姓名": "王士誠",
+      "技能值": {
+        "Cam1": 0,
+        "Cam2": 0,
+        "導播": 0,
+        "AD": 0,
+        "Cam4": 0,
+        "Cam3": 0,
+        "Photo": 4
+      },
+      "LINE_ID": "王士誠",
+      "updatedAt": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1786699299,
+        "nanoseconds": 966000000
+      },
+      "Cam3_Skill": 0,
+      "role": "user",
+      "raw": {
+        "Cam2_Skill": 0,
+        "Photo_Skill": 4,
+        "D_Skill": 0,
+        "Name": "王士誠",
+        "Cam1_Skill": 0,
+        "AD_Skill": 0,
+        "Cam3_Skill": 0,
+        "Job_Title": "影視團隊",
+        "User_ID": "",
+        "Skill_Role": "Photo",
+        "User_Level": "user",
+        "Avatar": "",
+        "Cam4_Skill": 0
+      },
+      "name": "王士誠",
+      "lineId": "",
+      "skillRoles": [
+        "Photo"
+      ],
+      "AD_Skill": 0,
+      "avatar": "",
+      "Cam1_Skill": 0,
+      "Photo_Skill": 4,
+      "skills": {
+        "AD": 0,
+        "CAM3": 0,
+        "CAM1": 0,
+        "導播": 0,
+        "CAM4": 0,
+        "CAM2": 0,
+        "平面": 4
+      },
+      "職能": [
+        "Photo"
+      ],
+      "user_id": null,
+      "userLevel": "user",
+      "Cam2_Skill": 0,
+      "大頭照": null
+    },
+    "皇誠": {
+      "role": "user",
+      "LINE_ID": "",
+      "user_id": null,
+      "大頭照": null,
+      "姓名": "皇誠",
+      "職能": [
+        "燈控"
+      ],
+      "技能值": {
+        "Cam1": null,
+        "Cam2": null,
+        "AD": null,
+        "導播": null,
+        "Cam4": null,
+        "Cam3": null,
+        "Photo": null
+      }
+    },
+    "范文亭": {
+      "Cam1_Skill": 0,
+      "name": "范文亭",
+      "skillRoles": [],
+      "AD_Skill": 0,
+      "LINE_ID": "Wendy 文亭",
+      "lineId": "",
+      "avatar": "",
+      "jobTitles": [
+        "管理團隊"
+      ],
+      "skills": {
+        "CAM4": 0,
+        "導播": 0,
+        "CAM1": 0,
+        "CAM3": 0,
+        "平面": 0,
+        "CAM2": 0,
+        "AD": 0
+      },
+      "Cam2_Skill": 0,
+      "Photo_Skill": 0,
+      "職能": [
+        "燈控"
+      ],
+      "updatedAt": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1786699299,
+        "nanoseconds": 966000000
+      },
+      "D_Skill": 0,
+      "技能值": {
+        "AD": null,
+        "導播": null,
+        "Photo": null,
+        "Cam3": null,
+        "Cam4": null,
+        "Cam1": null,
+        "Cam2": null
+      },
+      "user_id": null,
+      "pictureUrl": "",
+      "Cam4_Skill": 0,
+      "Cam3_Skill": 0,
+      "大頭照": null,
+      "姓名": "范文亭",
+      "userLevel": "admin",
+      "raw": {
+        "User_Level": "admin",
+        "Name": "范文亭",
+        "Cam4_Skill": "",
+        "Cam3_Skill": "",
+        "Avatar": "",
+        "AD_Skill": "",
+        "D_Skill": "",
+        "Skill_Role": "",
+        "Photo_Skill": "",
+        "Cam1_Skill": "",
+        "User_ID": "",
+        "Cam2_Skill": "",
+        "Job_Title": "管理團隊"
+      },
+      "role": "admin"
+    },
+    "蔡佳翰": {
+      "職能": [
+        "Cam2",
+        "Photo",
+        "Cam1",
+        "Cam3",
+        "Cam4",
+        "AD",
+        "信息版",
+        "宣教導播",
+        "山莊導播"
+      ],
+      "skillRoles": [
+        "Cam2",
+        "Photo",
+        "Cam1",
+        "Cam3",
+        "Cam4",
+        "AD",
+        "信息版",
+        "宣教導播",
+        "山莊導播"
+      ],
+      "Cam1_Skill": 9,
+      "AD_Skill": 9,
+      "user_id": "Ud28b740c3b81961576e2268f9e5a884f",
+      "raw": {
+        "Cam2_Skill": 9,
+        "D_Skill": 9,
+        "Cam1_Skill": 9,
+        "AD_Skill": 9,
+        "Skill_Role": "Cam2, Photo, Cam1, Cam3, Cam4, AD, 信息版, 宣教導播, 山莊導播",
+        "Cam3_Skill": 9,
+        "Avatar": "",
+        "Name": "蔡佳翰",
+        "Cam4_Skill": 9,
+        "Photo_Skill": 8,
+        "Job_Title": "影視團隊",
+        "User_Level": "admin",
+        "User_ID": "Ud28b740c3b81961576e2268f9e5a884f"
+      },
+      "name": "蔡佳翰",
+      "Cam2_Skill": 9,
+      "userLevel": "admin",
+      "skills": {
+        "平面": 8,
+        "CAM2": 9,
+        "導播": 9,
+        "CAM4": 9,
+        "AD": 9,
+        "CAM3": 9,
+        "CAM1": 9
+      },
+      "lineId": "Ud28b740c3b81961576e2268f9e5a884f",
+      "大頭照": null,
+      "avatar": "",
+      "姓名": "蔡佳翰",
+      "jobTitles": [
+        "影視團隊"
+      ],
+      "role": "admin",
+      "LINE_ID": "Chiahan Tsai",
+      "pictureUrl": "",
+      "Cam4_Skill": 9,
+      "Photo_Skill": 8,
+      "技能值": {
+        "AD": 9,
+        "Cam1": 9,
+        "Cam2": 9,
+        "Photo": 8,
+        "導播": 9,
+        "Cam4": 9,
+        "Cam3": 9
+      },
+      "Cam3_Skill": 9,
+      "updatedAt": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1786699299,
+        "nanoseconds": 966000000
+      },
+      "D_Skill": 9
+    },
+    "蔡菁菁": {
+      "updatedAt": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1786804152,
+        "nanoseconds": 355000000
+      },
+      "LINE_ID": "菁菁",
+      "skillRoles": [
+        "Cam2",
+        "Cam1",
+        "Cam3",
+        "Cam4"
+      ],
+      "Cam1_Skill": 5,
+      "職能": [
+        "Cam2",
+        "Cam1",
+        "Cam3",
+        "Cam4"
+      ],
+      "D_Skill": 0,
+      "raw": {
+        "Name": "蔡菁菁",
+        "User_Level": "user",
+        "Cam4_Skill": 3,
+        "Avatar": "https://profile.line-scdn.net/0hNIKm7bIsEWZmFA6YKG5vWBZEEgxFZUh0SCFeAQYWS1FdJwY5HyUNAFZGRl9aIQE2HSBfVVIWHAREelJvInA4BidIFlcadz5UGSYkaRVkFlBaZwNoNXAtBwNzLhVTLFVHSnQAej13Bg4vcwZEViIofQ5WFBVHcTZUGkN9MGMmf-UJFmYzS3NWCFcQRl_b",
+        "User_ID": "U2b5d21bfd00241e0ab26e23f7b3f689a",
+        "Cam3_Skill": 3,
+        "Skill_Role": "Cam2, Cam1, Cam3, Cam4",
+        "Job_Title": "影視團隊",
+        "D_Skill": 0,
+        "Cam1_Skill": 5,
+        "Photo_Skill": 0,
+        "AD_Skill": 6,
+        "Cam2_Skill": 5
+      },
+      "大頭照": null,
+      "role": "user",
+      "lineDisplayName": "菁菁",
+      "姓名": "蔡菁菁",
+      "Photo_Skill": 0,
+      "skills": {
+        "CAM4": 3,
+        "CAM3": 3,
+        "CAM1": 5,
+        "平面": 0,
+        "AD": 6,
+        "CAM2": 5,
+        "導播": 0
+      },
+      "lineId": "U2b5d21bfd00241e0ab26e23f7b3f689a",
+      "技能值": {
+        "Cam2": 5,
+        "Cam1": 5,
+        "AD": 6,
+        "導播": 0,
+        "Cam4": 3,
+        "Cam3": 3,
+        "Photo": 0
+      },
+      "avatar": "https://profile.line-scdn.net/0hNIKm7bIsEWZmFA6YKG5vWBZEEgxFZUh0SCFeAQYWS1FdJwY5HyUNAFZGRl9aIQE2HSBfVVIWHAREelJvInA4BidIFlcadz5UGSYkaRVkFlBaZwNoNXAtBwNzLhVTLFVHSnQAej13Bg4vcwZEViIofQ5WFBVHcTZUGkN9MGMmf-UJFmYzS3NWCFcQRl_b",
+      "name": "蔡菁菁",
+      "jobTitles": [
+        "影視團隊"
+      ],
+      "Cam2_Skill": 5,
+      "userLevel": "user",
+      "pictureUrl": "https://profile.line-scdn.net/0hNIKm7bIsEWZmFA6YKG5vWBZEEgxFZUh0SCFeAQYWS1FdJwY5HyUNAFZGRl9aIQE2HSBfVVIWHAREelJvInA4BidIFlcadz5UGSYkaRVkFlBaZwNoNXAtBwNzLhVTLFVHSnQAej13Bg4vcwZEViIofQ5WFBVHcTZUGkN9MGMmf-UJFmYzS3NWCFcQRl_b",
+      "Cam4_Skill": 3,
+      "user_id": null,
+      "AD_Skill": 6,
+      "Cam3_Skill": 3
+    },
+    "邱欣茹": {
+      "role": "user",
+      "skills": {
+        "CAM4": 7,
+        "導播": 0,
+        "CAM1": 6,
+        "CAM3": 7,
+        "CAM2": 6,
+        "平面": 0,
+        "AD": 6
+      },
+      "D_Skill": 0,
+      "avatar": "",
+      "Cam3_Skill": 7,
+      "updatedAt": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1786699299,
+        "nanoseconds": 966000000
+      },
+      "lineId": "",
+      "技能值": {
+        "Cam3": 7,
+        "Cam4": 7,
+        "Photo": 0,
+        "導播": 0,
+        "AD": 6,
+        "Cam1": 6,
+        "Cam2": 6
+      },
+      "Photo_Skill": 0,
+      "LINE_ID": "小星 ᶘ ᵒᴥᵒᶅ👍👍",
+      "AD_Skill": 6,
+      "職能": [
+        "Cam2",
+        "Cam1",
+        "Cam3",
+        "Cam4",
+        "AD"
+      ],
+      "pictureUrl": "",
+      "Cam4_Skill": 7,
+      "jobTitles": [
+        "影視團隊"
+      ],
+      "大頭照": null,
+      "userLevel": "user",
+      "Cam2_Skill": 6,
+      "raw": {
+        "Name": "邱欣茹",
+        "Cam4_Skill": 7,
+        "AD_Skill": 6,
+        "User_Level": "user",
+        "Skill_Role": "Cam2, Cam1, Cam3, Cam4, AD",
+        "User_ID": "",
+        "Job_Title": "影視團隊",
+        "Cam3_Skill": 7,
+        "Cam1_Skill": 6,
+        "Photo_Skill": 0,
+        "Avatar": "",
+        "Cam2_Skill": 6,
+        "D_Skill": 0
+      },
+      "user_id": null,
+      "Cam1_Skill": 6,
+      "skillRoles": [
+        "Cam2",
+        "Cam1",
+        "Cam3",
+        "Cam4",
+        "AD"
+      ],
+      "name": "邱欣茹",
+      "姓名": "邱欣茹"
+    },
+    "陳仲萍": {
+      "姓名": "陳仲萍",
+      "AD_Skill": 5,
+      "raw": {
+        "AD_Skill": 5,
+        "Avatar": "",
+        "Cam2_Skill": 4,
+        "Cam1_Skill": 6,
+        "User_ID": "",
+        "Skill_Role": "Cam2, Cam1, Cam3, Cam4, AD",
+        "Name": "陳仲萍",
+        "Job_Title": "影視團隊",
+        "Cam3_Skill": 4,
+        "D_Skill": 0,
+        "Cam4_Skill": 4,
+        "User_Level": "user",
+        "Photo_Skill": 0
+      },
+      "Cam2_Skill": 4,
+      "LINE_ID": "仲萍",
+      "userLevel": "user",
+      "大頭照": null,
+      "role": "user",
+      "skillRoles": [
+        "Cam2",
+        "Cam1",
+        "Cam3",
+        "Cam4",
+        "AD"
+      ],
+      "Cam1_Skill": 6,
+      "D_Skill": 0,
+      "Photo_Skill": 0,
+      "職能": [
+        "Cam2",
+        "Cam1",
+        "Cam3",
+        "Cam4",
+        "AD"
+      ],
+      "jobTitles": [
+        "影視團隊"
+      ],
+      "Cam3_Skill": 4,
+      "name": "陳仲萍",
+      "user_id": null,
+      "updatedAt": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1786699299,
+        "nanoseconds": 966000000
+      },
+      "Cam4_Skill": 4,
+      "pictureUrl": "",
+      "avatar": "",
+      "lineId": "",
+      "skills": {
+        "導播": 0,
+        "CAM2": 4,
+        "AD": 5,
+        "平面": 0,
+        "CAM1": 6,
+        "CAM3": 4,
+        "CAM4": 4
+      },
+      "技能值": {
+        "Cam2": 4,
+        "Cam1": 6,
+        "AD": 5,
+        "導播": 0,
+        "Cam4": 4,
+        "Cam3": 4,
+        "Photo": 0
+      }
+    },
+    "陳博仁": {
+      "lineId": "",
+      "audioSkills": {
+        "OB_XJ": 3,
+        "IH_SZ": 2,
+        "OB_SZ": 1,
+        "IH_XJ": 3
+      },
+      "userLevel": "user",
+      "avatar": "",
+      "skills": {
+        "AD": 0,
+        "平面": 0,
+        "CAM2": 0,
+        "CAM3": 0,
+        "CAM1": 0,
+        "CAM4": 0,
+        "導播": 0
+      },
+      "Photo_Skill": 0,
+      "Cam2_Skill": 0,
+      "AD_Skill": 0,
+      "raw": {
+        "Cam1_Skill": "",
+        "Name": "陳博仁",
+        "Cam2_Skill": "",
+        "AD_Skill": "",
+        "D_Skill": "",
+        "Photo_Skill": "",
+        "User_Level": "user",
+        "Cam4_Skill": "",
+        "Job_Title": "音控團隊",
+        "Cam3_Skill": "",
+        "User_ID": "",
+        "Skill_Role": "山莊OB, 宣教OB, 宣教IN HOUSE",
+        "Avatar": ""
+      },
+      "Cam1_Skill": 0,
+      "role": "user",
+      "skillRoles": [
+        "山莊OB",
+        "宣教OB",
+        "宣教IN HOUSE"
+      ],
+      "updatedAt": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1787283916,
+        "nanoseconds": 335000000
+      },
+      "name": "陳博仁",
+      "teamLevels": {
+        "音控團隊": 2
+      },
+      "Cam3_Skill": 0,
+      "D_Skill": 0,
+      "pictureUrl": "",
+      "Cam4_Skill": 0,
+      "jobTitles": [
+        "音控團隊"
+      ]
+    },
+    "陳曉平": {
+      "jobTitles": [
+        "燈光團隊"
+      ],
+      "Cam3_Skill": 0,
+      "name": "陳曉平",
+      "lineId": "",
+      "avatar": "",
+      "skills": {
+        "CAM1": 0,
+        "CAM3": 0,
+        "CAM4": 0,
+        "AD": 0,
+        "導播": 0,
+        "平面": 0,
+        "CAM2": 0
+      },
+      "updatedAt": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1786699299,
+        "nanoseconds": 966000000
+      },
+      "D_Skill": 0,
+      "pictureUrl": "",
+      "Cam4_Skill": 0,
+      "AD_Skill": 0,
+      "Cam2_Skill": 0,
+      "Photo_Skill": 0,
+      "skillRoles": [
+        "宣教燈光"
+      ],
+      "raw": {
+        "Avatar": "",
+        "Cam2_Skill": "",
+        "D_Skill": "",
+        "Cam1_Skill": "",
+        "Photo_Skill": "",
+        "Job_Title": "燈光團隊",
+        "Skill_Role": "宣教燈光",
+        "Cam3_Skill": "",
+        "Name": "陳曉平",
+        "Cam4_Skill": "",
+        "AD_Skill": "",
+        "User_ID": "",
+        "User_Level": "user"
+      },
+      "Cam1_Skill": 0,
+      "userLevel": "user",
+      "role": "user"
+    },
+    "韓文綺": {
+      "姓名": "韓文綺",
+      "Cam2_Skill": 6,
+      "userLevel": "user",
+      "lineDisplayName": "Vicky文綺",
+      "職能": [
+        "Cam2",
+        "Photo",
+        "Cam1",
+        "Cam3",
+        "Cam4",
+        "AD"
+      ],
+      "Cam3_Skill": 7,
+      "role": "user",
+      "技能值": {
+        "Photo": 7,
+        "Cam3": 7,
+        "Cam4": 7,
+        "導播": 0,
+        "AD": 6,
+        "Cam1": 4,
+        "Cam2": 6
+      },
+      "AD_Skill": 6,
+      "LINE_ID": "Vicky文綺",
+      "jobTitles": [
+        "影視團隊"
+      ],
+      "Cam4_Skill": 7,
+      "pictureUrl": "https://profile.line-scdn.net/0hZ6L9LpPoBRlhQBlApeN7JxEQBnNCMVwLSCdLKwZGWH1VdhUfGHFNL1MTXikOcEFGT3QefFRAWStDDzgZT3UJDAkpIF5VDBdPEV0zG1c6KVMdbDg2O1wzBgAbD18pEwQTDGBCCQApNVkockorM3kwHVwrR1c3CiQVDRdpT2Rya5oOQnJMTCdCd1BEUiDc",
+      "D_Skill": 0,
+      "user_id": null,
+      "大頭照": null,
+      "skillRoles": [
+        "Cam2",
+        "Photo",
+        "Cam1",
+        "Cam3",
+        "Cam4",
+        "AD"
+      ],
+      "Cam1_Skill": 4,
+      "name": "韓文綺",
+      "raw": {
+        "Photo_Skill": 7,
+        "User_ID": "U18444659d8b7a874264d496e93f04e58",
+        "User_Level": "user",
+        "Cam4_Skill": 7,
+        "AD_Skill": 6,
+        "Cam3_Skill": 7,
+        "Skill_Role": "Cam2, Photo, Cam1, Cam3, Cam4, AD",
+        "Avatar": "https://profile.line-scdn.net/0hZ6L9LpPoBRlhQBlApeN7JxEQBnNCMVwLSCdLKwZGWH1VdhUfGHFNL1MTXikOcEFGT3QefFRAWStDDzgZT3UJDAkpIF5VDBdPEV0zG1c6KVMdbDg2O1wzBgAbD18pEwQTDGBCCQApNVkockorM3kwHVwrR1c3CiQVDRdpT2Rya5oOQnJMTCdCd1BEUiDc",
+        "Name": "韓文綺",
+        "Cam1_Skill": 4,
+        "D_Skill": 0,
+        "Cam2_Skill": 6,
+        "Job_Title": "影視團隊"
+      },
+      "updatedAt": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1787214754,
+        "nanoseconds": 909000000
+      },
+      "skills": {
+        "平面": 7,
+        "CAM4": 7,
+        "CAM1": 4,
+        "CAM3": 7,
+        "CAM2": 6,
+        "AD": 6,
+        "導播": 0
+      },
+      "Photo_Skill": 7,
+      "avatar": "https://profile.line-scdn.net/0hZ6L9LpPoBRlhQBlApeN7JxEQBnNCMVwLSCdLKwZGWH1VdhUfGHFNL1MTXikOcEFGT3QefFRAWStDDzgZT3UJDAkpIF5VDBdPEV0zG1c6KVMdbDg2O1wzBgAbD18pEwQTDGBCCQApNVkockorM3kwHVwrR1c3CiQVDRdpT2Rya5oOQnJMTCdCd1BEUiDc",
+      "lineId": "U18444659d8b7a874264d496e93f04e58"
+    },
+    "魯賢龍": {
+      "職能": [
+        "Cam2",
+        "Cam1",
+        "Cam3",
+        "Cam4",
+        "AD"
+      ],
+      "Cam4_Skill": 5,
+      "pictureUrl": "",
+      "AD_Skill": 5,
+      "jobTitles": [
+        "影視團隊"
+      ],
+      "user_id": null,
+      "raw": {
+        "Cam4_Skill": 5,
+        "User_Level": "user",
+        "Skill_Role": "Cam2, Cam1, Cam3, Cam4, AD",
+        "User_ID": "",
+        "Avatar": "",
+        "Name": "魯賢龍",
+        "Cam3_Skill": 5,
+        "Photo_Skill": 0,
+        "Cam1_Skill": 6,
+        "Job_Title": "影視團隊",
+        "AD_Skill": 5,
+        "Cam2_Skill": 6,
+        "D_Skill": 0
+      },
+      "updatedAt": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1786699299,
+        "nanoseconds": 966000000
+      },
+      "name": "魯賢龍",
+      "skills": {
+        "CAM2": 6,
+        "平面": 0,
+        "AD": 5,
+        "CAM4": 5,
+        "導播": 0,
+        "CAM3": 5,
+        "CAM1": 6
+      },
+      "Cam3_Skill": 5,
+      "lineId": "",
+      "技能值": {
+        "AD": 5,
+        "Cam1": 6,
+        "Cam2": 6,
+        "Cam3": 5,
+        "Photo": 0,
+        "導播": 0,
+        "Cam4": 5
+      },
+      "avatar": "",
+      "姓名": "魯賢龍",
+      "skillRoles": [
+        "Cam2",
+        "Cam1",
+        "Cam3",
+        "Cam4",
+        "AD"
+      ],
+      "Cam1_Skill": 6,
+      "LINE_ID": "魯賢龍",
+      "role": "user",
+      "userLevel": "user",
+      "Photo_Skill": 0,
+      "大頭照": null,
+      "Cam2_Skill": 6,
+      "D_Skill": 0
+    },
+    "黃湧信": {
+      "skillRoles": [
+        "山莊OB",
+        "宣教IN HOUSE",
+        "宣教OB"
+      ],
+      "Cam1_Skill": 0,
+      "lineId": "",
+      "Photo_Skill": 0,
+      "avatar": "",
+      "raw": {
+        "Cam4_Skill": "",
+        "User_Level": "user",
+        "Name": "黃湧信",
+        "Skill_Role": "山莊OB, 宣教IN HOUSE, 宣教OB",
+        "D_Skill": "",
+        "Cam3_Skill": "",
+        "Avatar": "",
+        "Cam1_Skill": "",
+        "Job_Title": "音控團隊",
+        "Photo_Skill": "",
+        "AD_Skill": "",
+        "User_ID": "",
+        "Cam2_Skill": ""
+      },
+      "audioSkills": {
+        "OB_SZ": 3,
+        "IH_SZ": 2,
+        "IH_XJ": 3,
+        "OB_XJ": 3
+      },
+      "skills": {
+        "CAM4": 0,
+        "CAM3": 0,
+        "CAM1": 0,
+        "導播": 0,
+        "AD": 0,
+        "CAM2": 0,
+        "平面": 0
+      },
+      "Cam2_Skill": 0,
+      "D_Skill": 0,
+      "userLevel": "user",
+      "role": "user",
+      "jobTitles": [
+        "音控團隊"
+      ],
+      "AD_Skill": 0,
+      "name": "黃湧信",
+      "pictureUrl": "",
+      "Cam4_Skill": 0,
+      "Cam3_Skill": 0,
+      "updatedAt": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1787283930,
+        "nanoseconds": 725000000
+      },
+      "teamLevels": {
+        "音控團隊": 3
+      }
+    }
+  },
+  "formResponses": {
+    "影視團隊_吳奕祥_1782295274903": {
+      "team": "影視團隊",
+      "createdAt": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1786699302,
+        "nanoseconds": 586000000
+      },
+      "name": "吳奕祥",
+      "timestamp": "2026-06-24T10:01:14.903Z",
+      "data": {
+        "[10/11]": "",
+        "組別": "動態攝影組",
+        "時間戳記": "2026-06-24T10:01:14.903Z",
+        "[09/13]": "",
+        "[07/12]": "",
+        "[08/30]": "",
+        "[07/19]": "山莊(動態)",
+        "[09/20]": "",
+        "[08/16]": "",
+        "姓名": "吳奕祥",
+        "[09/06]": "",
+        "[08/02]": "",
+        "[07/05]": "",
+        "[08/23]": "山莊(動態)",
+        "[08/09]": "",
+        "[10/18]": "",
+        "[10/04]": "",
+        "[10/25]": "",
+        "[07/26]": "",
+        "[09/27]": ""
+      }
+    },
+    "影視團隊_吳翊榮_1781790963958": {
+      "createdAt": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1786699302,
+        "nanoseconds": 586000000
+      },
+      "team": "影視團隊",
+      "data": {
+        "[10/25]": "",
+        "[10/04]": "",
+        "[10/18]": "",
+        "[09/27]": "",
+        "組別": "動態攝影組",
+        "[07/26]": "",
+        "[09/06]": "",
+        "[08/02]": "",
+        "[08/09]": "",
+        "[08/23]": "",
+        "[07/05]": "",
+        "[07/19]": "",
+        "[09/20]": "",
+        "[08/30]": "",
+        "[08/16]": "山莊(動態)",
+        "姓名": "吳翊榮",
+        "時間戳記": "2026-06-18T13:56:03.958Z",
+        "[07/12]": "山莊(動態)",
+        "[09/13]": "",
+        "[10/11]": ""
+      },
+      "timestamp": "2026-06-18T13:56:03.958Z",
+      "name": "吳翊榮"
+    },
+    "影視團隊_康恩得_1782010043772": {
+      "createdAt": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1786699302,
+        "nanoseconds": 586000000
+      },
+      "team": "影視團隊",
+      "name": "康恩得",
+      "data": {
+        "[08/02]": "",
+        "[09/06]": "",
+        "組別": "平面拍照組",
+        "[07/05]": "",
+        "[08/09]": "",
+        "[08/23]": "",
+        "[10/18]": "",
+        "時間戳記": "2026-06-21T02:47:23.772Z",
+        "[10/04]": "",
+        "[10/25]": "",
+        "[07/26]": "山莊(平面)",
+        "[09/27]": "",
+        "[10/11]": "",
+        "[07/12]": "",
+        "姓名": "康恩得",
+        "[09/13]": "",
+        "[08/30]": "山莊(平面)",
+        "[09/20]": "",
+        "[07/19]": "",
+        "[08/16]": ""
+      },
+      "timestamp": "2026-06-21T02:47:23.772Z"
+    },
+    "影視團隊_張志彬_1782358427759": {
+      "team": "影視團隊",
+      "createdAt": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1786699302,
+        "nanoseconds": 586000000
+      },
+      "timestamp": "2026-06-25T03:33:47.759Z",
+      "data": {
+        "[08/16]": "",
+        "[07/19]": "",
+        "[09/20]": "",
+        "時間戳記": "2026-06-25T03:33:47.759Z",
+        "[08/30]": "",
+        "[09/13]": "",
+        "[07/12]": "",
+        "姓名": "張志彬",
+        "[10/11]": "",
+        "[09/27]": "",
+        "[07/26]": "山莊(動態)",
+        "[10/25]": "",
+        "[10/04]": "",
+        "[10/18]": "",
+        "[08/23]": "山莊(動態)",
+        "[08/09]": "",
+        "[07/05]": "",
+        "組別": "動態攝影組",
+        "[08/02]": "",
+        "[09/06]": ""
+      },
+      "name": "張志彬"
+    },
+    "影視團隊_朱平_1781240087788": {
+      "team": "影視團隊",
+      "createdAt": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1786699302,
+        "nanoseconds": 586000000
+      },
+      "name": "朱平",
+      "timestamp": "2026-06-12T04:54:47.788Z",
+      "data": {
+        "[08/23]": "",
+        "[08/09]": "山莊(動態)",
+        "[07/05]": "",
+        "[08/02]": "",
+        "[09/06]": "",
+        "時間戳記": "2026-06-12T04:54:47.788Z",
+        "[09/27]": "",
+        "[07/26]": "山莊(動態)",
+        "[10/04]": "",
+        "[10/25]": "",
+        "組別": "動態攝影組",
+        "[10/18]": "",
+        "[09/13]": "",
+        "[07/12]": "山莊(動態)",
+        "[10/11]": "",
+        "[08/16]": "",
+        "[07/19]": "",
+        "[09/20]": "",
+        "姓名": "朱平",
+        "[08/30]": "山莊(動態)"
+      }
+    },
+    "影視團隊_李宜真_1781164994153": {
+      "createdAt": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1786699302,
+        "nanoseconds": 586000000
+      },
+      "name": "李宜真",
+      "data": {
+        "[08/02]": "山莊",
+        "[09/06]": "",
+        "組別": "動態攝影組",
+        "時間戳記": "2026-06-11T08:03:14.153Z",
+        "[07/05]": "",
+        "[08/09]": "山莊",
+        "[08/23]": "山莊",
+        "[10/18]": "",
+        "[10/25]": "",
+        "[10/04]": "",
+        "[07/26]": "山莊",
+        "[09/27]": "",
+        "[10/11]": "",
+        "[07/12]": "",
+        "[09/13]": "",
+        "姓名": "李宜真",
+        "[08/30]": "山莊",
+        "[07/19]": "山莊",
+        "[09/20]": "",
+        "[08/16]": "山莊"
+      },
+      "team": "影視團隊",
+      "timestamp": "2026-06-11T08:03:14.153Z"
+    },
+    "影視團隊_林人偉_1782290414984": {
+      "team": "影視團隊",
+      "timestamp": "2026-06-24T08:40:14.984Z",
+      "createdAt": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1786699302,
+        "nanoseconds": 586000000
+      },
+      "name": "林人偉",
+      "data": {
+        "[09/06]": "",
+        "[08/02]": "",
+        "[08/09]": "山莊, 山莊(平面)",
+        "[08/23]": "",
+        "[07/05]": "",
+        "組別": "平面拍照組, 動態攝影組",
+        "[10/04]": "",
+        "[10/25]": "",
+        "[10/18]": "",
+        "[09/27]": "",
+        "[07/26]": "山莊(動態)",
+        "[07/12]": "山莊(平面)",
+        "[09/13]": "",
+        "[10/11]": "",
+        "姓名": "林人偉",
+        "[09/20]": "",
+        "[07/19]": "",
+        "[08/30]": "",
+        "[08/16]": "",
+        "時間戳記": "2026-06-24T08:40:14.984Z"
+      }
+    },
+    "影視團隊_林建宇_1781787636102": {
+      "data": {
+        "[08/16]": "",
+        "[07/19]": "山莊(動態)",
+        "[09/20]": "",
+        "時間戳記": "2026-06-18T13:00:36.102Z",
+        "[08/30]": "",
+        "[09/13]": "",
+        "[07/12]": "",
+        "姓名": "林建宇",
+        "[10/11]": "",
+        "[09/27]": "",
+        "[07/26]": "山莊(動態)",
+        "[10/04]": "",
+        "[10/25]": "",
+        "[10/18]": "",
+        "[08/23]": "山莊(動態)",
+        "[08/09]": "山莊(動態)",
+        "[07/05]": "",
+        "組別": "動態攝影組",
+        "[08/02]": "",
+        "[09/06]": ""
+      },
+      "timestamp": "2026-06-18T13:00:36.102Z",
+      "name": "林建宇",
+      "createdAt": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1786699302,
+        "nanoseconds": 586000000
+      },
+      "team": "影視團隊"
+    },
+    "影視團隊_樊家琪_1781235536487": {
+      "timestamp": "2026-06-12T03:38:56.487Z",
+      "data": {
+        "[08/16]": "",
+        "[08/30]": "",
+        "[09/20]": "",
+        "[07/19]": "山莊(平面)",
+        "組別": "平面拍照組",
+        "[10/11]": "",
+        "[07/12]": "",
+        "[09/13]": "",
+        "[07/26]": "",
+        "時間戳記": "2026-06-12T03:38:56.487Z",
+        "[09/27]": "",
+        "[10/18]": "",
+        "[10/04]": "",
+        "[10/25]": "",
+        "[07/05]": "",
+        "姓名": "樊家琪",
+        "[08/09]": "山莊(平面)",
+        "[08/23]": "",
+        "[09/06]": "",
+        "[08/02]": ""
+      },
+      "name": "樊家琪",
+      "createdAt": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1786699302,
+        "nanoseconds": 586000000
+      },
+      "team": "影視團隊"
+    },
+    "影視團隊_蔡菁菁_1781184588842": {
+      "timestamp": "2026-06-11T13:29:48.842Z",
+      "data": {
+        "[08/16]": "",
+        "時間戳記": "2026-06-11T13:29:48.842Z",
+        "[08/30]": "山莊(動態)",
+        "[07/19]": "",
+        "[09/20]": "",
+        "姓名": "蔡菁菁",
+        "[10/11]": "",
+        "[09/13]": "",
+        "[07/12]": "",
+        "[07/26]": "",
+        "[09/27]": "",
+        "[10/18]": "",
+        "[10/04]": "",
+        "[10/25]": "",
+        "組別": "動態攝影組",
+        "[07/05]": "",
+        "[08/23]": "",
+        "[08/09]": "",
+        "[08/02]": "山莊(動態)",
+        "[09/06]": ""
+      },
+      "name": "蔡菁菁",
+      "createdAt": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1786699302,
+        "nanoseconds": 586000000
+      },
+      "team": "影視團隊"
+    },
+    "影視團隊_蔡菁菁_1786804267765": {
+      "name": "蔡菁菁",
+      "data": {
+        "組別": "動態攝影組",
+        "姓名": "蔡菁菁",
+        "[10/18]": "山莊(動態)",
+        "[10/25]": "",
+        "[09/20]": "山莊(動態)",
+        "[10/04]": "",
+        "[09/27]": "",
+        "[10/11]": "",
+        "[09/13]": "",
+        "[09/06]": "",
+        "時間戳記": "2026-08-15T14:31:07.765Z"
+      },
+      "timestamp": "2026-08-15T14:31:07.765Z",
+      "team": "影視團隊",
+      "createdAt": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1786804268,
+        "nanoseconds": 16000000
+      }
+    },
+    "影視團隊_陳仲萍_1781218348385": {
+      "team": "影視團隊",
+      "timestamp": "2026-06-11T22:52:28.385Z",
+      "name": "陳仲萍",
+      "createdAt": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1786699302,
+        "nanoseconds": 586000000
+      },
+      "data": {
+        "[08/16]": "",
+        "[08/30]": "",
+        "[09/20]": "",
+        "[07/19]": "",
+        "姓名": "陳仲萍",
+        "[10/11]": "",
+        "[07/12]": "山莊(動態)",
+        "時間戳記": "2026-06-11T22:52:28.385Z",
+        "[09/13]": "",
+        "[07/26]": "",
+        "[09/27]": "",
+        "[10/18]": "",
+        "[10/04]": "",
+        "[10/25]": "",
+        "[07/05]": "山莊(動態)",
+        "[08/09]": "山莊(動態)",
+        "組別": "動態攝影組",
+        "[08/23]": "",
+        "[08/02]": "山莊(動態)",
+        "[09/06]": ""
+      }
+    },
+    "影視團隊_韓文綺_1781440101116": {
+      "timestamp": "2026-06-14T12:28:21.116Z",
+      "team": "影視團隊",
+      "data": {
+        "姓名": "韓文綺",
+        "[10/18]": "",
+        "[10/25]": "",
+        "[10/04]": "",
+        "[07/26]": "山莊(動態)",
+        "[09/27]": "",
+        "[09/06]": "",
+        "[08/02]": "山莊(動態)",
+        "[07/05]": "山莊(平面), 山莊(動態)",
+        "[08/23]": "",
+        "[08/09]": "山莊(動態), 山莊(平面)",
+        "[08/30]": "山莊(動態)",
+        "組別": "動態攝影組, 平面拍照組",
+        "[07/19]": "山莊(動態)",
+        "[09/20]": "",
+        "[08/16]": "山莊(動態)",
+        "[10/11]": "",
+        "[09/13]": "",
+        "[07/12]": "山莊(動態)",
+        "時間戳記": "2026-06-14T12:28:21.116Z"
+      },
+      "createdAt": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1786699302,
+        "nanoseconds": 586000000
+      },
+      "name": "韓文綺"
+    },
+    "影視團隊_韓文綺_1787215188477": {
+      "createdAt": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1787215190,
+        "nanoseconds": 49000000
+      },
+      "team": "影視團隊",
+      "data": {
+        "時間戳記": "2026-08-20T08:39:48.477Z",
+        "[09/06]": "山莊(動態)",
+        "[09/13]": "",
+        "[10/11]": "山莊(動態)",
+        "[09/27]": "山莊(動態)",
+        "[10/25]": "",
+        "[10/04]": "山莊(動態)",
+        "[09/20]": "山莊(動態)",
+        "[10/18]": "山莊(動態)",
+        "姓名": "韓文綺",
+        "組別": "動態攝影組"
+      },
+      "name": "韓文綺",
+      "timestamp": "2026-08-20T08:39:48.477Z"
+    },
+    "影視團隊_魯賢龍_1782317723212": {
+      "timestamp": "2026-06-24T16:15:23.212Z",
+      "data": {
+        "[09/27]": "",
+        "[07/26]": "",
+        "[10/25]": "",
+        "[10/04]": "",
+        "時間戳記": "2026-06-24T16:15:23.212Z",
+        "[10/18]": "",
+        "[08/23]": "",
+        "[08/09]": "",
+        "[07/05]": "山莊(動態)",
+        "組別": "動態攝影組",
+        "[09/06]": "",
+        "[08/02]": "山莊(動態)",
+        "[08/16]": "山莊(動態)",
+        "[09/20]": "",
+        "[07/19]": "山莊(動態)",
+        "[08/30]": "",
+        "姓名": "魯賢龍",
+        "[09/13]": "",
+        "[07/12]": "",
+        "[10/11]": ""
+      },
+      "name": "魯賢龍",
+      "team": "影視團隊",
+      "createdAt": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1786699302,
+        "nanoseconds": 586000000
+      }
+    },
+    "影視團隊_魯賢龍_1786842105292": {
+      "name": "魯賢龍",
+      "timestamp": "2026-08-16T01:01:45.292Z",
+      "data": {
+        "時間戳記": "2026-08-16T01:01:45.292Z",
+        "[09/27]": "山莊(動態)",
+        "[10/04]": "山莊(動態)",
+        "[09/20]": "",
+        "[10/25]": "",
+        "[10/18]": "山莊(動態)",
+        "[09/06]": "",
+        "[09/13]": "山莊(動態)",
+        "姓名": "魯賢龍",
+        "組別": "動態攝影組",
+        "[10/11]": ""
+      },
+      "team": "影視團隊",
+      "createdAt": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1786842105,
+        "nanoseconds": 823000000
+      }
+    }
+  },
+  "schedules": {
+    "2026年_5-6月排班表": {
+      "updatedAt": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1786699426,
+        "nanoseconds": 350000000
+      },
+      "sheetName": "2026年 5-6月排班表",
+      "dataJson": "[[\"【山莊大堂】\",\"\",\"\",\"\",\"\",\"\",\"\",\"\",\"\",\"\"],[\"職務 / 日期\",\"05/03\",\"05/10\",\"05/17\",\"05/24\",\"05/31\",\"06/07\",\"06/14\",\"06/21\",\"06/28\"],[\"導播\",\"蔡佳翰\",\"蔡佳翰\",\"林建宇\",\"林建宇\",\"張志彬\",\"廖亦東\",\"林建宇\",\"吳翊榮\",\"林建宇\"],[\"AD\",\"缺\",\"李宜真\",\"李宜真\",\"李宜真\",\"邱欣茹\",\"李宜真\",\"李宜真\",\"李宜真\",\"缺\"],[\"CAM1\",\"魯賢龍\",\"陳仲萍\",\"蔡佳翰\",\"吳奕祥\",\"吳翊榮\",\"蔡菁菁\",\"陳仲萍\",\"張志彬\",\"蔡佳翰\"],[\"CAM2\",\"吳奕祥\",\"朱平\",\"魯賢龍\",\"陳仲萍\",\"蔡佳翰\",\"魯賢龍\",\"韓文綺\",\"吳奕祥\",\"朱平\"],[\"CAM3\",\"蔡菁菁\",\"林人偉\",\"韓文綺\",\"夏翊剛\",\"韓文綺\",\"陳仲萍\",\"蔡佳翰\",\"魯賢龍\",\"韓文綺\"],[\"CAM4\",\"缺\",\"缺\",\"陳仲萍\",\"韓文綺\",\"吳奕祥\",\"夏翊剛\",\"林人偉\",\"夏翊剛\",\"林人偉\"],[\"平面\",\"樊家琪\",\"韓文綺\",\"樊家琪\",\"廖亦東\",\"康恩得\",\"韓文綺\",\"樊家琪\",\"林人偉\",\"康恩得\"],[\"備用1\",\"\",\"\",\"\",\"\",\"朱平\",\"朱平\",\"\",\"\",\"\"],[\"備用2\",\"\",\"\",\"\",\"\",\"\",\"\",\"\",\"\",\"\"],[\"燈控\",\"皇誠\",\"皇誠\",\"皇誠\",\"皇誠\",\"皇誠\",\"皇誠\",\"皇誠\",\"皇誠\",\"皇誠\"],[\"山莊早餐數量\",\"6 份\",\"7 份\",\"8 份\",\"8 份\",\"9 份\",\"9 份\",\"8 份\",\"8 份\",\"7 份\"],[\"\",\"\",\"\",\"\",\"\",\"\",\"\",\"\",\"\",\"\"],[\"【宣教大樓】\",\"\",\"\",\"\",\"\",\"\",\"\",\"\",\"\",\"\"],[\"職務 / 日期\",\"05/03\",\"05/10\",\"05/17\",\"05/24\",\"05/31\",\"06/07\",\"06/14\",\"06/21\",\"06/28\"],[\"導播\",\"夏翊剛\",\"夏翊剛\",\"夏翊剛\",\"蔡佳翰\",\"夏翊剛\",\"蔡佳翰\",\"夏翊剛\",\"蔡佳翰\",\"夏翊剛\"],[\"信息版\",\"蔡佳翰\",\"蔡佳翰\",\"蔡佳翰\",\"夏翊剛\",\"蔡佳翰\",\"夏翊剛\",\"蔡佳翰\",\"夏翊剛\",\"蔡佳翰\"],[\"備用1\",\"\",\"\",\"\",\"\",\"\",\"\",\"\",\"\",\"\"],[\"燈控\",\"星州\",\"怡雯\",\"曉平\",\"以理\",\"以理\",\"星州\",\"怡雯\",\"曉平\",\"以理\"],[\"宣教早餐數量\",\"2 份\",\"2 份\",\"2 份\",\"2 份\",\"2 份\",\"2 份\",\"2 份\",\"2 份\",\"2 份\"],[\"宣教午餐數量\",\"3 份\",\"3 份\",\"3 份\",\"3 份\",\"3 份\",\"3 份\",\"3 份\",\"3 份\",\"3 份\"]]"
+    },
+    "2026年_7-8月排班表": {
+      "updatedAt": {
+        "type": "firestore/timestamp/1.0",
+        "seconds": 1786699428,
+        "nanoseconds": 434000000
+      },
+      "syncedFrom": "GoogleSheets",
+      "dataJson": "[[\"【山莊大堂】\",\"\",\"\",\"\",\"\",\"\",\"\",\"\",\"\",\"\"],[\"職務 / 日期\",\"07/05\",\"07/12\",\"07/19\",\"07/26\",\"08/02\",\"08/09\",\"08/16\",\"08/23\",\"08/30\"],[\"導播\",\"廖亦東\",\"吳翊榮\",\"林建宇\",\"張志彬\",\"廖亦東\",\"林建宇\",\"吳翊榮\",\"張志彬\",\"蔡佳翰\"],[\"AD\",\"缺\",\"缺\",\"李宜真\",\"李宜真\",\"李宜真\",\"李宜真\",\"李宜真\",\"李宜真\",\"李宜真\"],[\"CAM1\",\"陳仲萍\",\"蔡佳翰\",\"吳奕祥\",\"林建宇\",\"魯賢龍\",\"朱平\",\"魯賢龍\",\"林建宇\",\"蔡菁菁\"],[\"CAM2\",\"魯賢龍\",\"韓文綺\",\"魯賢龍\",\"林人偉\",\"蔡菁菁\",\"蔡佳翰\",\"夏翊剛\",\"吳奕祥\",\"韓文綺\"],[\"CAM3\",\"夏翊剛\",\"陳仲萍\",\"韓文綺\",\"蔡佳翰\",\"夏翊剛\",\"林人偉\",\"韓文綺\",\"陳仲萍\",\"朱平\"],[\"CAM4\",\"缺\",\"朱平\",\"夏翊剛\",\"韓文綺\",\"陳仲萍\",\"韓文綺\",\"缺\",\"缺\",\"夏翊剛\"],[\"平面\",\"韓文綺\",\"林人偉\",\"樊家琪\",\"康恩得\",\"韓文綺\",\"樊家琪\",\"缺\",\"蔡佳翰\",\"康恩得\"],[\"備用1\",\"\",\"\",\"\",\"\",\"\",\"\",\"\",\"\",\"\"],[\"備用2\",\"\",\"\",\"\",\"\",\"\",\"\",\"\",\"\",\"\"],[\"燈控\",\"\",\"\",\"\",\"\",\"\",\"\",\"\",\"\",\"\"],[\"山莊早餐數量\",\"6 份\",\"7 份\",\"8 份\",\"8 份\",\"8 份\",\"8 份\",\"6 份\",\"7 份\",\"8 份\"],[\"\",\"\",\"\",\"\",\"\",\"\",\"\",\"\",\"\",\"\"],[\"【宣教大樓】\",\"\",\"\",\"\",\"\",\"\",\"\",\"\",\"\",\"\"],[\"職務 / 日期\",\"07/05\",\"07/12\",\"07/19\",\"07/26\",\"08/02\",\"08/09\",\"08/16\",\"08/23\",\"08/30\"],[\"導播\",\"蔡佳翰\",\"夏翊剛\",\"蔡佳翰\",\"夏翊剛\",\"蔡佳翰\",\"夏翊剛\",\"蔡佳翰\",\"夏翊剛\",\"夏翊剛\"],[\"信息版\",\"夏翊剛\",\"蔡佳翰\",\"夏翊剛\",\"蔡佳翰\",\"夏翊剛\",\"蔡佳翰\",\"夏翊剛\",\"蔡佳翰\",\"蔡佳翰\"],[\"備用1\",\"\",\"\",\"\",\"\",\"\",\"\",\"\",\"\",\"\"],[\"燈控\",\"\",\"\",\"\",\"\",\"\",\"\",\"\",\"\",\"\"],[\"宣教早餐數量\",\"2 份\",\"2 份\",\"2 份\",\"2 份\",\"2 份\",\"2 份\",\"2 份\",\"2 份\",\"2 份\"],[\"宣教午餐數量\",\"3 份\",\"3 份\",\"3 份\",\"2 份\",\"3 份\",\"3 份\",\"3 份\",\"3 份\",\"3 份\"]]",
+      "sheetName": "2026年 7-8月排班表"
+    }
+  }
+}

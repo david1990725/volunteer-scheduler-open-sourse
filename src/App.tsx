@@ -30,9 +30,6 @@ import { HomePage } from './components/HomePage';
 // Constants
 // =============================================================================
 
-const SKILL_TREE_URL =
-  'https://docs.google.com/spreadsheets/d/1L3W6RwrE6gzi_znqNXBww9WVRvi2NVuhDj3-hSYmTZI/export?format=csv';
-
 const FALLBACK_RESPONSES_PATH = '/schedule_responses.csv';
 
 // =============================================================================
@@ -303,8 +300,8 @@ function App() {
         }
       }
 
-      const skillData = await fetchCSVAsJson(SKILL_TREE_URL);
-      const volunteers = parseSkillTreeData(skillData);
+      const resVolunteers = await cloudService.fetchVolunteers();
+      const volunteers = parseSkillTreeData(resVolunteers.data || []);
       
       const targetCycle = overrideCycle || selectedCycle;
       const year = new Date().getFullYear();
@@ -918,7 +915,7 @@ function App() {
         </div>
       )}
 
-      {view === 'admin' && currentUser?.role === 'admin' && (
+      {(currentUser?.userLevel === 'admin' || currentUser?.role === 'admin') && view === 'admin' && (
         <AdminNav
           adminTeam={adminTeam}
           adminSubTab={adminSubTab}
@@ -937,7 +934,7 @@ function App() {
               localStorage.setItem('volunteer_scheduler_user', JSON.stringify(user));
               setCurrentUser(user);
               setView('home');
-              if (user.role === 'admin') {
+              if (user.userLevel === 'admin' || user.role === 'admin') {
                 setAdminTeamSelected(false);
                 setAdminSubTab('roster');
               }
@@ -948,7 +945,7 @@ function App() {
         {view === 'home' && currentUser && (
           <>
             <div className="desktop-nav" style={{ marginBottom: '24px', justifyContent: 'center' }}>
-              {currentUser.role === 'admin' && (
+              {(currentUser.userLevel === 'admin' || currentUser.role === 'admin') && (
                 <button className="btn-primary" onClick={() => setView('admin')}>進入後台管理</button>
               )}
               {['影視團隊', '燈光團隊', '音控團隊', '舞監團隊'].includes(homeSelectedTeam) ? (
@@ -971,7 +968,7 @@ function App() {
 
               {isMobileMenuOpen && (
                 <div className="mobile-nav-menu animate-morph stagger-1">
-                  {currentUser.role === 'admin' && (
+                  {(currentUser.userLevel === 'admin' || currentUser.role === 'admin') && (
                     <button className="btn-primary" onClick={() => { setView('admin'); setIsMobileMenuOpen(false); }}>進入後台管理</button>
                   )}
                   {['影視團隊', '燈光團隊', '音控團隊', '舞監團隊'].includes(homeSelectedTeam) ? (
@@ -1016,7 +1013,7 @@ function App() {
           </>
         )}
 
-        {view === 'admin' && currentUser?.role === 'admin' && adminTeamSelected && (
+        {view === 'admin' && (currentUser?.userLevel === 'admin' || currentUser?.role === 'admin') && adminTeamSelected && (
           <>
             {(() => {
               const teamNameMap: Record<string, string> = {

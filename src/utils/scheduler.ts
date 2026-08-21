@@ -2,17 +2,30 @@
 // 轉播拍攝排班引擎
 // =============================================================================
 
+import {
+  toTeamKey,
+  ROLE_MAP,
+  REVERSE_ROLE_MAP,
+} from './constants';
+
 // --- Types -------------------------------------------------------------------
 
 export interface Volunteer {
   name: string;
-  role: 'admin' | 'user';
-  roles: string[];
-  skills: Record<string, number>;
-  teamLevels?: Record<string, number>; // 各團隊 Level 1~3 等級 (如 { '燈光團隊': 2, '音控團隊': 1, '舞監團隊': 3 })
+  userLevel: 'admin' | 'user';
+  jobTitles: string[]; // 英文團隊陣列: ['video', 'light', 'stage', 'audio', 'admin']
+  skillRoles: string[]; // 英文角色陣列: ['director_sz', 'cam1', ...]
+  videoSkills: Record<string, number>; // 7 軸數值 (director, ad, photo, cam1~cam4: 0~10)
+  lightLevel: number; // 1 ~ 3
+  stageLevel: number; // 1 ~ 3
+  audioSkills: Record<string, number>; // 4 軸數值 (ih_xj, ih_sz, ob_xj, ob_sz: 0~3)
   lineId?: string; // LINE platform internal user_id
-  lineDisplayName?: string; // from LINE_ID column
+  lineDisplayName?: string; // LINE 顯示名稱
   pictureUrl?: string; // LINE profile picture or custom URL
+  // 向後相容欄位別名 (相容部分現有介面)
+  role?: 'admin' | 'user';
+  roles?: string[];
+  skills?: Record<string, number>;
 }
 
 export interface Shift {
@@ -43,26 +56,60 @@ const ROLE_PRIORITY: Record<string, number> = {
 // --- Helper Functions --------------------------------------------------------
 
 /** 是否具備任一攝影機技能 */
-const isCamOperator = (p: Volunteer): boolean =>
-  CAM_ROLES.some(r => (p.skills[r] || 0) > 0);
+const isCamOperator = (p: Volunteer): boolean => {
+  const vs = p.videoSkills || {};
+  return (vs.cam1 || 0) > 0 || (vs.cam2 || 0) > 0 || (vs.cam3 || 0) > 0 || (vs.cam4 || 0) > 0 ||
+    CAM_ROLES.some(r => (p.skills?.[r] || 0) > 0);
+};
 
 /** 取得某人對某職位的資格與技能值 */
 const getRoleSkill = (p: Volunteer, role: string): { hasRole: boolean; skill: number } => {
+  const vs = p.videoSkills || {};
+  const sr = p.skillRoles || [];
+  const roles = p.roles || [];
+
   if (role === '平面') {
-    const skill = p.skills['平面'] || 0;
-    return { hasRole: skill > 0, skill };
+    const skill = vs.photo ?? p.skills?.['平面'] ?? 0;
+    const hasRole = skill > 0 || sr.includes('photo') || roles.includes('Photo') || roles.includes('平面');
+    return { hasRole, skill };
   }
+
   if (role === 'AD') {
-    const hasRole = p.roles.includes('AD') || p.roles.includes('HOST') || p.roles.includes('CCU') || (p.skills['AD'] || 0) > 0;
-    return { hasRole, skill: p.skills['AD'] || 0 };
+    const skill = vs.ad ?? p.skills?.['AD'] ?? 0;
+    const hasRole = skill > 0 || sr.includes('ad') || roles.includes('AD') || roles.includes('HOST') || roles.includes('CCU');
+    return { hasRole, skill };
   }
+
   // 導播：UI 顯示為「導播」，技能樹分為「山莊導播」和「宣教導播」
   if (role === '導播') {
-    const hasRole = p.roles.includes('山莊導播') || p.roles.includes('宣教導播');
-    return { hasRole, skill: hasRole ? 10 : 0 };
+    const hasRole = sr.includes('director_sz') || sr.includes('director_xj') || roles.includes('山莊導播') || roles.includes('宣教導播');
+    const skill = vs.director ?? (hasRole ? 10 : 0);
+    return { hasRole, skill: hasRole ? (skill || 10) : 0 };
   }
-  const hasRole = p.roles.includes(role) || (p.skills[role] || 0) > 0;
-  return { hasRole, skill: p.skills[role] || 0 };
+
+  if (role === 'CAM1') {
+    const skill = vs.cam1 ?? p.skills?.['CAM1'] ?? 0;
+    const hasRole = skill > 0 || sr.includes('cam1') || roles.includes('Cam1') || roles.includes('CAM1');
+    return { hasRole, skill };
+  }
+  if (role === 'CAM2') {
+    const skill = vs.cam2 ?? p.skills?.['CAM2'] ?? 0;
+    const hasRole = skill > 0 || sr.includes('cam2') || roles.includes('Cam2') || roles.includes('CAM2');
+    return { hasRole, skill };
+  }
+  if (role === 'CAM3') {
+    const skill = vs.cam3 ?? p.skills?.['CAM3'] ?? 0;
+    const hasRole = skill > 0 || sr.includes('cam3') || roles.includes('Cam3') || roles.includes('CAM3');
+    return { hasRole, skill };
+  }
+  if (role === 'CAM4') {
+    const skill = vs.cam4 ?? p.skills?.['CAM4'] ?? 0;
+    const hasRole = skill > 0 || sr.includes('cam4') || roles.includes('Cam4') || roles.includes('CAM4');
+    return { hasRole, skill };
+  }
+
+  const hasRole = roles.includes(role) || (p.skills?.[role] || 0) > 0;
+  return { hasRole, skill: p.skills?.[role] || 0 };
 };
 
 /**
@@ -77,60 +124,105 @@ const adjustedSkill = (
   base - ((roleCount[name]?.[role] || 0) * 1.5) - ((totalShifts[name] || 0) * 0.1);
 
 // =============================================================================
-// 技能樹解析
+// 義工資料解析
 // =============================================================================
 
 export function parseSkillTreeData(data: any[]): Record<string, Volunteer> {
   const volunteers: Record<string, Volunteer> = {};
 
   for (const row of data) {
-    const rawName = row['Name'] || row['姓名'];
+    const rawName = row['Name'] || row['name'] || row['姓名'];
     const name = typeof rawName === 'string' ? rawName.trim() : (rawName ? String(rawName).trim() : undefined);
     if (!name) continue;
 
-    // 合併團隊分類 (Job_Title) 與排班角色 (Skill_Role)，以確保首頁團隊過濾與排班引擎能同時正常運作
-    const jobTitles = String(row['Job_Title'] || '').split(',').map((r: string) => r.trim()).filter(Boolean);
-    const skillRoles = String(row['Skill_Role'] || row['職能'] || '').split(',').map((r: string) => r.trim()).filter(Boolean);
-    const roles = Array.from(new Set([...jobTitles, ...skillRoles]));
+    // 解析英文 jobTitles
+    let rawJobTitles: string[] = [];
+    if (Array.isArray(row.jobTitles)) rawJobTitles = row.jobTitles;
+    else if (typeof row.jobTitles === 'string') rawJobTitles = row.jobTitles.split(',');
+    else if (typeof row.Job_Title === 'string') rawJobTitles = row.Job_Title.split(',');
+    
+    const jobTitles = Array.from(new Set(
+      rawJobTitles.map(t => toTeamKey(String(t).trim())).filter(Boolean)
+    ));
 
-    const skills: Record<string, number> = {
-      '平面': parseInt(row['Photo_Skill']) || parseInt(row['Photo技能值']) || parseInt(row['平面技能值']) || 0,
-      'CAM1': parseInt(row['Cam1_Skill']) || parseInt(row['Cam1技能值']) || 0,
-      'CAM2': parseInt(row['Cam2_Skill']) || parseInt(row['Cam2技能值']) || 0,
-      'CAM3': parseInt(row['Cam3_Skill']) || parseInt(row['Cam3技能值']) || 0,
-      'CAM4': parseInt(row['Cam4_Skill']) || parseInt(row['Cam4技能值']) || 0,
+    // 解析英文 skillRoles
+    let rawSkillRoles: string[] = [];
+    if (Array.isArray(row.skillRoles)) rawSkillRoles = row.skillRoles;
+    else if (typeof row.skillRoles === 'string') rawSkillRoles = row.skillRoles.split(',');
+    else if (typeof row.Skill_Role === 'string') rawSkillRoles = row.Skill_Role.split(',');
+    else if (typeof row['職能'] === 'string') rawSkillRoles = row['職能'].split(',');
+    
+    const skillRoles = Array.from(new Set(
+      rawSkillRoles.map(r => {
+        const tr = String(r).trim();
+        return REVERSE_ROLE_MAP[tr] || tr.toLowerCase();
+      }).filter(Boolean)
+    ));
+
+    // 解析 7 軸 videoSkills (director, ad, photo, cam1~cam4)
+    const rawVideo = row.videoSkills || row.skills || {};
+    const videoSkills: Record<string, number> = {
+      director: parseInt(rawVideo.director ?? rawVideo['導播'] ?? row.D_Skill ?? 0, 10) || 0,
+      ad: parseInt(rawVideo.ad ?? rawVideo['AD'] ?? row.AD_Skill ?? 0, 10) || 0,
+      photo: parseInt(rawVideo.photo ?? rawVideo['平面'] ?? row.Photo_Skill ?? 0, 10) || 0,
+      cam1: parseInt(rawVideo.cam1 ?? rawVideo['CAM1'] ?? row.Cam1_Skill ?? 0, 10) || 0,
+      cam2: parseInt(rawVideo.cam2 ?? rawVideo['CAM2'] ?? row.Cam2_Skill ?? 0, 10) || 0,
+      cam3: parseInt(rawVideo.cam3 ?? rawVideo['CAM3'] ?? row.Cam3_Skill ?? 0, 10) || 0,
+      cam4: parseInt(rawVideo.cam4 ?? rawVideo['CAM4'] ?? row.Cam4_Skill ?? 0, 10) || 0,
     };
 
-    // 優先讀取數值，若無則依職能字串給予布林預設值（有 → 10, 無 → 0）
-    skills['導播'] = parseInt(row['D_Skill']) || parseInt(row['導播技能值']) || (roles.includes('山莊導播') || roles.includes('宣教導播') ? 10 : 0);
-    skills['山莊導播'] = skills['導播']; // 相容舊版判斷
-    skills['宣教導播'] = skills['導播']; // 相容舊版判斷
-    
-    skills['AD'] = parseInt(row['AD_Skill']) || parseInt(row['AD技能值']) || parseInt(row['ＡＤ技能值']) || parseInt(row['CCU/HOST技能值']) || parseInt(row['HOST/CCU技能值']) || (roles.some((r: string) => r === 'AD' || r === 'HOST' || r === 'CCU') ? 10 : 0);
-    skills['HOST/CCU'] = skills['AD']; // 相容舊版判斷
-    skills['CCU/HOST'] = skills['AD']; // 相容舊版判斷
+    // 繁體中文舊 skills 相容物件 (供歷史讀取)
+    const skills: Record<string, number> = {
+      '導播': videoSkills.director,
+      'AD': videoSkills.ad,
+      '平面': videoSkills.photo,
+      'CAM1': videoSkills.cam1,
+      'CAM2': videoSkills.cam2,
+      'CAM3': videoSkills.cam3,
+      'CAM4': videoSkills.cam4,
+    };
 
-    skills['信息版'] = roles.some((r: string) => ['山莊導播', '宣教導播', 'AD', 'HOST', 'CCU'].includes(r)) ? 10 : 0;
+    // 音控 4 軸 audioSkills
+    const rawAudio = row.audioSkills || {};
+    const audioSkills: Record<string, number> = {
+      ih_xj: parseInt(rawAudio.ih_xj ?? rawAudio.IH_XJ ?? 0, 10) || 0,
+      ih_sz: parseInt(rawAudio.ih_sz ?? rawAudio.IH_SZ ?? 0, 10) || 0,
+      ob_xj: parseInt(rawAudio.ob_xj ?? rawAudio.OB_XJ ?? 0, 10) || 0,
+      ob_sz: parseInt(rawAudio.ob_sz ?? rawAudio.OB_SZ ?? 0, 10) || 0,
+    };
 
-    const rawUserLevel = row['User_Level'] || row['role'] || '';
+    // 獨立 lightLevel & stageLevel
+    const lightLevel = parseInt(row.lightLevel ?? row.teamLevels?.['燈光團隊'] ?? 1, 10) || 1;
+    const stageLevel = parseInt(row.stageLevel ?? row.teamLevels?.['舞監團隊'] ?? 1, 10) || 1;
+
+    const rawUserLevel = row.userLevel || row.role || row.User_Level || '';
     const userRole = String(rawUserLevel).trim().toLowerCase() === 'admin' ? 'admin' : 'user';
-    const rawUserId = row['User_ID'] || row['user_id'] || '';
-    const lineId = String(rawUserId).trim() || undefined;
-    const rawLineId = row['LINE_ID'] || '';
-    const lineDisplayName = String(rawLineId).trim() || undefined;
-    const rawAvatar = row['Avatar'] || row['大頭照'] || row['pictureUrl'] || row['頭像'] || '';
-    const pictureUrl = String(rawAvatar).trim() || undefined;
+    const lineId = String(row.lineId || row.user_id || row.User_ID || '').trim() || undefined;
+    const lineDisplayName = String(row.lineDisplayName || row.LINE_ID || '').trim() || undefined;
+    const pictureUrl = String(row.pictureUrl || row.avatar || row.Avatar || '').trim() || undefined;
 
-    // 解析各團隊 Level 1~3 (支援 teamLevels 物件或獨立欄位)
-    const teamLevels: Record<string, number> = row['teamLevels'] && typeof row['teamLevels'] === 'object' 
-      ? { ...row['teamLevels'] }
-      : {
-          '燈光團隊': parseInt(row['Light_Level']) || parseInt(row['燈光等級']) || 1,
-          '音控團隊': parseInt(row['Audio_Level']) || parseInt(row['音控等級']) || 1,
-          '舞監團隊': parseInt(row['Stage_Level']) || parseInt(row['舞監等級']) || 1,
-        };
+    // 向後相容 roles (中文職能/角色陣列)
+    const legacyRoles = [
+      ...jobTitles.map(t => ROLE_MAP[t] || t),
+      ...skillRoles.map(r => ROLE_MAP[r] || r),
+    ];
 
-    volunteers[name] = { name, role: userRole, roles, skills, teamLevels, lineId, lineDisplayName, pictureUrl };
+    volunteers[name] = {
+      name,
+      userLevel: userRole,
+      role: userRole,
+      jobTitles,
+      skillRoles,
+      roles: Array.from(new Set(legacyRoles)),
+      videoSkills,
+      skills,
+      lightLevel: Math.max(1, Math.min(3, lightLevel)),
+      stageLevel: Math.max(1, Math.min(3, stageLevel)),
+      audioSkills,
+      lineId,
+      lineDisplayName,
+      pictureUrl,
+    };
   }
 
   return volunteers;
@@ -179,7 +271,7 @@ export function parseScheduleResponsesData(
   // Track role preferences: person → dateField → Set<'平面' | '攝影'>
   const rolePreferences: Record<string, Record<string, Set<string>>> = {};
 
-  // Dynamically detect the category column (可能叫「職能」「組別」等)
+  // Dynamically detect the category column (可能叫「組別」「職能」等)
   const categoryKey = detectCategoryColumn(data);
 
   // 確保同一志工多次提交時，只保留最新的一筆紀錄
@@ -280,7 +372,9 @@ export function parseScheduleResponsesData(
       for (const ft of FULL_TIMERS) {
         if (!canAssign(ft, '宣教')) continue;
         const p = volunteers[ft];
-        if (!p || !p.roles.includes('宣教導播')) continue;
+        if (!p) continue;
+        const hasXJDir = p.skillRoles?.includes('director_xj') || p.roles?.includes('宣教導播');
+        if (!hasXJDir) continue;
         const score = adjustedSkill(10, ft, '導播', roleCount, totalShifts);
         if (score > bestScore) { bestScore = score; bestFT = ft; }
       }
@@ -296,7 +390,9 @@ export function parseScheduleResponsesData(
       for (const name of szPool) {
         if (!canAssign(name, '山莊')) continue;
         const p = volunteers[name];
-        if (!p || !p.roles.includes('山莊導播')) continue;
+        if (!p) continue;
+        const hasSZDir = p.skillRoles?.includes('director_sz') || p.roles?.includes('山莊導播');
+        if (!hasSZDir) continue;
         const score = adjustedSkill(10, name, '導播', roleCount, totalShifts);
         if (score > bestScore) { bestScore = score; bestDir = name; }
       }
@@ -357,8 +453,6 @@ export function parseScheduleResponsesData(
 
   // -------------------------------------------------------------------------
   // Phase 2: 廖亦東全能補位 (post-processing)
-  //
-  // 概覽整張班表，每月選出缺口最嚴重的一週，填入最關鍵的空缺。
   // -------------------------------------------------------------------------
 
   applyLiaoBackfill(shifts, volunteers);
@@ -415,7 +509,7 @@ function determineRestingFT(
     const hasOtherDirector = (locAvail[field]['山莊'] || []).some(n => {
       if (n === ft || n === otherFT || n === LIAO_NAME) return false;
       const p = volunteers[n];
-      return p != null && p.roles.includes('山莊導播');
+      return p != null && (p.skillRoles?.includes('director_sz') || p.roles?.includes('山莊導播'));
     });
 
     // Condition 2: 另一位專職仍可出勤

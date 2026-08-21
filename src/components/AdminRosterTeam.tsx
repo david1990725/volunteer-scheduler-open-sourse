@@ -1,13 +1,15 @@
 import React, { useState, useEffect } from 'react';
-import { Users, Save, X, Edit2, Shield, Loader2, Database, UserPlus } from 'lucide-react';
+import { Users, Save, X, Edit2, Shield, Loader2, UserPlus } from 'lucide-react';
 import type { Volunteer } from '../utils/scheduler';
 import { parseSkillTreeData } from '../utils/scheduler';
-import { fetchCSVAsJson } from '../utils/fileUtils';
 import * as cloudService from '../utils/googleSheets';
 import { UserAvatar } from './UserAvatar';
-
-const JOB_TITLE_OPTIONS = ['管理團隊', '影視團隊', '燈光團隊', '舞監團隊', '音控團隊'];
-const SKILL_TREE_URL = 'https://docs.google.com/spreadsheets/d/1L3W6RwrE6gzi_znqNXBww9WVRvi2NVuhDj3-hSYmTZI/export?format=csv';
+import {
+  toTeamKey,
+  toTeamName,
+  TEAM_OPTIONS,
+  type TeamKey,
+} from '../utils/constants';
 
 interface AdminRosterTeamProps {
   team: string;
@@ -16,9 +18,11 @@ interface AdminRosterTeamProps {
 export const AdminRosterTeam: React.FC<AdminRosterTeamProps> = ({ team }) => {
   const [users, setUsers] = useState<Volunteer[]>([]);
   const [loading, setLoading] = useState(true);
-  const [migrating, setMigrating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [editingUser, setEditingUser] = useState<string | null>(null);
+
+  const currentTeamKey = toTeamKey(team);
+  const currentTeamName = toTeamName(team);
   
   const [editForm, setEditForm] = useState<{
     name: string;
@@ -39,7 +43,7 @@ export const AdminRosterTeam: React.FC<AdminRosterTeamProps> = ({ team }) => {
     teamLevel: number;
   }>({
     name: '',
-    jobTitle: [team],
+    jobTitle: [currentTeamName],
     userLevel: 'user',
     avatar: '',
     teamLevel: 1,
@@ -55,30 +59,12 @@ export const AdminRosterTeam: React.FC<AdminRosterTeamProps> = ({ team }) => {
         const parsed = parseSkillTreeData(result.data);
         setUsers(Object.values(parsed));
       } else {
-        // 若 Firestore 初次為空，自動從 Google Sheets CSV 載入並解析
-        const csvData = await fetchCSVAsJson(SKILL_TREE_URL);
-        const parsed = parseSkillTreeData(csvData);
-        setUsers(Object.values(parsed));
+        setUsers([]);
       }
     } catch (err: any) {
       setError(err.message || '無法載入使用者資料，請確認資料庫連線。');
     } finally {
       setLoading(false);
-    }
-  };
-
-  const handleMigrateFromSheets = async () => {
-    if (confirm('確定要從 Google Sheets 匯入並覆蓋/同步義工名單至 Firebase 嗎？')) {
-      setMigrating(true);
-      try {
-        const res = await cloudService.migrateGoogleSheetsToFirebase();
-        alert(res.message);
-        await loadData();
-      } catch (err: any) {
-        alert(err.message || '遷移失敗');
-      } finally {
-        setMigrating(false);
-      }
     }
   };
 
@@ -95,18 +81,15 @@ export const AdminRosterTeam: React.FC<AdminRosterTeamProps> = ({ team }) => {
 
     setCreating(true);
     try {
-      const teamLevels: Record<string, number> = {
-        '燈光團隊': addForm.teamLevel,
-        '音控團隊': addForm.teamLevel,
-        '舞監團隊': addForm.teamLevel,
-      };
+      const enJobTitles = addForm.jobTitle.map(t => toTeamKey(t));
 
       const res = await cloudService.addNewVolunteer({
         name: addForm.name.trim(),
-        jobTitles: addForm.jobTitle,
+        jobTitles: enJobTitles,
         userLevel: addForm.userLevel,
-        avatar: addForm.avatar.trim(),
-        teamLevels,
+        pictureUrl: addForm.avatar.trim(),
+        lightLevel: addForm.jobTitle.includes('燈光團隊') ? addForm.teamLevel : 1,
+        stageLevel: addForm.jobTitle.includes('舞監團隊') ? addForm.teamLevel : 1,
       });
 
       if (res.success) {
@@ -114,7 +97,7 @@ export const AdminRosterTeam: React.FC<AdminRosterTeamProps> = ({ team }) => {
         setShowAddModal(false);
         setAddForm({
           name: '',
-          jobTitle: [team],
+          jobTitle: [currentTeamName],
           userLevel: 'user',
           avatar: '',
           teamLevel: 1,
@@ -139,10 +122,12 @@ export const AdminRosterTeam: React.FC<AdminRosterTeamProps> = ({ team }) => {
 
   const handleEdit = (user: Volunteer) => {
     setEditingUser(user.name);
+    // 將英文 jobTitles 轉回中文選項供 UI 勾選
+    const userTeamNames = (user.jobTitles || []).map(t => toTeamName(t));
     setEditForm({
       name: user.name,
-      jobTitle: user.roles.filter(r => JOB_TITLE_OPTIONS.includes(r)), // 只保留團隊分類，過濾掉排班角色
-      userLevel: user.role,
+      jobTitle: userTeamNames.filter(n => TEAM_OPTIONS.includes(n)),
+      userLevel: user.userLevel || user.role || 'user',
       avatar: user.pictureUrl || '',
     });
   };
@@ -161,9 +146,9 @@ export const AdminRosterTeam: React.FC<AdminRosterTeamProps> = ({ team }) => {
       const payload = {
         oldName,
         newName: editForm.name.trim(),
-        jobTitle: editForm.jobTitle.join(', '),
+        jobTitles: editForm.jobTitle.map(t => toTeamKey(t)),
         userLevel: editForm.userLevel,
-        avatar: editForm.avatar.trim(),
+        pictureUrl: editForm.avatar.trim(),
       };
       const res = await cloudService.updateUser(payload);
       if (res.success) {
@@ -223,12 +208,19 @@ export const AdminRosterTeam: React.FC<AdminRosterTeamProps> = ({ team }) => {
     );
   }
 
+  // 篩選所屬團隊義工 (包含管理員)
+  const filteredUsers = users.filter(u => {
+    const titles = u.jobTitles || [];
+    return titles.includes('admin') || titles.includes(currentTeamKey as TeamKey) ||
+      (u.roles && (u.roles.some(r => r.includes('管理')) || u.roles.includes(currentTeamName)));
+  });
+
   return (
     <div style={{ padding: '0 20px', maxWidth: '1200px', margin: '0 auto' }}>
       <div className="animate-morph stagger-1" style={{ padding: '10px 0', marginBottom: '20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
         <h2 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '12px', color: 'var(--text-primary)' }}>
           <Users size={24} color="var(--icon-accent)" />
-          {team} 義工名冊
+          {currentTeamName} 義工名冊
         </h2>
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
           <button
@@ -236,7 +228,7 @@ export const AdminRosterTeam: React.FC<AdminRosterTeamProps> = ({ team }) => {
             onClick={() => {
               setAddForm({
                 name: '',
-                jobTitle: [team],
+                jobTitle: [currentTeamName],
                 userLevel: 'user',
                 avatar: '',
                 teamLevel: 1,
@@ -244,41 +236,24 @@ export const AdminRosterTeam: React.FC<AdminRosterTeamProps> = ({ team }) => {
               setShowAddModal(true);
             }}
             style={{
-              padding: '6px 14px',
-              fontSize: '0.85rem',
+              padding: '8px 16px',
+              fontSize: '0.9rem',
               display: 'flex',
               alignItems: 'center',
               gap: '6px',
-              borderRadius: '8px',
+              borderRadius: '10px',
             }}
           >
             <UserPlus size={16} /> 新增成員
           </button>
-          <button
-            className="btn-secondary"
-            onClick={handleMigrateFromSheets}
-            disabled={migrating}
-            title="從 Google Sheets 技能樹抓取名單並同步寫入 Firebase Firestore"
-            style={{
-              padding: '6px 14px',
-              fontSize: '0.85rem',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '6px',
-              borderRadius: '8px',
-            }}
-          >
-            {migrating ? <Loader2 size={16} className="animate-spin" /> : <Database size={16} color="var(--icon-accent)" />}
-            {migrating ? '正在匯入中...' : '從 Google Sheets 匯入至 Firebase'}
-          </button>
           <div style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>
-            共 {users.filter(u => u.roles.some(r => r.includes('管理')) || u.roles.includes(team)).length} 位成員
+            共 {filteredUsers.length} 位成員
           </div>
         </div>
       </div>
 
       <div className="animate-morph stagger-2" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '20px' }}>
-        {users.filter(u => u.roles.some(r => r.includes('管理')) || u.roles.includes(team)).map(user => {
+        {filteredUsers.map(user => {
           const isEditing = editingUser === user.name;
           
           return (
@@ -323,8 +298,8 @@ export const AdminRosterTeam: React.FC<AdminRosterTeamProps> = ({ team }) => {
                       onChange={e => setEditForm(prev => ({ ...prev, userLevel: e.target.value }))}
                       style={{ fontSize: '0.85rem' }}
                     >
-                      <option value="user">User</option>
-                      <option value="admin">Admin</option>
+                      <option value="user">User (一般義工)</option>
+                      <option value="admin">Admin (管理員)</option>
                     </select>
                   ) : (
                     <span style={{ 
@@ -332,10 +307,10 @@ export const AdminRosterTeam: React.FC<AdminRosterTeamProps> = ({ team }) => {
                       borderRadius: '6px', 
                       fontSize: '0.8rem', 
                       fontWeight: 600,
-                      background: user.role === 'admin' ? 'rgba(234, 179, 8, 0.2)' : 'var(--bg-input)',
-                      color: user.role === 'admin' ? 'var(--icon-accent)' : 'var(--text-secondary)'
+                      background: (user.userLevel || user.role) === 'admin' ? 'rgba(234, 179, 8, 0.2)' : 'var(--bg-input)',
+                      color: (user.userLevel || user.role) === 'admin' ? 'var(--icon-accent)' : 'var(--text-secondary)'
                     }}>
-                      {user.role}
+                      {user.userLevel || user.role}
                     </span>
                   )}
                 </div>
@@ -345,7 +320,7 @@ export const AdminRosterTeam: React.FC<AdminRosterTeamProps> = ({ team }) => {
                 <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '8px' }}>所屬團隊</div>
                 {isEditing ? (
                   <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                    {JOB_TITLE_OPTIONS.map(opt => (
+                    {TEAM_OPTIONS.map(opt => (
                       <label key={opt} style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer', fontSize: '0.85rem', color: 'var(--text-primary)' }}>
                         <input 
                           type="checkbox" 
@@ -358,9 +333,9 @@ export const AdminRosterTeam: React.FC<AdminRosterTeamProps> = ({ team }) => {
                   </div>
                 ) : (
                   <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
-                    {user.roles.filter(r => JOB_TITLE_OPTIONS.includes(r)).map(r => (
+                    {(user.jobTitles || []).map(r => (
                       <span key={r} style={{ padding: '4px 10px', background: 'var(--bg-input)', borderRadius: '12px', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
-                        {r}
+                        {toTeamName(r)}
                       </span>
                     ))}
                   </div>
@@ -455,7 +430,7 @@ export const AdminRosterTeam: React.FC<AdminRosterTeamProps> = ({ team }) => {
                   所屬團隊分類 <span style={{ color: 'var(--text-danger)' }}>* (可複選)</span>
                 </label>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', background: 'var(--bg-input)', padding: '12px', borderRadius: '10px' }}>
-                  {JOB_TITLE_OPTIONS.map(opt => (
+                  {TEAM_OPTIONS.map(opt => (
                     <label key={opt} style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '0.9rem', color: 'var(--text-primary)', cursor: 'pointer' }}>
                       <input
                         type="checkbox"
@@ -483,11 +458,11 @@ export const AdminRosterTeam: React.FC<AdminRosterTeamProps> = ({ team }) => {
                 </select>
               </div>
 
-              {/* 若包含燈光、音控或舞監團隊，可設定初始 Level */}
-              {addForm.jobTitle.some(t => ['燈光團隊', '音控團隊', '舞監團隊'].includes(t)) && (
+              {/* 若包含燈光或舞監團隊，可設定初始 Level */}
+              {addForm.jobTitle.some(t => ['燈光團隊', '舞監團隊'].includes(t)) && (
                 <div>
                   <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '6px', fontWeight: 600 }}>
-                    初始服事等級 (燈光 / 音控 / 舞監)
+                    初始服事等級 (燈光 / 舞監)
                   </label>
                   <select
                     className="glass-input"
@@ -495,9 +470,9 @@ export const AdminRosterTeam: React.FC<AdminRosterTeamProps> = ({ team }) => {
                     onChange={e => setAddForm(prev => ({ ...prev, teamLevel: parseInt(e.target.value, 10) || 1 }))}
                     style={{ width: '100%' }}
                   >
-                    <option value={1}>🥉 Level 1 (實習 / 助理)</option>
-                    <option value={2}>🥈 Level 2 (獨立主控)</option>
-                    <option value={3}>🥇 Level 3 (資深導師 / 主領)</option>
+                    <option value={1}>Level 1 (實習 / 助理)</option>
+                    <option value={2}>Level 2 (獨立主控)</option>
+                    <option value={3}>Level 3 (資深導師 / 主領)</option>
                   </select>
                 </div>
               )}

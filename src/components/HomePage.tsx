@@ -5,6 +5,7 @@ import type { Volunteer, Shift } from '../utils/scheduler';
 import { SHAN_ZHUANG_ROLES, XUAN_JIAO_ROLES } from '../utils/scheduler';
 import { getCycleDates, getLastSundayOfCycle } from '../utils/dateUtils';
 import { UserAvatar } from './UserAvatar';
+import { toTeamName } from '../utils/constants';
 
 interface ApprovedVersion {
   timestamp: string;
@@ -104,12 +105,16 @@ export const HomePage: React.FC<HomePageProps> = ({
   }, [overlayCycle, approvedVersion1, approvedVersion2, approvedEdits, nextMonths]);
 
   const visibleTeams = useMemo(() => {
-    if (currentUser.roles.some(r => r.includes('管理'))) {
+    const jobTitles = currentUser.jobTitles || [];
+    const roles = currentUser.roles || [];
+    if (currentUser.userLevel === 'admin' || currentUser.role === 'admin' || jobTitles.includes('admin') || roles.some(r => r.includes('管理'))) {
       return allTeams;
     }
-    const myTeams = currentUser.roles.filter(r => allTeams.includes(r));
-    return myTeams.length > 0 ? myTeams : ['影視團隊'];
-  }, [currentUser.roles]);
+    const myTeams = jobTitles.map(t => toTeamName(t)).filter(t => allTeams.includes(t));
+    if (myTeams.length > 0) return myTeams;
+    const legacyTeams = roles.filter(r => allTeams.includes(r));
+    return legacyTeams.length > 0 ? legacyTeams : ['影視團隊'];
+  }, [currentUser]);
 
   // If the currently selected team is not in visibleTeams (e.g. on initial load), select the first visible team
   useEffect(() => {

@@ -1,0 +1,25 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // 義工名冊集合
+    match /volunteers/{volunteerId} {
+      allow read: if true;
+      allow write: if true;
+    }
+    
+    // 意願表單回覆集合
+    match /formResponses/{responseId} {
+      allow read: if true;
+      allow create: if true;
+      allow update, delete: if true;
+    }
+    
+    // 週期排班表集合
+    match /schedules/{scheduleId} {
+      allow read: if true;
+      allow write: if true;
+    }
+  }
+}
