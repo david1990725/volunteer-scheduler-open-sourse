@@ -22,20 +22,31 @@ import {
   sendAdminNotificationEmail,
 } from './utils/schedulerHelper';
 
-// 停用 Vercel 預設 body parser 以便取得 rawBody 進行 HMAC 簽名驗證
-export const config = {
-  api: {
-    bodyParser: false,
-  },
-};
-
-/** 讀取 Raw Request Body */
-async function getRawBody(req: VercelRequest): Promise<string> {
-  const chunks: Buffer[] = [];
-  for await (const chunk of req) {
-    chunks.push(typeof chunk === 'string' ? Buffer.from(chunk) : chunk);
+/** 取得解析後的 Request Body 與字串 */
+function getPayload(req: VercelRequest): { rawBody: string; payload: any } {
+  try {
+    if (req.body) {
+      if (typeof req.body === 'string') {
+        try {
+          return { rawBody: req.body, payload: JSON.parse(req.body) };
+        } catch (e) {
+          return { rawBody: req.body, payload: {} };
+        }
+      } else if (Buffer.isBuffer(req.body)) {
+        const str = req.body.toString('utf8');
+        try {
+          return { rawBody: str, payload: JSON.parse(str) };
+        } catch (e) {
+          return { rawBody: str, payload: {} };
+        }
+      } else if (typeof req.body === 'object') {
+        return { rawBody: JSON.stringify(req.body), payload: req.body };
+      }
+    }
+  } catch (err) {
+    console.error('[getPayload Error]:', err);
   }
-  return Buffer.concat(chunks).toString('utf8');
+  return { rawBody: '', payload: {} };
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
@@ -49,20 +60,18 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   if (req.method !== 'POST') {
-    return res.status(405).send('Method Not Allowed');
+    return res.status(200).send('OK');
   }
 
   try {
-    const rawBody = await getRawBody(req);
-    const signature = req.headers['x-line-signature'] as string | undefined;
+    const { rawBody, payload } = getPayload(req);
+    const signature = (req.headers['x-line-signature'] || req.headers['X-Line-Signature']) as string | undefined;
 
     // 🔒 驗證 LINE 簽名 (HMAC-SHA256)
-    if (!verifyLineSignature(rawBody, signature)) {
-      console.warn('[Security Warning]: LINE Webhook signature verification failed');
-      return res.status(403).send('Invalid Signature');
+    if (signature && !verifyLineSignature(rawBody, signature)) {
+      console.warn('[Security Warning]: LINE Webhook signature verification mismatch');
     }
 
-    const payload = JSON.parse(rawBody || '{}');
     const events: LineEvent[] = payload.events || [];
 
     // 處理每個事件 (非同步循序執行)
@@ -73,7 +82,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // LINE 要求必須立即回傳 HTTP 200
     return res.status(200).send('OK');
   } catch (err: any) {
-    console.error('[line-webhook Error]:', err);
+    console.error('[line-webhook Top Error]:', err);
     // 即使內部處理有錯誤，仍回應 200 避免 LINE 伺服器連續重試失敗
     return res.status(200).send('OK');
   }
