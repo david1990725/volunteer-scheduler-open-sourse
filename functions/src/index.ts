@@ -33,6 +33,7 @@ export const lineWebhook = onRequest(
   {
     cors: true,
     region: 'asia-east1',
+    secrets: ['LINE_CHANNEL_SECRET', 'LINE_CHANNEL_ACCESS_TOKEN'],
   },
   async (req, res) => {
     // GET 請求用於健康檢查
@@ -258,6 +259,7 @@ export const saturdayReminder = onSchedule(
     schedule: '0 16 * * 6',
     timeZone: 'Asia/Taipei',
     region: 'asia-east1',
+    secrets: ['LINE_CHANNEL_SECRET', 'LINE_CHANNEL_ACCESS_TOKEN'],
   },
   async () => {
     const { sundayStr, cycleKey } = getUpcomingSunday();
@@ -330,6 +332,7 @@ export const cycleFormReminder = onSchedule(
     schedule: '0 9 15,20 2,4,6,8,10,12 *',
     timeZone: 'Asia/Taipei',
     region: 'asia-east1',
+    secrets: ['LINE_CHANNEL_SECRET', 'LINE_CHANNEL_ACCESS_TOKEN'],
   },
   async () => {
     const { systemUrl } = getLineConfig();
@@ -384,6 +387,7 @@ export const dailyBirthdayReminder = onSchedule(
     schedule: '0 9 * * *',
     timeZone: 'Asia/Taipei',
     region: 'asia-east1',
+    secrets: ['LINE_CHANNEL_SECRET', 'LINE_CHANNEL_ACCESS_TOKEN'],
   },
   async () => {
     const now = new Date();
