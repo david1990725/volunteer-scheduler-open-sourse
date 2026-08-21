@@ -1,10 +1,9 @@
 // =============================================================================
-// Firestore Admin & Scheduling Helper for Firebase Cloud Functions
+// Firestore Admin & Advanced Schedule Matrix Parser for Firebase Functions
 // =============================================================================
 
 import * as admin from 'firebase-admin';
 
-// 初始化 Firebase Admin (在 Cloud Functions 環境自動使用預設服務帳戶認證)
 if (!admin.apps.length) {
   admin.initializeApp();
 }
@@ -28,23 +27,33 @@ export interface VolunteerRecord {
   isBackfillLeader?: boolean;
 }
 
-export interface ShiftSlot {
+export interface ParsedAssignment {
+  volunteerName: string;
+  location: string;
+  role: string;
+  date: string;
+  sheetName: string;
+}
+
+export interface VacancySlot {
+  docId: string;
+  sheetName: string;
+  rowIndex: number;
+  colIndex: number;
   date: string;
   location: string;
-  assignments: Record<string, string>;
-  roleKeys: string[];
-}
-
-export interface ScheduleDoc {
-  id?: string;
-  cycleKey: string;
+  role: string;
   team: string;
-  shifts: ShiftSlot[];
-  updatedAt?: any;
 }
 
-/** 取得當週週日日期字串 (MM/DD) */
-export function getUpcomingSunday(baseDate: Date = new Date()): { sundayStr: string; sundayDate: Date; cycleKey: string } {
+/** 取得即將到來的週日日期與關鍵字 (UTC+8 台灣時間) */
+export function getUpcomingSunday(baseDate: Date = new Date()): {
+  sundayStr: string;
+  sundayShortStr: string;
+  sundayDate: Date;
+  cycleKey: string;
+  year: number;
+} {
   const utc = baseDate.getTime() + baseDate.getTimezoneOffset() * 60000;
   const now = new Date(utc + 8 * 3600000);
 
@@ -60,15 +69,14 @@ export function getUpcomingSunday(baseDate: Date = new Date()): { sundayStr: str
 
   const monthStr = month < 10 ? `0${month}` : `${month}`;
   const dateStr = date < 10 ? `0${date}` : `${date}`;
-  const sundayStr = `${monthStr}/${dateStr}`;
+  const sundayStr = `${monthStr}/${dateStr}`; // "03/01"
+  const sundayShortStr = `${month}/${date}`;  // "3/1"
 
   const startMonth = month % 2 === 1 ? month : month - 1;
   const endMonth = startMonth + 1;
-  const smStr = startMonth < 10 ? `0${startMonth}` : `${startMonth}`;
-  const emStr = endMonth < 10 ? `0${endMonth}` : `${endMonth}`;
-  const cycleKey = `${year}_${smStr}-${emStr}`;
+  const cycleKey = `${year}_${startMonth < 10 ? '0' + startMonth : startMonth}-${endMonth < 10 ? '0' + endMonth : endMonth}`;
 
-  return { sundayStr, sundayDate: sunday, cycleKey };
+  return { sundayStr, sundayShortStr, sundayDate: sunday, cycleKey, year };
 }
 
 /** 取得所有義工名單 */
@@ -155,149 +163,207 @@ export async function getActiveGroups(): Promise<string[]> {
   }
 }
 
-/** 取得指定週期與團隊的排班表 */
-export async function getSchedule(cycleKey: string, team: string = 'video'): Promise<ScheduleDoc | null> {
-  try {
-    const docId = `${cycleKey}_${team}`;
-    const snap = await db.collection('schedules').doc(docId).get();
-    if (snap.exists) {
-      return { id: snap.id, ...(snap.data() as any) };
+/** 解析 Firestore 班表文件中的 2D 矩陣資料 */
+function parseMatrixFromDoc(docData: any): string[][] | null {
+  if (!docData) return null;
+  if (typeof docData.dataJson === 'string') {
+    try {
+      const parsed = JSON.parse(docData.dataJson);
+      if (Array.isArray(parsed)) return parsed;
+    } catch {
+      return null;
     }
-
-    const legacySnap = await db.collection('schedules').doc(cycleKey).get();
-    if (legacySnap.exists) {
-      return { id: legacySnap.id, ...(legacySnap.data() as any) };
-    }
-  } catch (err) {
-    console.error('[getSchedule Error]:', err);
+  }
+  if (Array.isArray(docData.rows)) {
+    return docData.rows.map((r: any) => (Array.isArray(r.cells) ? r.cells : Array.isArray(r) ? r : []));
+  }
+  if (Array.isArray(docData.data)) {
+    return docData.data;
   }
   return null;
 }
 
-/** 即時補位更新排班表 */
-export async function applySlotFill(
-  cycleKey: string,
-  team: string,
-  targetDate: string,
-  location: string,
-  role: string,
-  volunteerName: string
-): Promise<{ success: boolean; message: string }> {
+/**
+ * 完整解析所有排班表在目標週日的同工名冊與空缺
+ */
+export async function parseSundaySchedule(targetDate?: Date): Promise<{
+  assignmentsByVolunteer: Record<string, ParsedAssignment[]>;
+  assignmentsByLocation: Record<string, Array<{ role: string; person: string }>>;
+  vacancies: VacancySlot[];
+  targetSundayStr: string;
+}> {
+  const { sundayStr, sundayShortStr } = getUpcomingSunday(targetDate);
+  const assignmentsByVolunteer: Record<string, ParsedAssignment[]> = {};
+  const assignmentsByLocation: Record<string, Array<{ role: string; person: string }>> = {};
+  const vacancies: VacancySlot[] = [];
+
   try {
-    const schedule = await getSchedule(cycleKey, team);
-    if (!schedule || !schedule.shifts) {
-      return { success: false, message: `找不到週期 ${cycleKey} 的排班表` };
-    }
+    const snap = await db.collection('schedules').get();
 
-    let found = false;
-    const updatedShifts = schedule.shifts.map((shift) => {
-      const shiftDate = shift.date.trim();
-      const shiftLoc = shift.location.trim();
+    snap.forEach((docSnap) => {
+      const docId = docSnap.id;
+      const data = docSnap.data();
+      const sheetName = data.sheetName || docId;
+      const matrix = parseMatrixFromDoc(data);
 
-      const matchDate = shiftDate.includes(targetDate) || targetDate.includes(shiftDate);
-      const matchLoc = !location || shiftLoc.includes(location) || location.includes(shiftLoc);
+      if (!matrix || matrix.length === 0) return;
 
-      if (matchDate && matchLoc) {
-        if (shift.assignments && (shift.assignments[role] === '缺' || !shift.assignments[role] || shift.assignments[role] === '')) {
-          shift.assignments[role] = volunteerName;
-          found = true;
+      let currentLocation = '大堂';
+      let dateColMap: Record<number, string> = {}; // colIndex -> date string (e.g. 03/01)
+
+      for (let r = 0; r < matrix.length; r++) {
+        const row = matrix[r] || [];
+        const firstCell = String(row[0] || '').trim();
+
+        // 1. 偵測地點標題 (例如 【山莊大堂】 或 【宣教大樓】)
+        if (firstCell.startsWith('【') && firstCell.endsWith('】')) {
+          currentLocation = firstCell.replace(/【|】/g, '').trim();
+          dateColMap = {}; // 重設欄位映射
+          continue;
         }
-      }
-      return shift;
-    });
 
-    if (!found) {
-      return { success: false, message: `該週 (${targetDate} ${location} ${role}) 可能已被填補或無此空缺。` };
-    }
+        // 2. 偵測日期標頭列 (例如 "職務 / 日期", "日期", "職務")
+        if (firstCell.includes('職務') || firstCell.includes('日期') || firstCell === '崗位') {
+          dateColMap = {};
+          for (let c = 1; c < row.length; c++) {
+            const cellVal = String(row[c] || '').trim();
+            // 比對是否為目標週日 (支援 03/01, 3/1, 03-01, 3-1 等)
+            if (
+              cellVal === sundayStr ||
+              cellVal === sundayShortStr ||
+              cellVal.includes(sundayStr) ||
+              cellVal.includes(sundayShortStr) ||
+              cellVal.replace(/-/g, '/') === sundayStr ||
+              cellVal.replace(/-/g, '/') === sundayShortStr
+            ) {
+              dateColMap[c] = cellVal;
+            }
+          }
+          continue;
+        }
 
-    const docId = schedule.id || `${cycleKey}_${team}`;
-    await db.collection('schedules').doc(docId).set(
-      { shifts: updatedShifts, updatedAt: admin.firestore.FieldValue.serverTimestamp() },
-      { merge: true }
-    );
+        // 若尚未找到目標週日的欄位索引，略過一般列
+        const targetCols = Object.keys(dateColMap).map(Number);
+        if (targetCols.length === 0) continue;
 
-    return { success: true, message: `已成功將 ${volunteerName} 填入 ${targetDate} ${location}【${role}】！` };
-  } catch (err: any) {
-    console.error('[applySlotFill Error]:', err);
-    return { success: false, message: err?.message || '更新排班表失敗' };
-  }
-}
+        // 3. 處理職位崗位列
+        const roleName = firstCell;
+        if (!roleName || roleName.includes('數量') || roleName.includes('份數') || roleName.includes('便當') || roleName.includes('早餐')) {
+          continue; // 略過餐點統計列
+        }
 
-/** 查詢當週該義工所屬團隊是否有空缺需要補位 */
-export async function findTeamVacanciesForVolunteer(
-  volunteer: VolunteerRecord
-): Promise<Array<{ date: string; location: string; role: string; team: string }>> {
-  const { sundayStr, cycleKey } = getUpcomingSunday();
-  const teams = volunteer.jobTitles && volunteer.jobTitles.length > 0 ? volunteer.jobTitles : ['video'];
-  const vacancies: Array<{ date: string; location: string; role: string; team: string }> = [];
+        for (const col of targetCols) {
+          const cellVal = String(row[col] || '').trim();
+          const dateLabel = dateColMap[col];
 
-  for (const team of teams) {
-    const schedule = await getSchedule(cycleKey, team);
-    if (!schedule || !schedule.shifts) continue;
-
-    for (const shift of schedule.shifts) {
-      const matchSunday = shift.date.includes(sundayStr) || sundayStr.includes(shift.date);
-      if (!matchSunday) continue;
-
-      if (shift.assignments) {
-        for (const [role, assignee] of Object.entries(shift.assignments)) {
-          if (assignee === '缺' || !assignee || assignee === '') {
+          // 判斷是否為空缺
+          if (!cellVal || cellVal === '缺' || cellVal === '待補' || cellVal === '未填' || cellVal === '徵求' || cellVal === '-') {
             vacancies.push({
-              date: sundayStr,
-              location: shift.location,
-              role,
-              team,
+              docId,
+              sheetName,
+              rowIndex: r,
+              colIndex: col,
+              date: dateLabel || sundayStr,
+              location: currentLocation,
+              role: roleName,
+              team: roleName.includes('燈') ? 'light' : roleName.includes('音') ? 'audio' : roleName.includes('舞') ? 'stage' : 'video',
+            });
+          } else {
+            // 已安排同工
+            const person = cellVal;
+            if (!assignmentsByVolunteer[person]) assignmentsByVolunteer[person] = [];
+            assignmentsByVolunteer[person].push({
+              volunteerName: person,
+              location: currentLocation,
+              role: roleName,
+              date: dateLabel || sundayStr,
+              sheetName,
+            });
+
+            if (!assignmentsByLocation[currentLocation]) assignmentsByLocation[currentLocation] = [];
+            assignmentsByLocation[currentLocation].push({
+              role: roleName,
+              person,
             });
           }
         }
       }
-    }
+    });
+  } catch (err) {
+    console.error('[parseSundaySchedule Error]:', err);
   }
 
-  return vacancies;
+  return {
+    assignmentsByVolunteer,
+    assignmentsByLocation,
+    vacancies,
+    targetSundayStr: sundayStr,
+  };
 }
 
-/** 格式化當週全部服事同工名單 */
+/** 格式化「本週服事」完整名冊 */
 export async function formatWeeklyTeamRoster(): Promise<string> {
-  const { sundayStr, cycleKey } = getUpcomingSunday();
-  const teams = [
-    { key: 'video', name: '🎥 影視團隊' },
-    { key: 'audio', name: '🎚️ 音控團隊' },
-    { key: 'light', name: '💡 燈光團隊' },
-    { key: 'stage', name: '🎬 舞監團隊' },
-  ];
+  const { assignmentsByLocation, targetSundayStr } = await parseSundaySchedule();
+  const locations = Object.keys(assignmentsByLocation);
 
-  let rosterText = `📅【本週日 (${sundayStr}) 服事同工名單】\n`;
-  let hasAnyShift = false;
+  if (locations.length === 0) {
+    return `📅【本週日 (${targetSundayStr}) 服事名單】\n\n目前線上尚未建立或發布 ${targetSundayStr} 的服事排班表。請洽排班幹部或進入系統查看最新狀態！`;
+  }
 
-  for (const t of teams) {
-    const schedule = await getSchedule(cycleKey, t.key);
-    if (!schedule || !schedule.shifts) continue;
+  let text = `📅【本週日 (${targetSundayStr}) 服事同工名單】\n`;
 
-    const currentShifts = schedule.shifts.filter(
-      (s) => s.date.includes(sundayStr) || sundayStr.includes(s.date)
-    );
-
-    if (currentShifts.length > 0) {
-      hasAnyShift = true;
-      rosterText += `\n━━━━━━━━━━━━━━━\n${t.name}\n`;
-      for (const shift of currentShifts) {
-        rosterText += `📍 ${shift.location}：\n`;
-        if (shift.assignments) {
-          const lines = Object.entries(shift.assignments).map(
-            ([role, person]) => `  • ${role}：${person || '缺'}`
-          );
-          rosterText += lines.join('\n') + '\n';
-        }
-      }
+  for (const loc of locations) {
+    text += `\n📍【${loc}】\n`;
+    const items = assignmentsByLocation[loc] || [];
+    for (const item of items) {
+      text += `  • ${item.role}：${item.person}\n`;
     }
   }
 
-  if (!hasAnyShift) {
-    rosterText += `\n目前尚未建立 ${sundayStr} 的各團隊排班表，敬請期待！`;
-  } else {
-    rosterText += `\n請各位同工留意服事時間與場地，準時出席！願神賜福大家的服事 ✨`;
-  }
+  text += `\n✨ 請各位同工預備心並準時出席！願神大大賜福服事！`;
+  return text;
+}
 
-  return rosterText;
+/** 即時寫入 Firestore 矩陣進行補位 */
+export async function applySlotFillToMatrix(
+  docId: string,
+  rowIndex: number,
+  colIndex: number,
+  volunteerName: string
+): Promise<{ success: boolean; message: string }> {
+  try {
+    const docRef = db.collection('schedules').doc(docId);
+    const snap = await docRef.get();
+
+    if (!snap.exists) {
+      return { success: false, message: '找不到對應的排班表文件' };
+    }
+
+    const data = snap.data() || {};
+    const matrix = parseMatrixFromDoc(data);
+
+    if (!matrix || !matrix[rowIndex]) {
+      return { success: false, message: '班表格式異常，無法定位該欄位' };
+    }
+
+    const currentCell = String(matrix[rowIndex][colIndex] || '').trim();
+    if (currentCell && currentCell !== '缺' && currentCell !== '待補' && currentCell !== '未填' && currentCell !== volunteerName) {
+      return { success: false, message: `該職位剛剛已由 ${currentCell} 登記補位囉！` };
+    }
+
+    matrix[rowIndex][colIndex] = volunteerName;
+
+    await docRef.set(
+      {
+        dataJson: JSON.stringify(matrix),
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      },
+      { merge: true }
+    );
+
+    return { success: true, message: '班表已成功即時更新' };
+  } catch (err: any) {
+    console.error('[applySlotFillToMatrix Error]:', err);
+    return { success: false, message: err?.message || '寫入失敗' };
+  }
 }

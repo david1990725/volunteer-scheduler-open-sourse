@@ -18,11 +18,9 @@ import {
   getVolunteerByLineId,
   saveGroupStatus,
   getActiveGroups,
-  getSchedule,
-  applySlotFill,
-  getUpcomingSunday,
-  findTeamVacanciesForVolunteer,
+  parseSundaySchedule,
   formatWeeklyTeamRoster,
+  applySlotFillToMatrix,
 } from './schedulerHelper';
 
 // =============================================================================
@@ -138,6 +136,7 @@ async function handleSingleEvent(event: LineEvent) {
   }
 }
 
+/** 處理 Postback 補位點擊動作 */
 async function handlePostbackEvent(event: LineEvent) {
   const replyToken = event.replyToken!;
   const dataStr = event.postback!.data;
@@ -145,8 +144,9 @@ async function handlePostbackEvent(event: LineEvent) {
   const action = params.get('action');
 
   if (action === 'fill_slot') {
-    const cycle = params.get('cycle') || '';
-    const team = params.get('team') || 'video';
+    const docId = params.get('docId') || '';
+    const rowIndex = parseInt(params.get('row') || '-1', 10);
+    const colIndex = parseInt(params.get('col') || '-1', 10);
     const date = params.get('date') || '';
     const loc = params.get('loc') || '';
     const role = params.get('role') || '';
@@ -155,28 +155,40 @@ async function handlePostbackEvent(event: LineEvent) {
     const vol = await getVolunteerByLineId(userId);
     const volunteerName = vol?.name || '熱心同工';
 
-    const result = await applySlotFill(cycle, team, date, loc, role, volunteerName);
+    if (!docId || rowIndex < 0 || colIndex < 0) {
+      await sendLineReply(replyToken, [{ type: 'text', text: '⚠️ 補位參數有誤，請進入系統手動調整。' }]);
+      return;
+    }
+
+    const result = await applySlotFillToMatrix(docId, rowIndex, colIndex, volunteerName);
 
     if (result.success) {
       const confirmMsg: LineMessage = {
         type: 'text',
-        text: `🎉 太棒了！${result.message}\n系統已即時同步線上排班表。非常感謝您的擺上與配搭！🙏`,
+        text:
+          `🎉 感謝您的熱心擺上與及時支援！\n\n` +
+          `已成功為您登記補位：\n` +
+          `📅 日期：${date} (週日)\n` +
+          `📍 地點：${loc}\n` +
+          `🎯 職位：${role}\n` +
+          `👤 同工：${volunteerName}\n\n` +
+          `線上班表已即時更新完成，願神祝福您的服事！✨`,
       };
       await sendLineReply(replyToken, [confirmMsg]);
     } else {
       const failMsg: LineMessage = {
         type: 'text',
-        text: `⚠️ 補位未完成：${result.message}`,
+        text: `⚠️ 補位未完成：${result.message}\n請洽詢團隊管理員。`,
       };
       await sendLineReply(replyToken, [failMsg]);
     }
   }
 }
 
+/** 處理使用者文字訊息 */
 async function handleTextMessageEvent(event: LineEvent) {
   const replyToken = event.replyToken!;
   const userText = (event.message?.text || '').trim();
-  const userId = event.source.userId || '';
   const isGroup = event.source.type === 'group' || event.source.type === 'room';
   const { systemUrl } = getLineConfig();
 
@@ -184,66 +196,79 @@ async function handleTextMessageEvent(event: LineEvent) {
     saveGroupStatus(event.source.groupId, 'group', 'active').catch(() => {});
   }
 
-  // 1. 查詢本週服事
+  // 1. 查詢「本週服事」
   if (userText.includes('本週服事') || userText.includes('本周服事') || userText.includes('服事名單') || userText === '排班') {
     const rosterText = await formatWeeklyTeamRoster();
     await sendLineReply(replyToken, [{ type: 'text', text: rosterText }]);
     return;
   }
 
-  // 2. 1 對 1 私訊時，動態偵測當週是否有空缺需要補位 (週一至週六)
-  if (!isGroup && userId) {
-    const vol = await getVolunteerByLineId(userId);
-    const dayOfWeek = new Date().getDay();
-    const isMonToSat = dayOfWeek >= 1 && dayOfWeek <= 6;
-
-    if (vol && isMonToSat) {
-      const vacancies = await findTeamVacanciesForVolunteer(vol);
-
-      if (vacancies.length > 0) {
-        const { sundayStr, cycleKey } = getUpcomingSunday();
-        const slot = vacancies[0];
-
-        const replyWithQuickReply: LineMessage = {
-          type: 'text',
-          text: `平安 ${vol.name}！本週日 (${sundayStr}) 您的團隊在【${slot.location}】尚有【${slot.role}】空缺！若您本週方便支援，可直接點選下方按鈕即時補位喔！👇`,
-          quickReply: {
-            items: [
-              {
-                type: 'action',
-                action: {
-                  type: 'postback',
-                  label: `${sundayStr} 可以幫忙！`,
-                  data: `action=fill_slot&cycle=${cycleKey}&team=${slot.team}&date=${sundayStr}&loc=${encodeURIComponent(
-                    slot.location
-                  )}&role=${encodeURIComponent(slot.role)}`,
-                  displayText: `${sundayStr} 我可以幫忙！`,
-                },
-              },
-              {
-                type: 'action',
-                action: {
-                  type: 'message',
-                  label: '本週服事名冊',
-                  text: '本週服事',
-                },
-              },
-            ],
-          },
-        };
-
-        await sendLineReply(replyToken, [replyWithQuickReply]);
-        return;
-      }
-    }
-  }
-
+  // 2. 1 對 1 私訊時：無條件主動偵測當週是否有任何空缺！
   if (!isGroup) {
+    const { vacancies, targetSundayStr } = await parseSundaySchedule();
+
+    if (vacancies.length > 0) {
+      // 依序挑選前 3 個空缺作為 Quick Reply 按鈕
+      const topVacancies = vacancies.slice(0, 3);
+      const vacancyListText = topVacancies
+        .map((v) => `  • ${v.location}【${v.role}】`)
+        .join('\n');
+
+      const quickReplyItems: any[] = topVacancies.map((slot) => ({
+        type: 'action',
+        action: {
+          type: 'postback',
+          label: `${slot.date} 幫忙${slot.role}`,
+          data: `action=fill_slot&docId=${encodeURIComponent(slot.docId)}&row=${slot.rowIndex}&col=${slot.colIndex}&date=${encodeURIComponent(
+            slot.date
+          )}&loc=${encodeURIComponent(slot.location)}&role=${encodeURIComponent(slot.role)}`,
+          displayText: `${slot.date} 我可以幫忙【${slot.role}】！`,
+        },
+      }));
+
+      // 附加一個「本週服事」快捷按鈕
+      quickReplyItems.push({
+        type: 'action',
+        action: {
+          type: 'message',
+          label: '查看本週名冊',
+          text: '本週服事',
+        },
+      });
+
+      const replyWithQuickReply: LineMessage = {
+        type: 'text',
+        text:
+          `平安！本週日 (${targetSundayStr}) 團隊尚有以下空缺需要支援：\n\n` +
+          `${vacancyListText}\n\n` +
+          `若您本週方便參與服事，可直接點選下方快捷按鈕即時補位喔！👇`,
+        quickReply: {
+          items: quickReplyItems,
+        },
+      };
+
+      await sendLineReply(replyToken, [replyWithQuickReply]);
+      return;
+    }
+
+    // 若本週無空缺，給予標準引導訊息
     const reply: LineMessage = {
       type: 'text',
       text:
-        '平安！您可以輸入「本週服事」查詢當週服事同工名單。\n\n' +
-        `若需填報意願或檢視最新排班表，請進入系統：\n${systemUrl}`,
+        `平安！本週日 (${targetSundayStr}) 目前各崗位同工皆已安排就緒 👍\n\n` +
+        `您可以輸入「本週服事」查詢當週服事同工名單，或進入系統查看最新排班：\n${systemUrl}`,
+      quickReply: {
+        items: [
+          {
+            type: 'action',
+            action: {
+              type: 'message',
+              label: '查詢本週服事',
+              text: '本週服事',
+            },
+          },
+        ],
+      },
     };
     await sendLineReply(replyToken, [reply]);
   }
@@ -262,67 +287,52 @@ export const saturdayReminder = onSchedule(
     secrets: ['LINE_CHANNEL_SECRET', 'LINE_CHANNEL_ACCESS_TOKEN'],
   },
   async () => {
-    const { sundayStr, cycleKey } = getUpcomingSunday();
+    const { assignmentsByVolunteer, targetSundayStr } = await parseSundaySchedule();
     const volunteers = await getAllVolunteers();
     const activeGroups = await getActiveGroups();
 
-    const teamKeys = ['video', 'audio', 'light', 'stage'];
-    const allSchedules: Record<string, any> = {};
+    console.log(`[saturdayReminder] 準備發送 ${targetSundayStr} 服事提醒...`);
 
-    for (const tk of teamKeys) {
-      const sch = await getSchedule(cycleKey, tk);
-      if (sch && sch.shifts) {
-        allSchedules[tk] = sch.shifts.filter(
-          (s) => s.date.includes(sundayStr) || sundayStr.includes(s.date)
-        );
-      }
-    }
-
-    // 1. 個別通知
+    // 1. 個別通知 (1-on-1 Push Notification)
+    let individualCount = 0;
     for (const vol of volunteers) {
       if (!vol.lineId) continue;
-      const myShifts: Array<{ location: string; role: string }> = [];
 
-      for (const tk of teamKeys) {
-        const shifts = allSchedules[tk] || [];
-        for (const shift of shifts) {
-          if (shift.assignments) {
-            for (const [role, person] of Object.entries(shift.assignments)) {
-              if (person === vol.name) {
-                myShifts.push({ location: shift.location, role });
-              }
-            }
-          }
-        }
-      }
-
-      if (myShifts.length > 0) {
-        const shiftDetails = myShifts
-          .map((s) => `📍 場地：${s.location}\n🎯 職位：${s.role}`)
+      const myAssignments = assignmentsByVolunteer[vol.name];
+      if (myAssignments && myAssignments.length > 0) {
+        const details = myAssignments
+          .map((a) => `📍 地點：${a.location}\n🎯 職位：${a.role}`)
           .join('\n\n');
 
-        const personalMsg: LineMessage = {
+        const indMsg: LineMessage = {
           type: 'text',
           text:
-            `平安 ${vol.name}！貼心提醒您本週日 (${sundayStr}) 有服事喔：\n\n` +
-            `${shiftDetails}\n\n` +
-            `請同工留意出勤時間並提早預備心！願神大大同在與祝福您的擺上！✨`,
+            `【主日服事提醒 🔔】\n` +
+            `平安，${vol.name} 同工！\n\n` +
+            `提醒您明天（${targetSundayStr} 週日）有服事安排：\n` +
+            `${details}\n\n` +
+            `⏰ 請留意出勤時間並提早預備心，願神大大賜福您的擺上與服事！🙏`,
         };
 
-        await sendLinePush(vol.lineId, [personalMsg]);
+        const ok = await sendLinePush(vol.lineId, [indMsg]);
+        if (ok) individualCount++;
       }
     }
 
-    // 2. 群組通知
+    // 2. 群組通知 (Group Broadcast)
     const rosterText = await formatWeeklyTeamRoster();
     const groupMsg: LineMessage = {
       type: 'text',
-      text: `📢【每週六服事提醒】\n\n${rosterText}`,
+      text: `📢【每週六主日服事提醒】\n\n${rosterText}`,
     };
 
+    let groupCount = 0;
     for (const groupId of activeGroups) {
-      await sendLinePush(groupId, [groupMsg]);
+      const ok = await sendLinePush(groupId, [groupMsg]);
+      if (ok) groupCount++;
     }
+
+    console.log(`[saturdayReminder] 完成！個別通知: ${individualCount} 人，群組廣播: ${groupCount} 個。`);
   }
 );
 
@@ -351,15 +361,17 @@ export const cycleFormReminder = onSchedule(
     if (date === 15) {
       pushMessageText =
         `📢【${nextCycleName} 服事意願表單開放填報】\n\n` +
-        `平安！新一期（${nextCycleName}）的服事意願登記已正式開放！\n\n` +
-        `請各位同工撥空點選下方系統連結填寫您可以出席的主日日期：\n` +
+        `各位同工平安！\n` +
+        `新一期（${nextCycleName}）的服事意願登記已正式開放！\n\n` +
+        `請各位同工撥空點選下方連結完成填報：\n` +
         `🔗 ${systemUrl}\n\n` +
-        `⏰ 表單將於本月 20 號截止，請大家把握時間填報，謝謝大家的忠心擺上！🙏`;
+        `⏰ 表單將於本月 20 號截止，感謝大家的忠心擺上！🙏`;
     } else {
       pushMessageText =
-        `⚠️【${nextCycleName} 服事意願表單即將截止提醒】\n\n` +
-        `平安！新一期（${nextCycleName}）的服事意願登記將於【今日截止】！\n\n` +
-        `尚未填寫的同工請儘速進入系統完成登記，以利排班幹部進行排班作業：\n` +
+        `⚠️【即將截止！${nextCycleName} 服事意願最後催填提醒】\n\n` +
+        `各位同工平安！\n` +
+        `新一期（${nextCycleName}）服事意願登記將於【今日截止】！\n\n` +
+        `尚未填寫的同工請盡速完成登記，以利排班作業：\n` +
         `🔗 ${systemUrl}\n\n` +
         `感謝大家的配搭與付出！✨`;
     }
@@ -381,7 +393,7 @@ export const cycleFormReminder = onSchedule(
   }
 );
 
-/** 每日 09:00 生日祝福 Flex Message */
+/** 每日 09:00 生日祝福 Flex Message (支援多種日期格式相容) */
 export const dailyBirthdayReminder = onSchedule(
   {
     schedule: '0 9 * * *',
@@ -396,31 +408,36 @@ export const dailyBirthdayReminder = onSchedule(
 
     const m = twDate.getMonth() + 1;
     const d = twDate.getDate();
-    const todayMMDD = `${m < 10 ? '0' + m : m}-${d < 10 ? '0' + d : d}`;
 
     const volunteers = await getAllVolunteers();
+    const celebrants: string[] = [];
 
     for (const vol of volunteers) {
-      if (!vol.birthday || !vol.lineId) continue;
+      if (!vol.birthday) continue;
 
-      const raw = vol.birthday.trim().replace(/\//g, '-');
-      let bMMDD = '';
+      const raw = vol.birthday.trim();
+      let match = false;
 
-      const parts = raw.split('-');
-      if (parts.length === 3) {
-        const bm = parseInt(parts[1], 10);
-        const bd = parseInt(parts[2], 10);
-        bMMDD = `${bm < 10 ? '0' + bm : bm}-${bd < 10 ? '0' + bd : bd}`;
-      } else if (parts.length === 2) {
-        const bm = parseInt(parts[0], 10);
-        const bd = parseInt(parts[1], 10);
-        bMMDD = `${bm < 10 ? '0' + bm : bm}-${bd < 10 ? '0' + bd : bd}`;
+      // 支援格式：YYYY-MM-DD, YYYY/MM/DD, MM-DD, MM/DD, M-D, M/D, X月X日
+      const reg = /(\d{1,2})[\/\-\.月](\d{1,2})/;
+      const found = raw.match(reg);
+      if (found) {
+        const bm = parseInt(found[1], 10);
+        const bd = parseInt(found[2], 10);
+        if (bm === m && bd === d) {
+          match = true;
+        }
       }
 
-      if (bMMDD === todayMMDD) {
-        const flexMsg = createBirthdayFlexMessage(vol.name, `${m}月${d}日`);
-        await sendLinePush(vol.lineId, [flexMsg]);
+      if (match) {
+        celebrants.push(vol.name);
+        if (vol.lineId) {
+          const flexMsg = createBirthdayFlexMessage(vol.name, `${m}月${d}日`);
+          await sendLinePush(vol.lineId, [flexMsg]);
+        }
       }
     }
+
+    console.log(`[dailyBirthdayReminder] 今日 (${m}/${d}) 壽星名單: ${celebrants.join(', ') || '無'}`);
   }
 );
