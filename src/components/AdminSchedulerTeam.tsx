@@ -3,6 +3,7 @@ import {
   Download,
   RotateCcw,
   RefreshCw,
+  ArchiveRestore,
   ShieldCheck,
   CloudUpload,
   ArrowRight,
@@ -26,6 +27,7 @@ import { toTeamKey, toTeamName, TEAM_DEFAULT_ROLES, type TeamKey } from '../util
 interface AdminSchedulerTeamProps {
   team: string;
   initialCycle?: [number, number];
+  autoGenerate?: boolean;
 }
 
 interface ApprovedVersion {
@@ -51,7 +53,7 @@ const mealRowBg: React.CSSProperties = {
   background: 'var(--bg-hover)',
 };
 
-export const AdminSchedulerTeam: React.FC<AdminSchedulerTeamProps> = ({ team, initialCycle }) => {
+export const AdminSchedulerTeam: React.FC<AdminSchedulerTeamProps> = ({ team, initialCycle, autoGenerate }) => {
   const teamKey: TeamKey = toTeamKey(team);
   const teamDisplayName = toTeamName(team);
 
@@ -200,6 +202,33 @@ export const AdminSchedulerTeam: React.FC<AdminSchedulerTeamProps> = ({ team, in
       setLoading(false);
     }
   }, [responseFile, selectedCycle, teamKey, teamDisplayName]);
+
+  // 若由外部觸發自動排班 (autoGenerate)，則在載入時自動執行一次生成
+  useEffect(() => {
+    if (autoGenerate) {
+      generateSchedule();
+    }
+  }, [autoGenerate, generateSchedule]);
+
+  // 帶入審定版本
+  const loadApprovedVersion = async () => {
+    setLoading(true);
+    try {
+      if (approvedVersion && approvedVersion.shifts && approvedVersion.shifts.length > 0) {
+        setShifts(approvedVersion.shifts);
+        setManualEdits(approvedVersion.edits || {});
+        setEditMode(false);
+        alert(`已成功帶入 ${approvedVersion.label}！`);
+      } else {
+        alert(`目前尚未儲存【${teamDisplayName}】${selectedCycle[0]}-${selectedCycle[1]}月的審定版本。`);
+      }
+    } catch (err) {
+      console.error(err);
+      alert('帶入審定版本失敗。');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // 設定審定版本
   const setAsApproved = () => {
@@ -527,6 +556,12 @@ export const AdminSchedulerTeam: React.FC<AdminSchedulerTeamProps> = ({ team, in
                 {uploadedFileName || '上傳排班CSV'}
                 <input ref={responseFileInputRef} type="file" accept=".csv" onChange={handleFileUpload} style={{ display: 'none' }} />
               </label>
+            </div>
+
+            <div style={{ flex: 1, minWidth: '200px' }}>
+              <button className="btn-secondary" onClick={loadApprovedVersion} disabled={loading || !approvedVersion} style={{ width: '100%', justifyContent: 'center' }}>
+                <ArchiveRestore size={20} /> 帶入審定版本
+              </button>
             </div>
 
             <button className="btn-primary" onClick={() => generateSchedule()} disabled={loading} style={{ padding: '0 32px' }}>

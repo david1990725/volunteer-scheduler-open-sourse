@@ -94,6 +94,7 @@ function App() {
   const [approvedVersion1, setApprovedVersion1] = useState<ApprovedVersion | null>(null);
   const [approvedVersion2, setApprovedVersion2] = useState<ApprovedVersion | null>(null);
   const [selectedCycle, setSelectedCycle] = useState<[number, number]>(() => getCycleDates().nextMonths);
+  const [autoGenerateScheduler, setAutoGenerateScheduler] = useState(false);
 
   const [darkMode, setDarkMode] = useState(true);
 
@@ -435,6 +436,7 @@ function App() {
                         if (cycle) {
                           setSelectedCycle(cycle);
                         }
+                        setAutoGenerateScheduler(true);
                         setAdminSubTab('scheduler');
                       }} 
                     />
@@ -443,7 +445,11 @@ function App() {
                   {adminSubTab === 'skills' && <AdminSkillTreeTeam team={currentTeamName} />}
                   
                   {adminSubTab === 'scheduler' && (
-                    <AdminSchedulerTeam team={currentTeamName} initialCycle={selectedCycle} />
+                    <AdminSchedulerTeam 
+                      team={currentTeamName} 
+                      initialCycle={selectedCycle}
+                      autoGenerate={autoGenerateScheduler}
+                    />
                   )}
                 </>
               );

@@ -279,10 +279,12 @@ export function parseScheduleResponsesData(
   // 找出所有帶有中括號的日期欄位
   let dates = Object.keys(data[0]).filter(f => f.includes('['));
   
-  // 如果有提供目標日期，則只排班這些目標日期
+  // 如果有提供目標日期，則嘗試過濾符合目標日期的欄位
   if (targetDates && targetDates.length > 0) {
-    const validDateColumns = targetDates.map(d => `[${d}]`);
-    dates = dates.filter(f => validDateColumns.includes(f));
+    const matched = dates.filter(f => targetDates.some(d => f.includes(`[${d}]`) || f.includes(d)));
+    if (matched.length > 0) {
+      dates = matched;
+    }
   }
   const locationAvailability: Record<string, Record<string, string[]>> = {};
   dates.forEach(field => (locationAvailability[field] = { '山莊': [], '宣教': [] }));

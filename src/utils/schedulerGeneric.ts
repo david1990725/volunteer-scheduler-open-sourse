@@ -22,8 +22,10 @@ export function parseGenericTeamScheduleResponses(
   // 1. 找出所有日期欄位
   let dates = Object.keys(data[0]).filter(f => f.includes('['));
   if (targetDates && targetDates.length > 0) {
-    const validDateColumns = targetDates.map(d => `[${d}]`);
-    dates = dates.filter(f => validDateColumns.includes(f));
+    const matched = dates.filter(f => targetDates.some(d => f.includes(`[${d}]`) || f.includes(d)));
+    if (matched.length > 0) {
+      dates = matched;
+    }
   }
 
   const locationAvailability: Record<string, Record<string, string[]>> = {};
