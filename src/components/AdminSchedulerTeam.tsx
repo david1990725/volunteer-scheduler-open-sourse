@@ -242,33 +242,105 @@ export const AdminSchedulerTeam: React.FC<AdminSchedulerTeamProps> = ({ team, in
 
       // 1. 優先從 Firebase 雲端讀取該團隊在該週期的班表
       const cloudRes = await cloudService.fetchTeamScheduleDoc(sheetNamePrefix, teamKey);
-      if (cloudRes.success && cloudRes.data && cloudRes.data.shifts && cloudRes.data.shifts.length > 0) {
-        setShifts(cloudRes.data.shifts);
-        const cloudEdits: Record<string, string> = {};
-        for (const s of cloudRes.data.shifts) {
-          for (const [r, person] of Object.entries(s.assignments || {})) {
-            if (r.includes('備用') && person) {
-              cloudEdits[`${s.location}|${s.date}|${r}`] = person;
+      if (cloudRes.success && cloudRes.data) {
+        let loadedShifts = cloudRes.data.shifts || [];
+        let loadedEdits: Record<string, string> = {};
+
+        // 若 shifts 陣列為空但有 2D 矩陣資料 (例如舊版相容或 Google Sheets 備份)，由 2D 矩陣解析
+        if (loadedShifts.length === 0 && cloudRes.data.data && cloudRes.data.data.length > 1) {
+          const matrix = cloudRes.data.data;
+          const normalizeDate = (raw: string): string => {
+            const trimmed = raw.trim();
+            if (/^\d{2}\/\d{2}$/.test(trimmed)) return trimmed;
+            const slashMatch = trimmed.match(/^(\d{1,2})\/(\d{1,2})$/);
+            if (slashMatch) return `${slashMatch[1].padStart(2, '0')}/${slashMatch[2].padStart(2, '0')}`;
+            const d = new Date(trimmed);
+            if (!isNaN(d.getTime())) return `${String(d.getMonth() + 1).padStart(2, '0')}/${String(d.getDate()).padStart(2, '0')}`;
+            return trimmed;
+          };
+
+          const parseSection = (data: string[][], locName: string, roleList: readonly string[]) => {
+            if (!data || data.length < 2) return;
+            const header = data[0];
+            const dates = header.slice(1).map(normalizeDate);
+
+            for (const date of dates) {
+              if (!date) continue;
+              const shift: Shift = {
+                date,
+                location: locName,
+                assignments: {},
+                roleKeys: [...roleList],
+                overrides: {},
+              };
+
+              for (let rowIdx = 1; rowIdx < data.length; rowIdx++) {
+                const rowLabel = (data[rowIdx][0] || '').trim();
+                const dateIdx = dates.indexOf(date);
+                const value = (data[rowIdx][dateIdx + 1] || '').trim();
+
+                if (roleList.includes(rowLabel)) {
+                  shift.assignments[rowLabel] = value || '缺';
+                } else if (['備用1', '備用2'].includes(rowLabel) && value) {
+                  shift.assignments[rowLabel] = value;
+                  loadedEdits[`${locName}|${date}|${rowLabel}`] = value;
+                }
+              }
+              loadedShifts.push(shift);
+            }
+          };
+
+          const szRows: string[][] = [];
+          const xjRows: string[][] = [];
+          let currentLoc = '';
+
+          for (const row of matrix) {
+            const firstCell = (row[0] || '').trim();
+            if (firstCell === '【山莊大堂】') {
+              currentLoc = '山莊大堂';
+              continue;
+            } else if (firstCell === '【宣教大樓】') {
+              currentLoc = '宣教大樓';
+              continue;
+            }
+
+            if (currentLoc === '山莊大堂') szRows.push(row);
+            else if (currentLoc === '宣教大樓') xjRows.push(row);
+            else szRows.push(row);
+          }
+
+          if (szRows.length > 0) parseSection(szRows, '山莊大堂', teamRoles.sz);
+          if (xjRows.length > 0) parseSection(xjRows, '宣教大樓', teamRoles.xj);
+        } else {
+          for (const s of loadedShifts) {
+            for (const [r, person] of Object.entries(s.assignments || {})) {
+              if (r.includes('備用') && person) {
+                loadedEdits[`${s.location}|${s.date}|${r}`] = person;
+              }
             }
           }
         }
-        setManualEdits(cloudEdits);
-        setEditMode(false);
 
-        const v: ApprovedVersion = {
-          timestamp: cloudRes.data.updatedAt || new Date().toISOString(),
-          label: `${selectedCycle[0]}-${selectedCycle[1]}月 ${teamDisplayName}雲端同步版`,
-          shifts: cloudRes.data.shifts,
-          edits: cloudEdits,
-          isLocalAdminEdit: false,
-        };
-        const key = getApprovedStorageKey(selectedCycle, teamKey);
-        localStorage.setItem(key, JSON.stringify(v));
-        setApprovedVersion(v);
+        if (loadedShifts.length > 0) {
+          setShifts(loadedShifts);
+          setManualEdits(loadedEdits);
+          setEditMode(false);
 
-        alert(`✅ 已成功從雲端帶入【${teamDisplayName}】${selectedCycle[0]}-${selectedCycle[1]}月的排班資料！`);
-        setLoading(false);
-        return;
+          const v: ApprovedVersion = {
+            timestamp: cloudRes.data.updatedAt || new Date().toISOString(),
+            label: `${selectedCycle[0]}-${selectedCycle[1]}月 ${teamDisplayName}雲端同步版`,
+            shifts: loadedShifts,
+            edits: loadedEdits,
+            isLocalAdminEdit: false,
+          };
+          const key = getApprovedStorageKey(selectedCycle, teamKey);
+          localStorage.setItem(key, JSON.stringify(v));
+          setApprovedVersion(v);
+
+          alert(`✅ 已成功從雲端帶入【${teamDisplayName}】${selectedCycle[0]}-${selectedCycle[1]}月的排班資料！`);
+          setLoading(false);
+          return;
+        }
       }
 
       // 2. 若雲端尚無，則嘗試從本地 LocalStorage 載入該週期該團隊之暫存
@@ -287,7 +359,7 @@ export const AdminSchedulerTeam: React.FC<AdminSchedulerTeamProps> = ({ team, in
         }
       }
 
-      alert(`目前在雲端與本地尚未建立【${teamDisplayName}】${selectedCycle[0]}-${selectedCycle[1]}月的排班資料。`);
+      alert(`目前在雲端與本地尚未建立【${teamDisplayName}】${selectedCycle[0]}-${selectedCycle[1]}月的排班資料。請先點選「自動生成排班」或上傳 CSV。`);
     } catch (err: any) {
       console.error('[loadApprovedVersion Error]:', err);
       alert('帶入審定版本失敗，請稍後再試。');
@@ -769,7 +841,7 @@ export const AdminSchedulerTeam: React.FC<AdminSchedulerTeamProps> = ({ team, in
             </div>
 
             <div style={{ flex: 1, minWidth: '200px' }}>
-              <button className="btn-secondary" onClick={loadApprovedVersion} disabled={loading || !approvedVersion} style={{ width: '100%', justifyContent: 'center' }}>
+              <button className="btn-secondary" onClick={loadApprovedVersion} disabled={loading} style={{ width: '100%', justifyContent: 'center' }}>
                 <ArchiveRestore size={20} /> 帶入審定版本
               </button>
             </div>

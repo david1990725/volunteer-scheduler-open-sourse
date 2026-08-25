@@ -792,6 +792,20 @@ export async function fetchTeamScheduleDoc(
       }
     }
 
+    // 嘗試從 fetchScheduleFromCloud (支援 Google Sheets 回退讀取)
+    const cloudRes = await fetchScheduleFromCloud(sheetName, { team: teamKey });
+    if (cloudRes.success && cloudRes.data && cloudRes.data.length > 0) {
+      return {
+        success: true,
+        message: '讀取成功 (自 Sheets 備份)',
+        data: {
+          shifts: [],
+          data: cloudRes.data,
+          updatedAt: new Date().toISOString(),
+        },
+      };
+    }
+
     return { success: false, message: '查無排班資料', data: null };
   } catch (err: any) {
     console.error('[fetchTeamScheduleDoc Error]:', err);
