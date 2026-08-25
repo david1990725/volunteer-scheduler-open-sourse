@@ -652,26 +652,23 @@ function renderFullScheduleTable(
                   borderBottom: '1px solid var(--bg-table-border)',
                 }}>山莊早餐數量</td>
                 {locationShifts.map(s => {
-                  const key = `${locationName}|${s.date}|早餐`;
                   let active = 0;
-                  const allR = s.roleKeys || Object.keys(s.assignments || {});
-                  for (const r of allR) {
+                  for (const r of allRoleKeys) {
                     const p = getCellVal(s.date, r, s.assignments[r] || '缺');
-                    if (p && p !== '缺' && p.trim() !== '') active++;
+                    if (p && p !== '缺' && p !== '—' && p.trim() !== '') active++;
                   }
                   const sp1 = edits?.[`${locationName}|${s.date}|備用1`] || s.assignments?.['備用1'];
-                  if (sp1 && sp1.trim() !== '' && sp1 !== '缺') active++;
+                  if (sp1 && sp1.trim() !== '' && sp1 !== '缺' && sp1 !== '—') active++;
                   const sp2 = edits?.[`${locationName}|${s.date}|備用2`] || s.assignments?.['備用2'];
-                  if (sp2 && sp2.trim() !== '' && sp2 !== '缺') active++;
+                  if (sp2 && sp2.trim() !== '' && sp2 !== '缺' && sp2 !== '—') active++;
 
-                  const count = edits?.[key] || String(active);
                   return (
                     <td key={s.date} style={{
                       padding: '8px 14px', textAlign: 'center',
                       borderBottom: '1px solid var(--bg-table-border)',
                       fontWeight: 800, color: 'var(--text-meal)',
                     }}>
-                      {count} 份
+                      {active} 份
                     </td>
                   );
                 })}
@@ -686,26 +683,23 @@ function renderFullScheduleTable(
                     borderBottom: '1px solid var(--bg-table-border)',
                   }}>宣教早餐數量</td>
                   {locationShifts.map(s => {
-                    const key = `${locationName}|${s.date}|早餐`;
                     let active = 0;
-                    const allR = s.roleKeys || Object.keys(s.assignments || {});
-                    for (const r of allR) {
+                    for (const r of allRoleKeys) {
                       const p = getCellVal(s.date, r, s.assignments[r] || '缺');
-                      if (p && p !== '缺' && p.trim() !== '') active++;
+                      if (p && p !== '缺' && p !== '—' && p.trim() !== '') active++;
                     }
                     const sp1 = edits?.[`${locationName}|${s.date}|備用1`] || s.assignments?.['備用1'];
-                    if (sp1 && sp1.trim() !== '' && sp1 !== '缺') active++;
+                    if (sp1 && sp1.trim() !== '' && sp1 !== '缺' && sp1 !== '—') active++;
                     const sp2 = edits?.[`${locationName}|${s.date}|備用2`] || s.assignments?.['備用2'];
-                    if (sp2 && sp2.trim() !== '' && sp2 !== '缺') active++;
+                    if (sp2 && sp2.trim() !== '' && sp2 !== '缺' && sp2 !== '—') active++;
 
-                    const count = edits?.[key] || String(active);
                     return (
                       <td key={s.date} style={{
                         padding: '8px 14px', textAlign: 'center',
                         borderBottom: '1px solid var(--bg-table-border)',
                         fontWeight: 800, color: 'var(--text-meal)',
                       }}>
-                        {count} 份
+                        {active} 份
                       </td>
                     );
                   })}
@@ -718,26 +712,23 @@ function renderFullScheduleTable(
                     borderBottom: '1px solid var(--bg-table-border)',
                   }}>宣教午餐數量</td>
                   {locationShifts.map(s => {
-                    const key = `${locationName}|${s.date}|午餐`;
                     let active = 0;
-                    const allR = s.roleKeys || Object.keys(s.assignments || {});
-                    for (const r of allR) {
+                    for (const r of allRoleKeys) {
                       const p = getCellVal(s.date, r, s.assignments[r] || '缺');
-                      if (p && p !== '缺' && p.trim() !== '') active++;
+                      if (p && p !== '缺' && p !== '—' && p.trim() !== '') active++;
                     }
                     const sp1 = edits?.[`${locationName}|${s.date}|備用1`] || s.assignments?.['備用1'];
-                    if (sp1 && sp1.trim() !== '' && sp1 !== '缺') active++;
+                    if (sp1 && sp1.trim() !== '' && sp1 !== '缺' && sp1 !== '—') active++;
                     const sp2 = edits?.[`${locationName}|${s.date}|備用2`] || s.assignments?.['備用2'];
-                    if (sp2 && sp2.trim() !== '' && sp2 !== '缺') active++;
+                    if (sp2 && sp2.trim() !== '' && sp2 !== '缺' && sp2 !== '—') active++;
 
-                    const count = edits?.[key] || String(active);
                     return (
                       <td key={s.date} style={{
                         padding: '8px 14px', textAlign: 'center',
                         borderBottom: '1px solid var(--bg-table-border)',
                         fontWeight: 800, color: 'var(--text-meal)',
                       }}>
-                        {count} 份
+                        {active} 份
                       </td>
                     );
                   })}

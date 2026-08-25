@@ -151,7 +151,7 @@ function App() {
         return trimmed;
       };
 
-      const EXTRA_FIELDS = ['燈控', '備用1', '備用2', '山莊早餐數量', '宣教早餐數量', '宣教午餐數量'];
+      const EXTRA_FIELDS = ['備用1', '備用2'];
 
       const parseSheetToShifts = (data: string[][], locationName: string, roles: readonly string[]) => {
         if (!data || data.length < 2) return;
@@ -178,12 +178,8 @@ function App() {
             if (roles.includes(rowLabel)) {
               shift.assignments[rowLabel] = value || '缺';
             } else if (EXTRA_FIELDS.includes(rowLabel) && value) {
-              const cleanVal = value.replace(/\s*份$/, '');
-              let fieldKey = rowLabel;
-              if (rowLabel === '山莊早餐數量' || rowLabel === '宣教早餐數量') fieldKey = '早餐';
-              else if (rowLabel === '宣教午餐數量') fieldKey = '午餐';
-              
-              importedEdits[`${locationName}|${date}|${fieldKey}`] = cleanVal;
+              shift.assignments[rowLabel] = value;
+              importedEdits[`${locationName}|${date}|${rowLabel}`] = value;
             }
           }
           importedShifts.push(shift);
