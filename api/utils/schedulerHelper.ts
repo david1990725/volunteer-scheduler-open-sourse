@@ -101,15 +101,6 @@ export async function formatWeeklyTeamRoster(): Promise<string> {
         }
       }
 
-      // 附加餐點統計 (若有)
-      const meals = (finalSchedule as any).meals?.[sundayStr];
-      if (meals) {
-        rosterText += `\n🍱【餐點預估份數】\n`;
-        if (meals.szBreakfast > 0) rosterText += `  • 山莊早餐：${meals.szBreakfast} 份\n`;
-        if (meals.xjBreakfast > 0) rosterText += `  • 宣教早餐：${meals.xjBreakfast} 份\n`;
-        if (meals.xjLunch > 0) rosterText += `  • 宣教午餐：${meals.xjLunch} 份\n`;
-      }
-
       rosterText += `\n請各位同工留意服事時間與場地，準時出席！願神賜福大家的服事 ✨`;
       return rosterText;
     }

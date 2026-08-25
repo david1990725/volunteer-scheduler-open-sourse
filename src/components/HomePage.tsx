@@ -611,7 +611,7 @@ function renderFullScheduleTable(
             {extras.map(field => {
               const hasAny = locationShifts.some(s => {
                 const key = `${locationName}|${s.date}|${field}`;
-                return edits?.[key];
+                return edits?.[key] || s.assignments?.[field];
               });
               if (!hasAny) return null;
               return (
@@ -624,7 +624,7 @@ function renderFullScheduleTable(
                   }}>{field}</td>
                   {locationShifts.map(s => {
                     const key = `${locationName}|${s.date}|${field}`;
-                    const val = edits?.[key] || '—';
+                    const val = edits?.[key] || s.assignments?.[field] || '—';
                     const isMe = val === myName;
                     return (
                       <td key={s.date} style={{
@@ -641,6 +641,109 @@ function renderFullScheduleTable(
                 </tr>
               );
             })}
+
+            {/* Meal rows */}
+            {locationName === '山莊大堂' ? (
+              <tr style={{ background: 'var(--bg-hover)' }}>
+                <td style={{
+                  position: 'sticky', left: 0, zIndex: 10, background: 'var(--bg-sticky)',
+                  padding: '8px 14px', fontWeight: 700,
+                  color: 'var(--text-meal)',
+                  borderBottom: '1px solid var(--bg-table-border)',
+                }}>山莊早餐數量</td>
+                {locationShifts.map(s => {
+                  const key = `${locationName}|${s.date}|早餐`;
+                  let active = 0;
+                  const allR = s.roleKeys || Object.keys(s.assignments || {});
+                  for (const r of allR) {
+                    const p = getCellVal(s.date, r, s.assignments[r] || '缺');
+                    if (p && p !== '缺' && p.trim() !== '') active++;
+                  }
+                  const sp1 = edits?.[`${locationName}|${s.date}|備用1`] || s.assignments?.['備用1'];
+                  if (sp1 && sp1.trim() !== '' && sp1 !== '缺') active++;
+                  const sp2 = edits?.[`${locationName}|${s.date}|備用2`] || s.assignments?.['備用2'];
+                  if (sp2 && sp2.trim() !== '' && sp2 !== '缺') active++;
+
+                  const count = edits?.[key] || String(active);
+                  return (
+                    <td key={s.date} style={{
+                      padding: '8px 14px', textAlign: 'center',
+                      borderBottom: '1px solid var(--bg-table-border)',
+                      fontWeight: 800, color: 'var(--text-meal)',
+                    }}>
+                      {count} 份
+                    </td>
+                  );
+                })}
+              </tr>
+            ) : (
+              <>
+                <tr style={{ background: 'var(--bg-hover)' }}>
+                  <td style={{
+                    position: 'sticky', left: 0, zIndex: 10, background: 'var(--bg-sticky)',
+                    padding: '8px 14px', fontWeight: 700,
+                    color: 'var(--text-meal)',
+                    borderBottom: '1px solid var(--bg-table-border)',
+                  }}>宣教早餐數量</td>
+                  {locationShifts.map(s => {
+                    const key = `${locationName}|${s.date}|早餐`;
+                    let active = 0;
+                    const allR = s.roleKeys || Object.keys(s.assignments || {});
+                    for (const r of allR) {
+                      const p = getCellVal(s.date, r, s.assignments[r] || '缺');
+                      if (p && p !== '缺' && p.trim() !== '') active++;
+                    }
+                    const sp1 = edits?.[`${locationName}|${s.date}|備用1`] || s.assignments?.['備用1'];
+                    if (sp1 && sp1.trim() !== '' && sp1 !== '缺') active++;
+                    const sp2 = edits?.[`${locationName}|${s.date}|備用2`] || s.assignments?.['備用2'];
+                    if (sp2 && sp2.trim() !== '' && sp2 !== '缺') active++;
+
+                    const count = edits?.[key] || String(active);
+                    return (
+                      <td key={s.date} style={{
+                        padding: '8px 14px', textAlign: 'center',
+                        borderBottom: '1px solid var(--bg-table-border)',
+                        fontWeight: 800, color: 'var(--text-meal)',
+                      }}>
+                        {count} 份
+                      </td>
+                    );
+                  })}
+                </tr>
+                <tr style={{ background: 'var(--bg-hover)' }}>
+                  <td style={{
+                    position: 'sticky', left: 0, zIndex: 10, background: 'var(--bg-sticky)',
+                    padding: '8px 14px', fontWeight: 700,
+                    color: 'var(--text-meal)',
+                    borderBottom: '1px solid var(--bg-table-border)',
+                  }}>宣教午餐數量</td>
+                  {locationShifts.map(s => {
+                    const key = `${locationName}|${s.date}|午餐`;
+                    let active = 0;
+                    const allR = s.roleKeys || Object.keys(s.assignments || {});
+                    for (const r of allR) {
+                      const p = getCellVal(s.date, r, s.assignments[r] || '缺');
+                      if (p && p !== '缺' && p.trim() !== '') active++;
+                    }
+                    const sp1 = edits?.[`${locationName}|${s.date}|備用1`] || s.assignments?.['備用1'];
+                    if (sp1 && sp1.trim() !== '' && sp1 !== '缺') active++;
+                    const sp2 = edits?.[`${locationName}|${s.date}|備用2`] || s.assignments?.['備用2'];
+                    if (sp2 && sp2.trim() !== '' && sp2 !== '缺') active++;
+
+                    const count = edits?.[key] || String(active);
+                    return (
+                      <td key={s.date} style={{
+                        padding: '8px 14px', textAlign: 'center',
+                        borderBottom: '1px solid var(--bg-table-border)',
+                        fontWeight: 800, color: 'var(--text-meal)',
+                      }}>
+                        {count} 份
+                      </td>
+                    );
+                  })}
+                </tr>
+              </>
+            )}
           </tbody>
         </table>
       </div>

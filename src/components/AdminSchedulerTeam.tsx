@@ -259,9 +259,31 @@ export const AdminSchedulerTeam: React.FC<AdminSchedulerTeamProps> = ({ team, in
       rows.push([role, ...locationShifts.map(s => getCellValue(locationName, s.date, role, s.assignments[role] || '缺'))]);
     }
 
-    const spareLabels = ['備用1', '備用2'];
-    for (const label of spareLabels) {
-      rows.push([label, ...locationShifts.map(s => getEdit(locationName, s.date, label))]);
+    const calculateDefaultMeal = (locName: string, shift: Shift, roleList: readonly string[]) => {
+      let active = 0;
+      for (const r of roleList) {
+        const p = getCellValue(locName, shift.date, r, shift.assignments[r] || '缺');
+        if (p && p !== '缺' && p.trim() !== '') active++;
+      }
+      const sp1 = getEdit(locName, shift.date, '備用1');
+      if (sp1 && sp1.trim() !== '' && sp1 !== '缺') active++;
+      const sp2 = getEdit(locName, shift.date, '備用2');
+      if (sp2 && sp2.trim() !== '' && sp2 !== '缺') active++;
+      return active;
+    };
+
+    const mealVal = (s: Shift, field: string) => {
+      const valKey = editKey(locationName, s.date, field);
+      const baseNum = calculateDefaultMeal(locationName, s, roles);
+      const v = valKey in manualEdits ? manualEdits[valKey] : String(baseNum);
+      return `${v} 份`;
+    };
+
+    if (locationName === '山莊大堂') {
+      rows.push(['山莊早餐數量', ...locationShifts.map(s => mealVal(s, '早餐'))]);
+    } else {
+      rows.push(['宣教早餐數量', ...locationShifts.map(s => mealVal(s, '早餐'))]);
+      rows.push(['宣教午餐數量', ...locationShifts.map(s => mealVal(s, '午餐'))]);
     }
 
     return rows;
@@ -479,6 +501,127 @@ export const AdminSchedulerTeam: React.FC<AdminSchedulerTeamProps> = ({ team, in
                   </tr>
                 );
               })}
+
+              {/* 餐點統計列 */}
+              {locationName === '山莊大堂' ? (
+                <tr style={mealRowBg}>
+                  <td style={{ fontWeight: 700, color: 'var(--text-meal)', background: 'var(--bg-sticky)', position: 'sticky', left: 0, zIndex: 10, whiteSpace: 'nowrap' }}>
+                    山莊早餐數量
+                  </td>
+                  {locationShifts.map(shift => {
+                    let active = 0;
+                    for (const r of roles) {
+                      const p = getCellValue(locationName, shift.date, r, shift.assignments[r] || '缺');
+                      if (p && p !== '缺' && p.trim() !== '') active++;
+                    }
+                    const sp1 = getEdit(locationName, shift.date, '備用1');
+                    if (sp1 && sp1.trim() !== '' && sp1 !== '缺') active++;
+                    const sp2 = getEdit(locationName, shift.date, '備用2');
+                    if (sp2 && sp2.trim() !== '' && sp2 !== '缺') active++;
+
+                    const valKey = editKey(locationName, shift.date, '早餐');
+                    const val = valKey in manualEdits ? manualEdits[valKey] : String(active);
+
+                    return (
+                      <td key={`sz-breakfast-${shift.date}`} style={{ fontWeight: 800, color: 'var(--text-meal)' }}>
+                        {editMode ? (
+                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', justifyContent: 'center' }}>
+                            <input
+                              style={{ ...inputStyle, color: 'var(--text-meal)', width: '60px' }}
+                              type="number"
+                              min="0"
+                              value={val}
+                              onChange={e => setEdit(locationName, shift.date, '早餐', e.target.value)}
+                            />
+                            <span>份</span>
+                          </span>
+                        ) : (
+                          <span>{val} 份</span>
+                        )}
+                      </td>
+                    );
+                  })}
+                </tr>
+              ) : (
+                <>
+                  <tr style={mealRowBg}>
+                    <td style={{ fontWeight: 700, color: 'var(--text-meal)', background: 'var(--bg-sticky)', position: 'sticky', left: 0, zIndex: 10, whiteSpace: 'nowrap' }}>
+                      宣教早餐數量
+                    </td>
+                    {locationShifts.map(shift => {
+                      let active = 0;
+                      for (const r of roles) {
+                        const p = getCellValue(locationName, shift.date, r, shift.assignments[r] || '缺');
+                        if (p && p !== '缺' && p.trim() !== '') active++;
+                      }
+                      const sp1 = getEdit(locationName, shift.date, '備用1');
+                      if (sp1 && sp1.trim() !== '' && sp1 !== '缺') active++;
+                      const sp2 = getEdit(locationName, shift.date, '備用2');
+                      if (sp2 && sp2.trim() !== '' && sp2 !== '缺') active++;
+
+                      const valKey = editKey(locationName, shift.date, '早餐');
+                      const val = valKey in manualEdits ? manualEdits[valKey] : String(active);
+
+                      return (
+                        <td key={`xj-breakfast-${shift.date}`} style={{ fontWeight: 800, color: 'var(--text-meal)' }}>
+                          {editMode ? (
+                            <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', justifyContent: 'center' }}>
+                              <input
+                                style={{ ...inputStyle, color: 'var(--text-meal)', width: '60px' }}
+                                type="number"
+                                min="0"
+                                value={val}
+                                onChange={e => setEdit(locationName, shift.date, '早餐', e.target.value)}
+                              />
+                              <span>份</span>
+                            </span>
+                          ) : (
+                            <span>{val} 份</span>
+                          )}
+                        </td>
+                      );
+                    })}
+                  </tr>
+                  <tr style={mealRowBg}>
+                    <td style={{ fontWeight: 700, color: 'var(--text-meal)', background: 'var(--bg-sticky)', position: 'sticky', left: 0, zIndex: 10, whiteSpace: 'nowrap' }}>
+                      宣教午餐數量
+                    </td>
+                    {locationShifts.map(shift => {
+                      let active = 0;
+                      for (const r of roles) {
+                        const p = getCellValue(locationName, shift.date, r, shift.assignments[r] || '缺');
+                        if (p && p !== '缺' && p.trim() !== '') active++;
+                      }
+                      const sp1 = getEdit(locationName, shift.date, '備用1');
+                      if (sp1 && sp1.trim() !== '' && sp1 !== '缺') active++;
+                      const sp2 = getEdit(locationName, shift.date, '備用2');
+                      if (sp2 && sp2.trim() !== '' && sp2 !== '缺') active++;
+
+                      const valKey = editKey(locationName, shift.date, '午餐');
+                      const val = valKey in manualEdits ? manualEdits[valKey] : String(active);
+
+                      return (
+                        <td key={`xj-lunch-${shift.date}`} style={{ fontWeight: 800, color: 'var(--text-meal)' }}>
+                          {editMode ? (
+                            <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', justifyContent: 'center' }}>
+                              <input
+                                style={{ ...inputStyle, color: 'var(--text-meal)', width: '60px' }}
+                                type="number"
+                                min="0"
+                                value={val}
+                                onChange={e => setEdit(locationName, shift.date, '午餐', e.target.value)}
+                              />
+                              <span>份</span>
+                            </span>
+                          ) : (
+                            <span>{val} 份</span>
+                          )}
+                        </td>
+                      );
+                    })}
+                  </tr>
+                </>
+              )}
             </tbody>
           </table>
         </div>
