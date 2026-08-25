@@ -70,15 +70,38 @@ export const AdminSchedulerTeam: React.FC<AdminSchedulerTeamProps> = ({ team, in
   const [cloudSheetExists, setCloudSheetExists] = useState<boolean | null>(null);
   const [checkingSheet, setCheckingSheet] = useState(false);
 
+  const getApprovedStorageKey = useCallback((cycle: [number, number], tKey: string) => {
+    const yr = new Date().getFullYear();
+    return `volunteer_scheduler_approved_${yr}_${cycle[0]}-${cycle[1]}_${tKey}`;
+  }, []);
+
   const [approvedVersion, setApprovedVersion] = useState<ApprovedVersion | null>(() => {
     try {
-      const saved = localStorage.getItem(`volunteer_scheduler_approved_${teamKey}`);
+      const yr = new Date().getFullYear();
+      const initial = initialCycle || nextMonths;
+      const key = `volunteer_scheduler_approved_${yr}_${initial[0]}-${initial[1]}_${teamKey}`;
+      const saved = localStorage.getItem(key);
       if (saved) return JSON.parse(saved);
     } catch (e) {
       console.error(e);
     }
     return null;
   });
+
+  // 當選擇的週期或團隊切換時，動態更新本地審定版本狀態
+  useEffect(() => {
+    try {
+      const key = getApprovedStorageKey(selectedCycle, teamKey);
+      const saved = localStorage.getItem(key);
+      if (saved) {
+        setApprovedVersion(JSON.parse(saved));
+      } else {
+        setApprovedVersion(null);
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  }, [selectedCycle, teamKey, getApprovedStorageKey]);
 
   const responseFileInputRef = useRef<HTMLInputElement>(null);
   const scheduleRef = useRef<HTMLDivElement>(null);
@@ -210,21 +233,64 @@ export const AdminSchedulerTeam: React.FC<AdminSchedulerTeamProps> = ({ team, in
     }
   }, [autoGenerate, generateSchedule]);
 
-  // 帶入審定版本
+  // 帶入審定版本 (優先向 Firestore 雲端讀取，次之讀取本地該週期暫存)
   const loadApprovedVersion = async () => {
     setLoading(true);
     try {
-      if (approvedVersion && approvedVersion.shifts && approvedVersion.shifts.length > 0) {
-        setShifts(approvedVersion.shifts);
-        setManualEdits(approvedVersion.edits || {});
+      const year = new Date().getFullYear();
+      const sheetNamePrefix = `${year}年 ${selectedCycle[0]}-${selectedCycle[1]}月排班表`;
+
+      // 1. 優先從 Firebase 雲端讀取該團隊在該週期的班表
+      const cloudRes = await cloudService.fetchTeamScheduleDoc(sheetNamePrefix, teamKey);
+      if (cloudRes.success && cloudRes.data && cloudRes.data.shifts && cloudRes.data.shifts.length > 0) {
+        setShifts(cloudRes.data.shifts);
+        const cloudEdits: Record<string, string> = {};
+        for (const s of cloudRes.data.shifts) {
+          for (const [r, person] of Object.entries(s.assignments || {})) {
+            if (r.includes('備用') && person) {
+              cloudEdits[`${s.location}|${s.date}|${r}`] = person;
+            }
+          }
+        }
+        setManualEdits(cloudEdits);
         setEditMode(false);
-        alert(`已成功帶入 ${approvedVersion.label}！`);
-      } else {
-        alert(`目前尚未儲存【${teamDisplayName}】${selectedCycle[0]}-${selectedCycle[1]}月的審定版本。`);
+
+        const v: ApprovedVersion = {
+          timestamp: cloudRes.data.updatedAt || new Date().toISOString(),
+          label: `${selectedCycle[0]}-${selectedCycle[1]}月 ${teamDisplayName}雲端同步版`,
+          shifts: cloudRes.data.shifts,
+          edits: cloudEdits,
+          isLocalAdminEdit: false,
+        };
+        const key = getApprovedStorageKey(selectedCycle, teamKey);
+        localStorage.setItem(key, JSON.stringify(v));
+        setApprovedVersion(v);
+
+        alert(`✅ 已成功從雲端帶入【${teamDisplayName}】${selectedCycle[0]}-${selectedCycle[1]}月的排班資料！`);
+        setLoading(false);
+        return;
       }
-    } catch (err) {
-      console.error(err);
-      alert('帶入審定版本失敗。');
+
+      // 2. 若雲端尚無，則嘗試從本地 LocalStorage 載入該週期該團隊之暫存
+      const key = getApprovedStorageKey(selectedCycle, teamKey);
+      const localSaved = localStorage.getItem(key);
+      if (localSaved) {
+        const parsed = JSON.parse(localSaved);
+        if (parsed && parsed.shifts && parsed.shifts.length > 0) {
+          setShifts(parsed.shifts);
+          setManualEdits(parsed.edits || {});
+          setEditMode(false);
+          setApprovedVersion(parsed);
+          alert(`✅ 已成功帶入本地暫存的 ${parsed.label}！`);
+          setLoading(false);
+          return;
+        }
+      }
+
+      alert(`目前在雲端與本地尚未建立【${teamDisplayName}】${selectedCycle[0]}-${selectedCycle[1]}月的排班資料。`);
+    } catch (err: any) {
+      console.error('[loadApprovedVersion Error]:', err);
+      alert('帶入審定版本失敗，請稍後再試。');
     } finally {
       setLoading(false);
     }
@@ -242,7 +308,8 @@ export const AdminSchedulerTeam: React.FC<AdminSchedulerTeamProps> = ({ team, in
       isLocalAdminEdit: true,
     };
 
-    localStorage.setItem(`volunteer_scheduler_approved_${teamKey}`, JSON.stringify(v));
+    const key = getApprovedStorageKey(selectedCycle, teamKey);
+    localStorage.setItem(key, JSON.stringify(v));
     setApprovedVersion(v);
     alert(`已設定為審定版本！\n${label}`);
   };

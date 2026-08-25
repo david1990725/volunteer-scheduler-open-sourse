@@ -749,6 +749,56 @@ export async function fetchScheduleFromCloud(
   }
 }
 
+/** 讀取指定團隊的完整排班文件（含 shifts, 矩陣資料與更新時間） */
+export async function fetchTeamScheduleDoc(
+  sheetName: string,
+  team?: string
+): Promise<ApiResultWithData<{ shifts: Shift[]; data: string[][]; updatedAt?: string }>> {
+  try {
+    const rawSheet = sheetName.trim();
+    const teamKey = team ? toTeamKey(team) : 'video';
+    const teamDocId = `${sanitizeDocId(rawSheet)}_${teamKey}`;
+    const legacyDocId = sanitizeDocId(rawSheet);
+
+    const teamSnap = await getDoc(doc(db, COLLECTIONS.SCHEDULES, teamDocId));
+    if (teamSnap.exists()) {
+      const val = teamSnap.data();
+      const matrix = parseScheduleDataFromDoc(val);
+      return {
+        success: true,
+        message: '讀取成功',
+        data: {
+          shifts: val.shifts || [],
+          data: matrix || [],
+          updatedAt: val.updatedAt?.toDate?.()?.toISOString() || new Date().toISOString(),
+        },
+      };
+    }
+
+    if (teamKey === 'video') {
+      const legacySnap = await getDoc(doc(db, COLLECTIONS.SCHEDULES, legacyDocId));
+      if (legacySnap.exists()) {
+        const val = legacySnap.data();
+        const matrix = parseScheduleDataFromDoc(val);
+        return {
+          success: true,
+          message: '讀取成功 (舊版相容)',
+          data: {
+            shifts: val.shifts || [],
+            data: matrix || [],
+            updatedAt: val.updatedAt?.toDate?.()?.toISOString() || new Date().toISOString(),
+          },
+        };
+      }
+    }
+
+    return { success: false, message: '查無排班資料', data: null };
+  } catch (err: any) {
+    console.error('[fetchTeamScheduleDoc Error]:', err);
+    return { success: false, message: err?.message || '讀取失敗', data: null };
+  }
+}
+
 /** 
  * 從雲端讀取指定週期的「最終整合服事表」
  */
