@@ -473,6 +473,19 @@ export function parseScheduleResponsesData(
     );
     xjAssign['信息版'] = ftAtSz ?? '缺';
 
+    // --- Step 4.5: 備用人員安排 (山莊與宣教各最多 2 位未排班之可用同工) ---
+    const szSpareCandidates = Array.from(new Set([...(locationAvailability[field]['山莊'] || []), ...effectiveFullTimers]))
+      .filter(name => canAssign(name, '山莊'));
+    szSpareCandidates.sort((a, b) => (totalShifts[a] || 0) - (totalShifts[b] || 0));
+    if (szSpareCandidates.length > 0) recordAssignment(szSpareCandidates[0], '備用1', '山莊');
+    if (szSpareCandidates.length > 1) recordAssignment(szSpareCandidates[1], '備用2', '山莊');
+
+    const xjSpareCandidates = (locationAvailability[field]['宣教'] || [])
+      .filter(name => canAssign(name, '宣教'));
+    xjSpareCandidates.sort((a, b) => (totalShifts[a] || 0) - (totalShifts[b] || 0));
+    if (xjSpareCandidates.length > 0) recordAssignment(xjSpareCandidates[0], '備用1', '宣教');
+    if (xjSpareCandidates.length > 1) recordAssignment(xjSpareCandidates[1], '備用2', '宣教');
+
     // --- Step 5: Override detection ---
     const overrides = buildOverrides(szAssign, rolePreferences, field, effectiveFullTimers, backfillLeaderList);
 

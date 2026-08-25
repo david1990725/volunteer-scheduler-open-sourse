@@ -151,21 +151,22 @@ export async function getActiveGroups(): Promise<string[]> {
   }
 }
 
-/** 取得指定週期與團隊的排班表 (例如 "2026_03-04", "video") */
+/** 取得指定週期與團隊的排班表 (支援多種 docId 命名規則) */
 export async function getSchedule(cycleKey: string, team: string = 'video'): Promise<ScheduleDoc | null> {
   try {
-    const docId = `${cycleKey}_${team}`;
-    const docRef = doc(db, 'schedules', docId);
-    const snap = await getDoc(docRef);
-    if (snap.exists()) {
-      return { id: snap.id, ...(snap.data() as any) };
-    }
+    const candidates = [
+      `${cycleKey}_${team}`,
+      `${cycleKey.replace(/_(\d{2})-(\d{2})/, '年_$1-$2月排班表')}_${team}`,
+      `${cycleKey.replace(/_0?(\d+)-0?(\d+)/, '年_$1-$2月排班表')}_${team}`,
+      cycleKey,
+    ];
 
-    // 嘗試查尋無團隊後綴之舊格式
-    const legacyRef = doc(db, 'schedules', cycleKey);
-    const legacySnap = await getDoc(legacyRef);
-    if (legacySnap.exists()) {
-      return { id: legacySnap.id, ...(legacySnap.data() as any) };
+    for (const docId of candidates) {
+      const docRef = doc(db, 'schedules', docId);
+      const snap = await getDoc(docRef);
+      if (snap.exists()) {
+        return { id: snap.id, ...(snap.data() as any) };
+      }
     }
   } catch (err) {
     console.error('[getSchedule Error]:', err);
@@ -173,7 +174,31 @@ export async function getSchedule(cycleKey: string, team: string = 'video'): Pro
   return null;
 }
 
-/** 即時補位更新排班表 */
+/** 取得指定週期的最終整合服事表 */
+export async function getFinalSchedule(cycleKey: string): Promise<ScheduleDoc | null> {
+  try {
+    const candidates = [
+      `${cycleKey}_final`,
+      `${cycleKey.replace(/_(\d{2})-(\d{2})/, '年_$1-$2月排班表')}_final`,
+      `${cycleKey.replace(/_0?(\d+)-0?(\d+)/, '年_$1-$2月排班表')}_final`,
+      `${cycleKey}_video`,
+      cycleKey,
+    ];
+
+    for (const docId of candidates) {
+      const docRef = doc(db, 'schedules', docId);
+      const snap = await getDoc(docRef);
+      if (snap.exists()) {
+        return { id: snap.id, ...(snap.data() as any) };
+      }
+    }
+  } catch (err) {
+    console.error('[getFinalSchedule Error]:', err);
+  }
+  return null;
+}
+
+/** 即時補位更新排班表（同時更新團隊 doc 與 _final doc） */
 export async function applySlotFill(
   cycleKey: string,
   team: string,
@@ -212,6 +237,31 @@ export async function applySlotFill(
     const docId = schedule.id || `${cycleKey}_${team}`;
     const docRef = doc(db, 'schedules', docId);
     await setDoc(docRef, { shifts: updatedShifts, updatedAt: serverTimestamp() }, { merge: true });
+
+    // 同步更新 _final doc (若存在)
+    try {
+      const finalSchedule = await getFinalSchedule(cycleKey);
+      if (finalSchedule && finalSchedule.shifts && finalSchedule.id?.endsWith('_final')) {
+        const updatedFinalShifts = finalSchedule.shifts.map((shift) => {
+          const shiftDate = shift.date.trim();
+          const shiftLoc = shift.location.trim();
+          const matchDate = shiftDate.includes(targetDate) || targetDate.includes(shiftDate);
+          const matchLoc = !location || shiftLoc.includes(location) || location.includes(shiftLoc);
+
+          if (matchDate && matchLoc && shift.assignments && (shift.assignments[role] === '缺' || !shift.assignments[role] || shift.assignments[role] === '')) {
+            shift.assignments[role] = volunteerName;
+          }
+          return shift;
+        });
+
+        await setDoc(doc(db, 'schedules', finalSchedule.id), {
+          shifts: updatedFinalShifts,
+          updatedAt: serverTimestamp(),
+        }, { merge: true });
+      }
+    } catch (finalErr) {
+      console.warn('[SlotFill Final Sync Warning]:', finalErr);
+    }
 
     return { success: true, message: `已成功將 ${volunteerName} 填入 ${targetDate} ${location}【${role}】！` };
   } catch (err: any) {

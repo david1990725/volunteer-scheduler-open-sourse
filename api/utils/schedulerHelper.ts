@@ -2,7 +2,7 @@
 // Helper routines for Date, Cycle, and Vacancy calculations
 // =============================================================================
 
-import { getSchedule, VolunteerRecord } from './firebaseAdmin';
+import { getSchedule, getFinalSchedule, VolunteerRecord } from './firebaseAdmin';
 
 /** 取得當週週日日期字串 (MM/DD) */
 export function getUpcomingSunday(baseDate: Date = new Date()): { sundayStr: string; sundayDate: Date; cycleKey: string } {
@@ -54,6 +54,9 @@ export async function findTeamVacanciesForVolunteer(
 
       if (shift.assignments) {
         for (const [role, assignee] of Object.entries(shift.assignments)) {
+          // 備用人員非主要服事空缺，不應觸發呼叫補位機制
+          if (role.includes('備用')) continue;
+
           if (assignee === '缺' || !assignee || assignee === '') {
             vacancies.push({
               date: sundayStr,
@@ -73,6 +76,46 @@ export async function findTeamVacanciesForVolunteer(
 /** 格式化當週全部服事同工名單 (供群組推播或查詢) */
 export async function formatWeeklyTeamRoster(): Promise<string> {
   const { sundayStr, cycleKey } = getUpcomingSunday();
+  
+  // 1. 優先嘗試從最終整合服事表讀取
+  const finalSchedule = await getFinalSchedule(cycleKey);
+  if (finalSchedule && finalSchedule.shifts && finalSchedule.shifts.length > 0) {
+    const currentShifts = finalSchedule.shifts.filter(
+      (s) => s.date.includes(sundayStr) || sundayStr.includes(s.date)
+    );
+
+    if (currentShifts.length > 0) {
+      let rosterText = `📅【本週日 (${sundayStr}) 全員服事名單】\n`;
+
+      for (const shift of currentShifts) {
+        rosterText += `\n━━━━━━━━━━━━━━━\n📍 ${shift.location}\n`;
+        if (shift.assignments) {
+          const lines = Object.entries(shift.assignments)
+            .filter(([role, person]) => {
+              // 備用人員若無人擔任，不顯示於群組名單避免誤解為缺額
+              if (role.includes('備用') && (!person || person === '缺' || person.trim() === '')) return false;
+              return true;
+            })
+            .map(([role, person]) => `  • ${role}：${person || '缺'}`);
+          rosterText += lines.join('\n') + '\n';
+        }
+      }
+
+      // 附加餐點統計 (若有)
+      const meals = (finalSchedule as any).meals?.[sundayStr];
+      if (meals) {
+        rosterText += `\n🍱【餐點預估份數】\n`;
+        if (meals.szBreakfast > 0) rosterText += `  • 山莊早餐：${meals.szBreakfast} 份\n`;
+        if (meals.xjBreakfast > 0) rosterText += `  • 宣教早餐：${meals.xjBreakfast} 份\n`;
+        if (meals.xjLunch > 0) rosterText += `  • 宣教午餐：${meals.xjLunch} 份\n`;
+      }
+
+      rosterText += `\n請各位同工留意服事時間與場地，準時出席！願神賜福大家的服事 ✨`;
+      return rosterText;
+    }
+  }
+
+  // 2. Fallback: 逐團隊個別讀取
   const teams = [
     { key: 'video', name: '🎥 影視團隊' },
     { key: 'audio', name: '🎚️ 音控團隊' },
@@ -107,7 +150,7 @@ export async function formatWeeklyTeamRoster(): Promise<string> {
   }
 
   if (!hasAnyShift) {
-    rosterText += `\n目前尚未建立 ${sundayStr} 的各團隊排班表，敬請期待！`;
+    rosterText += `\n目前尚未建立 ${sundayStr} 的排班表，敬請期待！`;
   } else {
     rosterText += `\n請各位同工留意服事時間與場地，準時出席！願神賜福大家的服事 ✨`;
   }

@@ -29,6 +29,30 @@ export const REVERSE_TEAMS: Record<string, TeamKey> = {
 export const TEAM_OPTIONS = ['影視團隊', '燈光團隊', '舞監團隊', '音控團隊', '管理團隊'];
 export const TEAM_KEY_OPTIONS: TeamKey[] = ['video', 'light', 'stage', 'audio', 'admin'];
 
+/** 各團隊在山莊大堂與宣教大樓的預設職位清單 */
+export const TEAM_DEFAULT_ROLES: Record<TeamKey | string, { sz: string[]; xj: string[] }> = {
+  video: {
+    sz: ['導播', 'AD', 'CAM1', 'CAM2', 'CAM3', 'CAM4', '平面'],
+    xj: ['導播', '信息版'],
+  },
+  light: {
+    sz: ['燈光'],
+    xj: ['燈光'],
+  },
+  audio: {
+    sz: ['山莊IN', '山莊OB'],
+    xj: ['宣教IN', '宣教OB'],
+  },
+  stage: {
+    sz: ['舞監'],
+    xj: ['舞監'],
+  },
+  admin: {
+    sz: [],
+    xj: [],
+  },
+};
+
 /** 將中/英文團隊名稱統一轉為英文 TeamKey */
 export function toTeamKey(nameOrKey: string): TeamKey {
   const trimmed = nameOrKey.trim();

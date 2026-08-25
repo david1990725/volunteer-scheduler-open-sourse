@@ -4,7 +4,7 @@
 
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { sendLinePush, LineMessage } from './utils/lineService';
-import { getAllVolunteers, getActiveGroups, getSchedule } from './utils/firebaseAdmin';
+import { getAllVolunteers, getActiveGroups, getSchedule, getFinalSchedule } from './utils/firebaseAdmin';
 import { getUpcomingSunday, formatWeeklyTeamRoster } from './utils/schedulerHelper';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
@@ -13,16 +13,26 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const volunteers = await getAllVolunteers();
     const activeGroups = await getActiveGroups();
 
-    // 團隊清單
-    const teamKeys = ['video', 'audio', 'light', 'stage'];
-    const allSchedules: Record<string, any> = {};
+    // 取得當週排班資料 (優先讀取最終整合服事表)
+    let finalShifts: any[] = [];
+    const finalDoc = await getFinalSchedule(cycleKey);
+    if (finalDoc && finalDoc.shifts) {
+      finalShifts = finalDoc.shifts.filter(
+        (s) => s.date.includes(sundayStr) || sundayStr.includes(s.date)
+      );
+    }
 
-    for (const tk of teamKeys) {
-      const sch = await getSchedule(cycleKey, tk);
-      if (sch && sch.shifts) {
-        allSchedules[tk] = sch.shifts.filter(
-          (s) => s.date.includes(sundayStr) || sundayStr.includes(s.date)
-        );
+    // 若最終表沒有，則嘗試從各團隊獨立表收集
+    if (finalShifts.length === 0) {
+      const teamKeys = ['video', 'audio', 'light', 'stage'];
+      for (const tk of teamKeys) {
+        const sch = await getSchedule(cycleKey, tk);
+        if (sch && sch.shifts) {
+          const matching = sch.shifts.filter(
+            (s) => s.date.includes(sundayStr) || sundayStr.includes(s.date)
+          );
+          finalShifts.push(...matching);
+        }
       }
     }
 
@@ -35,14 +45,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
       const myShifts: Array<{ location: string; role: string }> = [];
 
-      for (const tk of teamKeys) {
-        const shifts = allSchedules[tk] || [];
-        for (const shift of shifts) {
-          if (shift.assignments) {
-            for (const [role, person] of Object.entries(shift.assignments)) {
-              if (person === vol.name) {
-                myShifts.push({ location: shift.location, role });
-              }
+      for (const shift of finalShifts) {
+        if (shift.assignments) {
+          for (const [role, person] of Object.entries(shift.assignments)) {
+            if (person === vol.name) {
+              myShifts.push({ location: shift.location, role });
             }
           }
         }

@@ -27,6 +27,8 @@ import {
   type VideoSkillKey,
   type AudioSkillKey,
 } from './constants';
+import { mergeTeamSchedules, type FinalSchedule } from './schedulerFinal';
+import type { Shift } from './scheduler';
 
 // --- Types -------------------------------------------------------------------
 
@@ -616,26 +618,33 @@ function parseScheduleDataFromDoc(docData: any): string[][] | null {
 export async function syncSchedule(payload: {
   sheetName: string;
   data: string[][];
+  team?: string;
+  shifts?: Shift[];
 }): Promise<ApiResult> {
   try {
-    const docId = sanitizeDocId(payload.sheetName.trim());
+    const rawSheet = payload.sheetName.trim();
+    const teamKey = payload.team ? toTeamKey(payload.team) : 'video';
+    const docId = `${sanitizeDocId(rawSheet)}_${teamKey}`;
     const docRef = doc(db, COLLECTIONS.SCHEDULES, docId);
 
     // 1. 主要寫入：Firebase Firestore（使用 dataJson 避免 Firestore 巢狀陣列限制）
     await setDoc(docRef, {
-      sheetName: payload.sheetName,
+      sheetName: rawSheet,
+      team: teamKey,
+      shifts: payload.shifts || [],
       dataJson: JSON.stringify(payload.data),
       updatedAt: serverTimestamp(),
     });
 
+    // 2. 雙重備份：寫回 Google Sheets
     let backupSuccess = false;
     let backupMessage = '';
+    const teamSheetName = `${rawSheet}_${toTeamKey(teamKey)}`;
 
-    // 2. 雙重備份：寫回 Google Sheets
     if (APPS_SCRIPT_URL) {
       try {
         const backupRes = await fetchFromOldAppsScript<any>('syncSchedule', {
-          sheetName: payload.sheetName,
+          sheetName: teamSheetName,
           data: payload.data,
         });
         if (backupRes && backupRes.success) {
@@ -648,19 +657,26 @@ export async function syncSchedule(payload: {
       }
     }
 
+    // 3. 自動觸發最終整合服事表重新合成
+    try {
+      await autoMergeFinalSchedule(rawSheet);
+    } catch (mergeErr) {
+      console.warn('[AutoMerge Warning]: 重新合成最終服事表失敗', mergeErr);
+    }
+
     if (backupSuccess) {
       return {
         success: true,
-        message: `排班資料已成功儲存至 Firebase，並已同步備份至 Google Sheets 工作表 [${payload.sheetName}]！`,
+        message: `【${teamKey}】排班資料已儲存至 Firebase，已同步備份至 Sheets [${teamSheetName}]，並已自動更新最終服事表！`,
       };
     } else if (APPS_SCRIPT_URL) {
       return {
         success: true,
-        message: `排班資料已成功儲存至 Firebase！(註：Google Sheets 備份異常: ${backupMessage})`,
+        message: `【${teamKey}】排班已儲存並更新最終服事表！(註：Sheets 備份: ${backupMessage})`,
       };
     }
 
-    return { success: true, message: '排班資料已成功儲存至 Firebase！' };
+    return { success: true, message: `【${teamKey}】排班已儲存並自動更新最終整合服事表！` };
   } catch (err: any) {
     console.error('[syncSchedule Error]:', err);
     return { success: false, message: err?.message || '同步班表失敗' };
@@ -674,39 +690,50 @@ export async function syncSchedule(payload: {
  */
 export async function fetchScheduleFromCloud(
   sheetName: string,
-  options?: { forceSyncFromSheets?: boolean }
+  options?: { team?: string; forceSyncFromSheets?: boolean }
 ): Promise<ApiResultWithData<string[][]>> {
   try {
-    const docId = sanitizeDocId(sheetName.trim());
-    const docRef = doc(db, COLLECTIONS.SCHEDULES, docId);
+    const rawSheet = sheetName.trim();
+    const teamKey = options?.team ? toTeamKey(options.team) : 'video';
+    const teamDocId = `${sanitizeDocId(rawSheet)}_${teamKey}`;
+    const legacyDocId = sanitizeDocId(rawSheet);
 
     // 若非強制從 Google Sheets 重新拉取，先查 Firestore
     if (!options?.forceSyncFromSheets) {
-      const snap = await getDoc(docRef);
-      if (snap.exists()) {
-        const scheduleMatrix = parseScheduleDataFromDoc(snap.data());
-        if (scheduleMatrix && scheduleMatrix.length > 0) {
-          return {
-            success: true,
-            message: '讀取成功 (來自 Firebase)',
-            data: scheduleMatrix,
-          };
+      // 1. 先查團隊 doc
+      const teamSnap = await getDoc(doc(db, COLLECTIONS.SCHEDULES, teamDocId));
+      if (teamSnap.exists()) {
+        const matrix = parseScheduleDataFromDoc(teamSnap.data());
+        if (matrix && matrix.length > 0) {
+          return { success: true, message: '讀取成功 (來自 Firebase 團隊表)', data: matrix };
+        }
+      }
+
+      // 2. 若是 video 團隊或無指定團隊，可 fallback 查無後綴之舊版 doc
+      if (teamKey === 'video') {
+        const legacySnap = await getDoc(doc(db, COLLECTIONS.SCHEDULES, legacyDocId));
+        if (legacySnap.exists()) {
+          const matrix = parseScheduleDataFromDoc(legacySnap.data());
+          if (matrix && matrix.length > 0) {
+            return { success: true, message: '讀取成功 (來自 Firebase 舊版表)', data: matrix };
+          }
         }
       }
     }
 
-    // 若 Firestore 沒有或要求強制拉取，從 Google Sheets 讀取並雙向同步回 Firestore
+    // 若 Firestore 沒有或要求強制拉取，從 Google Sheets 讀取
     if (APPS_SCRIPT_URL) {
-      const sheetRes = await fetchFromOldAppsScript<any>('fetchSchedule', { sheetName });
+      const targetSheetName = options?.team ? `${rawSheet}_${teamKey}` : rawSheet;
+      const sheetRes = await fetchFromOldAppsScript<any>('fetchSchedule', { sheetName: targetSheetName });
       if (sheetRes && sheetRes.success && sheetRes.data && Array.isArray(sheetRes.data) && sheetRes.data.length > 0) {
-        await setDoc(docRef, {
-          sheetName,
+        await setDoc(doc(db, COLLECTIONS.SCHEDULES, teamDocId), {
+          sheetName: rawSheet,
+          team: teamKey,
           dataJson: JSON.stringify(sheetRes.data),
           updatedAt: serverTimestamp(),
           syncedFrom: 'GoogleSheets',
         }, { merge: true });
 
-        console.log(`[Bidirectional Sync] 排班表 [${sheetName}] 已自 Google Sheets 同步至 Firestore`);
         return {
           success: true,
           message: '讀取成功 (自 Google Sheets 同步至 Firebase)',
@@ -722,6 +749,111 @@ export async function fetchScheduleFromCloud(
   }
 }
 
+/** 
+ * 從雲端讀取指定週期的「最終整合服事表」
+ */
+export async function fetchFinalSchedule(sheetName: string): Promise<ApiResultWithData<FinalSchedule>> {
+  try {
+    const rawSheet = sheetName.trim();
+    const finalDocId = `${sanitizeDocId(rawSheet)}_final`;
+    const docRef = doc(db, COLLECTIONS.SCHEDULES, finalDocId);
+
+    const snap = await getDoc(docRef);
+    if (snap.exists()) {
+      const data = snap.data();
+      const matrix = parseScheduleDataFromDoc(data);
+      const finalSchedule: FinalSchedule = {
+        sheetName: data.sheetName || rawSheet,
+        cycleKey: data.cycleKey || rawSheet.replace(/[^\d\-_]/g, ''),
+        includedTeams: data.includedTeams || ['video'],
+        shifts: data.shifts || [],
+        meals: data.meals || {},
+        data: matrix || [],
+        updatedAt: data.updatedAt?.toDate?.()?.toISOString() || new Date().toISOString(),
+      };
+
+      if (finalSchedule.shifts.length > 0 || (finalSchedule.data && finalSchedule.data.length > 0)) {
+        return { success: true, message: '讀取最終整合服事表成功', data: finalSchedule };
+      }
+    }
+
+    // 若尚未存在 _final，嘗試即時執行自動合成
+    const autoMerged = await autoMergeFinalSchedule(rawSheet);
+    if (autoMerged) {
+      return { success: true, message: '即時合成最終整合服事表成功', data: autoMerged };
+    }
+
+    return { success: false, message: `尚未建立 ${sheetName} 的最終整合服事表`, data: null };
+  } catch (err: any) {
+    console.error('[fetchFinalSchedule Error]:', err);
+    return { success: false, message: err?.message || '讀取最終服事表失敗', data: null };
+  }
+}
+
+/** 
+ * 自動收集所有已產出之團隊排班表，並合成更新寫入 `_final`
+ */
+export async function autoMergeFinalSchedule(sheetName: string): Promise<FinalSchedule | null> {
+  try {
+    const rawSheet = sheetName.trim();
+    const teamKeys = ['video', 'audio', 'light', 'stage'];
+    const teamSchedules: Record<string, Shift[]> = {};
+
+    for (const tk of teamKeys) {
+      const teamDocId = `${sanitizeDocId(rawSheet)}_${tk}`;
+      const snap = await getDoc(doc(db, COLLECTIONS.SCHEDULES, teamDocId));
+      if (snap.exists()) {
+        const d = snap.data();
+        if (Array.isArray(d.shifts) && d.shifts.length > 0) {
+          teamSchedules[tk] = d.shifts;
+        }
+      } else if (tk === 'video') {
+        // Fallback 查舊版 doc
+        const legacySnap = await getDoc(doc(db, COLLECTIONS.SCHEDULES, sanitizeDocId(rawSheet)));
+        if (legacySnap.exists()) {
+          const d = legacySnap.data();
+          if (Array.isArray(d.shifts) && d.shifts.length > 0) {
+            teamSchedules[tk] = d.shifts;
+          }
+        }
+      }
+    }
+
+    // 若完全沒有任何團隊產出，則不合成
+    if (Object.keys(teamSchedules).length === 0) {
+      return null;
+    }
+
+    // 合成最終表
+    const finalSchedule = mergeTeamSchedules(rawSheet, teamSchedules);
+
+    // 寫入 Firestore _final
+    const finalDocId = `${sanitizeDocId(rawSheet)}_final`;
+    await setDoc(doc(db, COLLECTIONS.SCHEDULES, finalDocId), {
+      sheetName: finalSchedule.sheetName,
+      cycleKey: finalSchedule.cycleKey,
+      includedTeams: finalSchedule.includedTeams,
+      shifts: finalSchedule.shifts,
+      meals: finalSchedule.meals,
+      dataJson: JSON.stringify(finalSchedule.data),
+      updatedAt: serverTimestamp(),
+    });
+
+    // 同步備份至 Google Sheets 主工作表
+    if (APPS_SCRIPT_URL) {
+      fetchFromOldAppsScript<any>('syncSchedule', {
+        sheetName: rawSheet,
+        data: finalSchedule.data,
+      }).catch(e => console.warn('[AutoMerge Sheets Backup Error]:', e));
+    }
+
+    return finalSchedule;
+  } catch (err) {
+    console.error('[autoMergeFinalSchedule Error]:', err);
+    return null;
+  }
+}
+
 // =============================================================================
 // 4. 離線相容管理
 // =============================================================================
@@ -729,3 +861,4 @@ export async function fetchScheduleFromCloud(
 export async function syncOfflineForms(): Promise<void> {
   console.log('[Firebase] 離線快取與同步已由 Firestore SDK 自動管理');
 }
+

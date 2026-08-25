@@ -1,17 +1,11 @@
-import { useState, useRef, useCallback, useEffect } from 'react';
-import { Menu, X, Download, Users, RefreshCw, Loader2, FileSpreadsheet, RotateCcw, Image, FileText, Sun, Moon, ChevronDown, CloudUpload, ArrowRight, ArrowLeft, ShieldCheck, ArchiveRestore } from 'lucide-react';
-import * as XLSX from 'xlsx';
-import html2canvas from 'html2canvas';
-import { jsPDF } from 'jspdf';
+import { useState, useEffect } from 'react';
+import { Menu, X, Loader2, Sun, Moon } from 'lucide-react';
 import {
-  parseSkillTreeData,
-  parseScheduleResponsesData,
   SHAN_ZHUANG_ROLES,
   XUAN_JIAO_ROLES,
 } from './utils/scheduler';
 import type { Shift, Volunteer } from './utils/scheduler';
-import { parseSpreadsheetFile, fetchCSVAsJson } from './utils/fileUtils';
-import { getCycleDates, getSundaysForCycle } from './utils/dateUtils';
+import { getCycleDates } from './utils/dateUtils';
 import { useInteractiveLighting } from './hooks/useInteractiveLighting';
 import { useLiff } from './hooks/useLiff';
 import * as cloudService from './utils/googleSheets';
@@ -23,49 +17,9 @@ import { FormStage } from './components/FormStage';
 import { AdminRosterTeam } from './components/AdminRosterTeam';
 import { AdminRawDataTeam } from './components/AdminRawDataTeam';
 import { AdminSkillTreeTeam } from './components/AdminSkillTreeTeam';
+import { AdminSchedulerTeam } from './components/AdminSchedulerTeam';
 import { AdminNav } from './components/AdminNav';
 import { HomePage } from './components/HomePage';
-
-// =============================================================================
-// Constants
-// =============================================================================
-
-const FALLBACK_RESPONSES_PATH = '/schedule_responses.csv';
-
-// =============================================================================
-// Helpers
-// =============================================================================
-
-/** 計算某週有效人數（排除「缺」） */
-function countAssigned(shift: Shift, roles: readonly string[]): number {
-  return roles.reduce(
-    (sum, role) => sum + (shift.assignments[role] && shift.assignments[role] !== '缺' ? 1 : 0),
-    0,
-  );
-}
-
-// =============================================================================
-// Shared styles
-// =============================================================================
-
-const mealLabelStyle: React.CSSProperties = {
-  fontWeight: 600, color: 'var(--text-meal)',
-  position: 'sticky', left: 0, zIndex: 10,
-  background: 'var(--bg-sticky)',
-  whiteSpace: 'nowrap',
-};
-
-const mealValueStyle: React.CSSProperties = {
-  fontWeight: 800, color: 'var(--text-meal)',
-};
-
-const mealRowBg: React.CSSProperties = {
-  background: 'var(--bg-hover)',
-};
-
-// =============================================================================
-// Types
-// =============================================================================
 
 interface ApprovedVersion {
   timestamp: string;
@@ -74,10 +28,6 @@ interface ApprovedVersion {
   edits: Record<string, string>;
   isLocalAdminEdit?: boolean;
 }
-
-// =============================================================================
-// Component
-// =============================================================================
 
 function App() {
   const [view, setView] = useState<'login' | 'loading' | 'home' | 'frontend' | 'admin'>(() => {
@@ -90,7 +40,6 @@ function App() {
   const [adminTeamSelected, setAdminTeamSelected] = useState(false);
   const [homeSelectedTeam, setHomeSelectedTeam] = useState<string>('');
   
-  const [scheduleStep, setScheduleStep] = useState<1 | 2 | 3>(1);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [currentUser, setCurrentUser] = useState<Volunteer | null>(() => {
     const saved = localStorage.getItem('volunteer_scheduler_user');
@@ -125,8 +74,6 @@ function App() {
   }, [currentUser, profile]);
 
   const handleLogout = () => {
-    // liffLogout 會設置 sessionStorage 旗標 + 清除 LIFF session
-    // 防止回到登入頁後自動觸發 LINE 登入
     liffLogout();
     localStorage.removeItem('volunteer_scheduler_user');
     setView('login');
@@ -135,13 +82,6 @@ function App() {
     setAdminSubTab('roster');
   };
 
-  const [shifts, setShifts] = useState<Shift[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [exporting, setExporting] = useState('');
-  const [responseFile, setResponseFile] = useState<File | null>(null);
-  const [manualEdits, setManualEdits] = useState<Record<string, string>>({});
-  const [editMode, setEditMode] = useState(false);
-  const [uploadedFileName, setUploadedFileName] = useState('');
   const [approvedVersion, setApprovedVersion] = useState<ApprovedVersion | null>(() => {
     try {
       const saved = localStorage.getItem('volunteer_scheduler_approved');
@@ -154,14 +94,8 @@ function App() {
   const [approvedVersion1, setApprovedVersion1] = useState<ApprovedVersion | null>(null);
   const [approvedVersion2, setApprovedVersion2] = useState<ApprovedVersion | null>(null);
   const [selectedCycle, setSelectedCycle] = useState<[number, number]>(() => getCycleDates().nextMonths);
-  const [cloudSheetExists, setCloudSheetExists] = useState<boolean | null>(null);
-  const [checkingSheet, setCheckingSheet] = useState<boolean>(false);
 
   const [darkMode, setDarkMode] = useState(true);
-  const [showExportMenu, setShowExportMenu] = useState(false);
-  const responseFileInputRef = useRef<HTMLInputElement>(null);
-  const scheduleRef = useRef<HTMLDivElement>(null);
-  const exportMenuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     document.documentElement.classList.toggle('light-theme', !darkMode);
@@ -176,153 +110,23 @@ function App() {
   // 互動光影效果（桌面滑鼠 + 行動加速度計）
   useInteractiveLighting();
 
-  // 關閉匯出選單（點擊外部）
-  useEffect(() => {
-    const handleClickOutside = (e: MouseEvent) => {
-      if (exportMenuRef.current && !exportMenuRef.current.contains(e.target as Node)) {
-        setShowExportMenu(false);
-      }
-    };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
-
-  const editKey = (loc: string, date: string, field: string) => `${loc}|${date}|${field}`;
-
-  const getEdit = (loc: string, date: string, field: string) =>
-    manualEdits[editKey(loc, date, field)] ?? '';
-
-  const setEdit = (loc: string, date: string, field: string, value: string) =>
-    setManualEdits(prev => ({ ...prev, [editKey(loc, date, field)]: value }));
-
-  /** Resolve displayed value for a role cell (manual edit > auto assignment) */
-  const getCellValue = (loc: string, date: string, role: string, fallback: string) => {
-    const key = editKey(loc, date, role);
-    if (key in manualEdits) return manualEdits[key];
-    return fallback;
-  };
-
-  /** 設定為審定版本 */
-  const checkCloudSheetExistence = useCallback(async (cycle: [number, number]) => {
-    setCheckingSheet(true);
-    try {
-      const year = new Date().getFullYear();
-      const sheetName = `${year}年 ${cycle[0]}-${cycle[1]}月排班表`;
-      const res = await cloudService.fetchScheduleFromCloud(sheetName);
-      setCloudSheetExists(res.success && res.data !== null);
-    } catch (err) {
-      setCloudSheetExists(false);
-    } finally {
-      setCheckingSheet(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    if (view === 'admin' && adminSubTab === 'scheduler') {
-      checkCloudSheetExistence(selectedCycle);
-    }
-  }, [selectedCycle, view, adminSubTab, checkCloudSheetExistence]);
-
-
-
-  /** 設定為審定版本 */
-  const setAsApproved = () => {
-    const ts = new Date().toLocaleString('zh-TW', { hour12: false });
-    const label = `${selectedCycle[0]}-${selectedCycle[1]}月 審定版 (${ts})`;
-    const v: ApprovedVersion = {
-      timestamp: ts,
-      label,
-      shifts: JSON.parse(JSON.stringify(shifts)),
-      edits: { ...manualEdits },
-      isLocalAdminEdit: true,
-    };
-    
-    const key = `volunteer_scheduler_approved_${selectedCycle[0]}-${selectedCycle[1]}`;
-    localStorage.setItem(key, JSON.stringify(v));
-
-    setApprovedVersion(v);
-    alert(`已設定為審定版本！\n${label}`);
-  };
-
-  /** 帶入上次審定版本（從雲端讀取所選週期的工作表內容） */
-  const loadApprovedVersion = async () => {
-    setLoading(true);
-    try {
-      const version = await loadCloudApprovedVersion(selectedCycle);
-      if (version) {
-        setShifts(version.shifts);
-        setManualEdits(version.edits);
-        setEditMode(false);
-        alert(`已成功自雲端帶入 ${selectedCycle[0]}-${selectedCycle[1]}月 審定版本！`);
-      } else {
-        alert(`雲端尚未建立「${new Date().getFullYear()}年 ${selectedCycle[0]}-${selectedCycle[1]}月排班表」工作表。`);
-      }
-    } catch (err) {
-      console.error(err);
-      alert('從雲端帶入版本失敗，請稍後再試。');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // --- Event Handlers -------------------------------------------------------
-
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      setUploadedFileName(file.name);
-      setResponseFile(file);
-    }
-  };
-
-  const resetAll = () => {
-    setShifts([]);
-    setResponseFile(null);
-    setManualEdits({});
-    setEditMode(false);
-    setScheduleStep(1);
-    setUploadedFileName('');
-    if (responseFileInputRef.current) responseFileInputRef.current.value = '';
-  };
-
-  const generateSchedule = useCallback(async (overrideCycle?: [number, number]) => {
-    setLoading(true);
-    try {
-      let responseData;
-      if (responseFile) {
-        responseData = await parseSpreadsheetFile(responseFile);
-      } else {
-        const cloudRes = await cloudService.fetchFormResponsesFromCloud();
-        if (cloudRes.success && cloudRes.data && cloudRes.data.length > 0) {
-          responseData = cloudRes.data;
-        } else {
-          responseData = await fetchCSVAsJson(FALLBACK_RESPONSES_PATH);
-        }
-      }
-
-      const resVolunteers = await cloudService.fetchVolunteers();
-      const volunteers = parseSkillTreeData(resVolunteers.data || []);
-      
-      const targetCycle = overrideCycle || selectedCycle;
-      const year = new Date().getFullYear();
-      const targetSundays = getSundaysForCycle(year, targetCycle);
-      
-      const newShifts = parseScheduleResponsesData(responseData, volunteers, targetSundays);
-      setShifts(newShifts);
-      setManualEdits({});
-    } catch (err) {
-      console.error('Failed to generate schedule:', err);
-      alert('解析檔案失敗，請確定上傳的是有效的 Excel 或 CSV 檔案。');
-    } finally {
-      setLoading(false);
-    }
-  }, [responseFile, selectedCycle]);
-
   const loadCloudApprovedVersion = async (cycle: [number, number]): Promise<ApprovedVersion | null> => {
     try {
       const year = new Date().getFullYear();
       const sheetNamePrefix = `${year}年 ${cycle[0]}-${cycle[1]}月排班表`;
 
+      // 1. 優先嘗試讀取雲端「最終整合服事表」
+      const finalRes = await cloudService.fetchFinalSchedule(sheetNamePrefix);
+      if (finalRes.success && finalRes.data && finalRes.data.shifts && finalRes.data.shifts.length > 0) {
+        return {
+          timestamp: finalRes.data.updatedAt || new Date().toISOString(),
+          label: `${cycle[0]}-${cycle[1]}月 最終審定版`,
+          shifts: finalRes.data.shifts,
+          edits: {},
+        };
+      }
+
+      // 2. Fallback: 從 2D 矩陣解析
       const cloudResult = await cloudService.fetchScheduleFromCloud(sheetNamePrefix);
 
       if (!cloudResult.success || !cloudResult.data) {
@@ -355,7 +159,7 @@ function App() {
         const dates = rawDates.map(normalizeDate);
 
         for (const date of dates) {
-          if (!date) continue; // 略過因資料矩陣補齊而產生的空白欄位
+          if (!date) continue;
 
           const shift: Shift = {
             date,
@@ -378,14 +182,13 @@ function App() {
               if (rowLabel === '山莊早餐數量' || rowLabel === '宣教早餐數量') fieldKey = '早餐';
               else if (rowLabel === '宣教午餐數量') fieldKey = '午餐';
               
-              importedEdits[editKey(locationName, date, fieldKey)] = cleanVal;
+              importedEdits[`${locationName}|${date}|${fieldKey}`] = cleanVal;
             }
           }
           importedShifts.push(shift);
         }
       };
 
-      // Split combined data into ShanZhuang and XuanJiao arrays based on headers
       const shanzhuangRows: string[][] = [];
       const xuanjiaoRows: string[][] = [];
       let currentLocation = '';
@@ -451,20 +254,13 @@ function App() {
     }
   }, [currentUser, view]);
 
-
-
   // --- Offline Sync ---
   useEffect(() => {
-    // 嘗試在應用程式載入時同步
     cloudService.syncOfflineForms();
-
-    // 監聽網路恢復事件
     const handleOnline = () => {
       console.log('Network is back online. Syncing offline forms...');
       cloudService.syncOfflineForms();
     };
-
-    // 監聽同步完成的自訂事件，跳出通知
     const handleSyncComplete = ((e: CustomEvent) => {
       const count = e.detail;
       alert(`網路已恢復！已成功為您將 ${count} 筆離線儲存的表單資料同步至雲端。`);
@@ -478,402 +274,6 @@ function App() {
       window.removeEventListener('offline-sync-complete', handleSyncComplete);
     };
   }, []);
-
-  // --- Helper for calculating default meals ---
-  const calculateDefaultMeal = useCallback((locationName: string, shift: Shift, field: string, roles: readonly string[]) => {
-    const hasRole = (roleName: string) => (shift.assignments[roleName] && shift.assignments[roleName] !== '缺' ? 1 : 0);
-    const hasEdit = (editField: string) => {
-      const v = manualEdits[editKey(locationName, shift.date, editField)];
-      return v && v.trim() !== '' ? 1 : 0;
-    };
-
-    if (locationName === '宣教大樓' && field === '早餐') {
-      return hasRole('導播') + hasEdit('燈控') + hasEdit('備用1');
-    } else if (locationName === '宣教大樓' && field === '午餐') {
-      return hasRole('導播') + hasRole('信息版') + hasEdit('燈控');
-    } else if (locationName === '山莊大堂' && field === '早餐') {
-      return countAssigned(shift, roles) + hasEdit('備用1') + hasEdit('備用2') + hasEdit('燈控');
-    }
-    return countAssigned(shift, roles);
-  }, [manualEdits]);
-
-  // --- Helper for generating 2D Data Array ---
-  const getSheetData = useCallback((locationName: string, roles: readonly string[]): string[][] | null => {
-    const locationShifts = shifts.filter(s => s.location === locationName);
-    if (locationShifts.length === 0) return null;
-
-    const header = ['職務 / 日期', ...locationShifts.map(s => s.date)];
-    const rows: string[][] = [header];
-
-    for (const role of roles) {
-      rows.push([role, ...locationShifts.map(s => getCellValue(locationName, s.date, role, s.assignments[role] || '缺'))]);
-    }
-
-    const spareLabels = locationName === '山莊大堂' ? ['備用1', '備用2'] : ['備用1'];
-    for (const label of spareLabels) {
-      rows.push([label, ...locationShifts.map(s => getEdit(locationName, s.date, label))]);
-    }
-
-    rows.push(['燈控', ...locationShifts.map(s => getEdit(locationName, s.date, '燈控'))]);
-
-    const mealVal = (s: Shift, field: string) => {
-      const valKey = editKey(locationName, s.date, field);
-      const baseNum = calculateDefaultMeal(locationName, s, field, roles);
-      const v = valKey in manualEdits ? manualEdits[valKey] : String(baseNum);
-      return `${v} 份`;
-    };
-    if (locationName === '山莊大堂') {
-      rows.push(['山莊早餐數量', ...locationShifts.map(s => mealVal(s, '早餐'))]);
-    } else {
-      rows.push(['宣教早餐數量', ...locationShifts.map(s => mealVal(s, '早餐'))]);
-      rows.push(['宣教午餐數量', ...locationShifts.map(s => mealVal(s, '午餐'))]);
-    }
-
-    return rows;
-  }, [shifts, manualEdits, getCellValue, getEdit]);
-
-  // --- Sync to Cloud ---
-  const handleSyncToCloud = async () => {
-    if (!shifts.length) return;
-    setLoading(true);
-    
-    // Generate sheet name based on selectedCycle
-    const year = new Date().getFullYear();
-    const sheetNamePrefix = `${year}年 ${selectedCycle[0]}-${selectedCycle[1]}月排班表`;
-
-    try {
-      const shanzhuangData = getSheetData('山莊大堂', SHAN_ZHUANG_ROLES);
-      const xuanjiaoData = getSheetData('宣教大樓', XUAN_JIAO_ROLES);
-
-      const combinedData: string[][] = [];
-      
-      if (shanzhuangData && shanzhuangData.length > 0) {
-        combinedData.push(['【山莊大堂】']);
-        combinedData.push(...shanzhuangData);
-      }
-      
-      if (xuanjiaoData && xuanjiaoData.length > 0) {
-        if (combinedData.length > 0) combinedData.push([]); // 空行分隔
-        combinedData.push(['【宣教大樓】']);
-        combinedData.push(...xuanjiaoData);
-      }
-
-      if (combinedData.length > 0) {
-        // Ensure data is rectangular for Google Apps Script setValues()
-        const maxCols = Math.max(...combinedData.map(r => r.length));
-        const rectangularData = combinedData.map(r => {
-          const newRow = [...r];
-          while (newRow.length < maxCols) newRow.push('');
-          return newRow;
-        });
-
-        const syncRes = await cloudService.syncSchedule({ sheetName: sheetNamePrefix, data: rectangularData });
-        checkCloudSheetExistence(selectedCycle);
-        // 同步成功後，解除本地強制覆蓋標記
-        setApprovedVersion(prev => prev ? { ...prev, isLocalAdminEdit: false } : prev);
-        alert(syncRes.message || '排班資料已成功儲存至 Firebase，並同步備份至 Google Sheets！');
-      }
-    } catch (err: any) {
-      console.error(err);
-      alert(err?.message || '同步失敗，請稍後再試。');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // --- Excel Export ---------------------------------------------------------
-
-  const exportExcel = useCallback(() => {
-    if (shifts.length === 0) return;
-
-    try {
-      const workbook = XLSX.utils.book_new();
-
-      const buildSheet = (locationName: string, roles: readonly string[]) => {
-        const rows = getSheetData(locationName, roles);
-        if (!rows) return;
-
-        const ws = XLSX.utils.aoa_to_sheet(rows);
-        XLSX.utils.book_append_sheet(workbook, ws, locationName);
-      };
-
-      buildSheet('山莊大堂', SHAN_ZHUANG_ROLES);
-      buildSheet('宣教大樓', XUAN_JIAO_ROLES);
-
-      if (workbook.SheetNames.length === 0) {
-        alert('沒有可匯出的資料');
-        return;
-      }
-
-      const wbout = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
-      const blob = new Blob([wbout], {
-        type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-      });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = 'schedule_report.xlsx';
-      a.style.display = 'none';
-      document.body.appendChild(a);
-      a.click();
-      // Delay cleanup to give the browser time to trigger the download
-      setTimeout(() => {
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
-      }, 200);
-    } catch (err: any) {
-      console.error('Excel export failed:', err);
-      alert('匯出 Excel 失敗: ' + (err.message || String(err)));
-    }
-  }, [shifts, getSheetData]);
-
-  // --- PNG / PDF Export --------------------------------------------------
-
-  const captureSchedule = useCallback(async (): Promise<HTMLCanvasElement | null> => {
-    if (!scheduleRef.current || shifts.length === 0) return null;
-
-    const clone = scheduleRef.current.cloneNode(true) as HTMLElement;
-    clone.style.width = '1920px';
-    clone.style.padding = '40px';
-    const bgColor = darkMode ? '#0a0e1a' : '#eef2f7';
-    clone.style.background = bgColor;
-    clone.style.position = 'absolute';
-    clone.style.left = '-9999px';
-    clone.style.top = '0';
-    clone.classList.add('export-mode');
-    
-    // Disable animations on clone so html2canvas doesn't capture them at opacity 0
-    clone.style.animation = 'none';
-    clone.style.transition = 'none';
-    clone.style.opacity = '1';
-    const animatedEls = clone.querySelectorAll('.animate-morph');
-    animatedEls.forEach(el => {
-      (el as HTMLElement).style.animation = 'none';
-      (el as HTMLElement).style.transition = 'none';
-      (el as HTMLElement).style.opacity = '1';
-    });
-
-    document.body.appendChild(clone);
-
-    try {
-      return await html2canvas(clone, {
-        scale: 2,
-        useCORS: true,
-        backgroundColor: bgColor,
-        width: 1920,
-        windowWidth: 1920,
-      });
-    } finally {
-      document.body.removeChild(clone);
-    }
-  }, [shifts]);
-
-  const exportPNG = useCallback(async () => {
-    setExporting('png');
-    try {
-      const canvas = await captureSchedule();
-      if (!canvas) return;
-      const dataUrl = canvas.toDataURL('image/png');
-      const a = document.createElement('a');
-      a.href = dataUrl;
-      a.download = 'schedule_report.png';
-      a.style.display = 'none';
-      document.body.appendChild(a);
-      a.click();
-      setTimeout(() => document.body.removeChild(a), 200);
-    } catch (err) {
-      console.error('PNG export failed:', err);
-      alert('匯出 PNG 失敗');
-    } finally {
-      setExporting('');
-    }
-  }, [captureSchedule]);
-
-  const exportPDF = useCallback(async () => {
-    setExporting('pdf');
-    try {
-      const canvas = await captureSchedule();
-      if (!canvas) return;
-      const imgData = canvas.toDataURL('image/png');
-      const pdf = new jsPDF({ orientation: 'landscape', unit: 'px', format: [1920, 1080] });
-      const pdfW = pdf.internal.pageSize.getWidth();
-      const pdfH = pdf.internal.pageSize.getHeight();
-      const imgRatio = canvas.width / canvas.height;
-      let drawW = pdfW;
-      let drawH = pdfW / imgRatio;
-      if (drawH > pdfH) { drawH = pdfH; drawW = pdfH * imgRatio; }
-      pdf.addImage(imgData, 'PNG', 0, 0, drawW, drawH);
-      pdf.save('schedule_report.pdf');
-    } catch (err) {
-      console.error('PDF export failed:', err);
-      alert('匯出 PDF 失敗');
-    } finally {
-      setExporting('');
-    }
-  }, [captureSchedule]);
-
-  // --- Table Renderer -------------------------------------------------------
-
-  const inputStyle: React.CSSProperties = {
-    background: 'var(--bg-input)', border: '1px solid var(--bg-input-border)',
-    borderRadius: '6px', fontWeight: 700,
-    width: '80px', padding: '4px 8px', textAlign: 'center', fontSize: '0.9rem',
-  };
-
-  const renderEditableRow = (label: string, locationName: string, locationShifts: Shift[], field: string, roles: readonly string[]) => (
-    <tr style={mealRowBg}>
-      <td style={mealLabelStyle}>{label}</td>
-      {locationShifts.map(shift => {
-        const defaultNum = calculateDefaultMeal(locationName, shift, field, roles);
-        const valKey = editKey(locationName, shift.date, field);
-        const val = valKey in manualEdits ? manualEdits[valKey] : String(defaultNum);
-        return (
-          <td key={`${field}-${shift.date}`} style={mealValueStyle}>
-            {editMode ? (
-              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
-                <input
-                  style={{ ...inputStyle, color: 'var(--text-meal)', width: '50px' }}
-                  type="number" min="0"
-                  placeholder="0"
-                  value={val}
-                  onChange={e => setEdit(locationName, shift.date, field, e.target.value)}
-                />
-                <span>份</span>
-              </span>
-            ) : (
-              <span>{val || defaultNum} 份</span>
-            )}
-          </td>
-        );
-      })}
-    </tr>
-  );
-
-  const renderLightingRow = (locationName: string, locationShifts: Shift[]) => (
-    <tr style={mealRowBg}>
-      <td style={{ ...mealLabelStyle, color: 'var(--text-lighting)' }}>燈控</td>
-      {locationShifts.map(shift => {
-        const val = getEdit(locationName, shift.date, '燈控');
-        return (
-          <td key={`light-${shift.date}`}>
-            {editMode ? (
-              <input
-                style={{ ...inputStyle, color: 'var(--text-lighting)' }}
-                placeholder="—"
-                value={val}
-                onChange={e => setEdit(locationName, shift.date, '燈控', e.target.value)}
-              />
-            ) : (
-              <span style={{ fontWeight: 600, color: 'var(--text-lighting)' }}>{val || '—'}</span>
-            )}
-          </td>
-        );
-      })}
-    </tr>
-  );
-
-  const renderLocationTable = (locationName: string, roles: readonly string[]) => {
-    const locationShifts = shifts.filter(s => s.location === locationName);
-    if (locationShifts.length === 0) return null;
-    const tagClass = locationName === '山莊大堂' ? 'shanzhuang' : 'xuanjiao';
-
-    return (
-      <div className="glass-card" style={{ padding: '24px', marginBottom: '30px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', marginBottom: '20px', gap: '10px' }}>
-          <h3 style={{ margin: 0, color: 'var(--text-primary)', fontSize: '1.4rem' }}>{locationName}</h3>
-          <span className={`location location-${tagClass}`}
-            style={{ padding: '4px 12px', borderRadius: '20px', fontSize: '0.85rem' }}>{locationName}</span>
-        </div>
-
-        <div className="table-container">
-          <table>
-            <thead>
-              <tr>
-                <th style={{ minWidth: '120px', background: 'rgba(0,0,0,0.5)', zIndex: 20, whiteSpace: 'nowrap' }}>職務 \ 日期</th>
-                {locationShifts.map(s => (<th key={s.date} style={{ minWidth: '100px', whiteSpace: 'nowrap' }}>{s.date}</th>))}
-              </tr>
-            </thead>
-            <tbody>
-              {roles.map(role => (
-                <tr key={role}>
-                  <td style={{ fontWeight: 600, color: 'var(--text-secondary)', background: 'var(--bg-sticky)', position: 'sticky', left: 0, zIndex: 10, whiteSpace: 'nowrap' }}>{role}</td>
-                  {locationShifts.map(shift => {
-                    const base = shift.assignments[role] || '缺';
-                    const displayed = getCellValue(locationName, shift.date, role, base);
-                    const isOverride = shift.overrides?.[role] === true;
-
-                    if (editMode) {
-                      return (
-                        <td key={shift.date}>
-                          <input style={{ ...inputStyle, color: 'var(--text-primary)', width: '90px' }}
-                            value={displayed}
-                            placeholder="—"
-                            onChange={e => setEdit(locationName, shift.date, role, e.target.value)} />
-                        </td>
-                      );
-                    }
-                    const missing = displayed === '缺';
-                    return (
-                      <td key={shift.date}>
-                        <div className="cell-content">
-                          {missing ? <span className="empty-slot">缺</span>
-                            : <span style={{ fontWeight: 600, color: isOverride ? 'var(--text-override)' : undefined }}>{displayed}</span>}
-                        </div>
-                      </td>
-                    );
-                  })}
-                </tr>
-              ))}
-
-              {editMode && (locationName === '山莊大堂' ? ['備用1', '備用2'] : ['備用1']).map(label => (
-                <tr key={label} style={mealRowBg}>
-                  <td style={{ fontWeight: 600, color: 'var(--text-muted)', background: 'var(--bg-sticky)', position: 'sticky', left: 0, zIndex: 10, whiteSpace: 'nowrap' }}>{label}</td>
-                  {locationShifts.map(shift => (
-                    <td key={`${label}-${shift.date}`}>
-                      <input
-                        style={{ ...inputStyle, color: 'var(--text-secondary)', width: '90px' }}
-                        placeholder="—"
-                        value={getEdit(locationName, shift.date, label)}
-                        onChange={e => setEdit(locationName, shift.date, label, e.target.value)}
-                      />
-                    </td>
-                  ))}
-                </tr>
-              ))}
-
-              {!editMode && (locationName === '山莊大堂' ? ['備用1', '備用2'] : ['備用1']).map(label => {
-                const hasAny = locationShifts.some(s => getEdit(locationName, s.date, label));
-                if (!hasAny) return null;
-                return (
-                  <tr key={label} style={mealRowBg}>
-                    <td style={{ fontWeight: 600, color: 'var(--text-muted)', background: 'var(--bg-sticky)', position: 'sticky', left: 0, zIndex: 10, whiteSpace: 'nowrap' }}>{label}</td>
-                    {locationShifts.map(shift => (
-                      <td key={`${label}-${shift.date}`}>
-                        <span style={{ fontWeight: 600, color: 'var(--text-secondary)' }}>{getEdit(locationName, shift.date, label) || '—'}</span>
-                      </td>
-                    ))}
-                  </tr>
-                );
-              })}
-
-              {renderLightingRow(locationName, locationShifts)}
-
-              {locationName === '山莊大堂'
-                ? renderEditableRow('山莊早餐數量', locationName, locationShifts, '早餐', roles)
-                : (<>
-                  {renderEditableRow('宣教早餐數量', locationName, locationShifts, '早餐', roles)}
-                  {renderEditableRow('宣教午餐數量', locationName, locationShifts, '午餐', roles)}
-                </>)}
-            </tbody>
-          </table>
-        </div>
-      </div>
-    );
-  };
-
-  // --- Render ---------------------------------------------------------------
-
-  const hasShifts = shifts.length > 0;
 
   return (
     <div style={{ padding: '40px 20px', maxWidth: '1400px', margin: '0 auto', width: '100%' }}>
@@ -1032,15 +432,10 @@ function App() {
                     <AdminRawDataTeam 
                       team={currentTeamName} 
                       onStartAutoSchedule={(cycle) => {
-                        if (adminTeam === 'video') {
-                          if (cycle) {
-                            setSelectedCycle(cycle);
-                          }
-                          setAdminSubTab('scheduler');
-                          generateSchedule(cycle);
-                        } else {
-                          alert(`【尚未實裝】目前 ${currentTeamName} 尚未部署排班引擎。`);
+                        if (cycle) {
+                          setSelectedCycle(cycle);
                         }
+                        setAdminSubTab('scheduler');
                       }} 
                     />
                   )}
@@ -1048,187 +443,11 @@ function App() {
                   {adminSubTab === 'skills' && <AdminSkillTreeTeam team={currentTeamName} />}
                   
                   {adminSubTab === 'scheduler' && (
-                    adminTeam === 'video' ? (
-              <>
-                {/* 週期選擇與雲端狀態 */}
-                <div className="glass-card animate-morph stagger-1" style={{ padding: '20px 24px', marginBottom: '20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                    <span style={{ fontWeight: 700, color: 'var(--text-secondary)', fontSize: '0.95rem' }}>排班週期：</span>
-                    <div style={{ display: 'flex', background: 'var(--bg-input)', borderRadius: '12px', padding: '4px', border: '1px solid var(--bg-input-border)' }}>
-                      {(() => {
-                        const { currentMonths, nextMonths } = getCycleDates();
-                        const cycles = [currentMonths, nextMonths];
-                        return cycles.map((c, idx) => {
-                          const isSel = selectedCycle[0] === c[0] && selectedCycle[1] === c[1];
-                          return (
-                            <button
-                              key={idx}
-                              onClick={() => setSelectedCycle(c)}
-                              style={{
-                                border: 'none',
-                                background: isSel ? 'linear-gradient(135deg, var(--icon-accent), #d97706)' : 'transparent',
-                                color: isSel ? '#fff' : 'var(--text-secondary)',
-                                padding: '8px 16px',
-                                borderRadius: '10px',
-                                cursor: 'pointer',
-                                fontWeight: isSel ? 700 : 500,
-                                fontSize: '0.9rem',
-                                transition: 'all 0.2s',
-                              }}
-                            >
-                              {c[0]}-{c[1]}月排班
-                            </button>
-                          );
-                        });
-                      })()}
-                    </div>
-                  </div>
-
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.9rem', color: 'var(--text-secondary)' }}>
-                    <div style={{
-                      width: '8px', height: '8px', borderRadius: '50%',
-                      background: cloudSheetExists === true ? '#10b981' : cloudSheetExists === false ? '#3b82f6' : '#9ca3af'
-                    }} />
-                    <span>
-                      {checkingSheet 
-                        ? '正在檢查工作表...' 
-                        : cloudSheetExists === true 
-                          ? '✅ 雲端已存在工作表 (同步將覆蓋)' 
-                          : 'ℹ️ 雲端尚未建立工作表 (同步將自動新增)'
-                      }
-                    </span>
-                  </div>
-                </div>
-
-                {/* 階段標籤 */}
-                <div className="animate-morph stagger-1" style={{ marginBottom: '24px', display: 'flex', justifyContent: 'center', gap: '20px', flexWrap: 'wrap' }}>
-                   <div style={{ fontWeight: scheduleStep === 1 ? 700 : 400, color: scheduleStep === 1 ? 'var(--text-primary)' : 'var(--text-muted)' }}>1. 自動排班</div>
-                   <div style={{ color: 'var(--text-muted)' }}><ArrowRight size={16} /></div>
-                   <div style={{ fontWeight: scheduleStep === 2 ? 700 : 400, color: scheduleStep === 2 ? 'var(--text-primary)' : 'var(--text-muted)' }}>2. 班表微調</div>
-                   <div style={{ color: 'var(--text-muted)' }}><ArrowRight size={16} /></div>
-                   <div style={{ fontWeight: scheduleStep === 3 ? 700 : 400, color: scheduleStep === 3 ? 'var(--text-primary)' : 'var(--text-muted)' }}>3. 確認與輸出</div>
-                </div>
-
-                {/* Step 1 Actions */}
-                {scheduleStep === 1 && (
-                  <div className="glass-card animate-morph stagger-2" style={{ padding: '24px', marginBottom: '24px', zIndex: 50, position: 'relative' }}>
-                    <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap', alignItems: 'center' }}>
-                      <div style={{ flex: 1, minWidth: '200px' }}>
-                        <label className="btn-secondary" style={{ width: '100%', justifyContent: 'center', cursor: 'pointer', overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis' }}>
-                          <Download size={20} style={{ transform: 'rotate(180deg)' }} /> 
-                          {uploadedFileName || '上傳排班CSV'}
-                          <input type="file" accept=".csv" onChange={handleFileUpload} style={{ display: 'none' }} />
-                        </label>
-                      </div>
-
-                      <div style={{ flex: 1, minWidth: '200px' }}>
-                        <button className="btn-secondary" onClick={loadApprovedVersion} disabled={loading} style={{ width: '100%', justifyContent: 'center' }}>
-                          <ArchiveRestore size={20} /> 帶入審定版本
-                        </button>
-                      </div>
-
-                      <button className="btn-primary" onClick={() => generateSchedule()} disabled={loading} style={{ padding: '0 32px' }}>
-                        <RefreshCw size={20} className={loading ? 'animate-spin' : ''} /> {loading ? '生成中...' : '自動生成排班'}
-                      </button>
-
-                      <button className="btn-secondary" onClick={resetAll} disabled={!hasShifts}>
-                        <RotateCcw size={20} /> 清除
-                      </button>
-
-                      {hasShifts && (
-                        <button className="btn-primary" onClick={() => { setScheduleStep(2); setEditMode(true); }}>
-                          下一步 <ArrowRight size={20} />
-                        </button>
-                      )}
-                    </div>
-
-                    {approvedVersion && (
-                      <div style={{ marginTop: '12px', padding: '10px 14px', background: 'var(--bg-hover)', borderRadius: '8px', fontSize: '0.85rem', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <ShieldCheck size={16} color="var(--icon-accent)" />
-                        目前審定版本：{approvedVersion.label}
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                {/* Step 2 Actions */}
-                {scheduleStep === 2 && (
-                  <div className="glass-card animate-morph stagger-2" style={{ padding: '16px 24px', marginBottom: '24px', zIndex: 10, position: 'relative' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px', justifyContent: 'space-between' }}>
-                      <button className="btn-secondary" onClick={() => { setScheduleStep(1); setEditMode(false); }}>
-                        <ArrowLeft size={18} /> 上一步
-                      </button>
-                      <button className="btn-primary" onClick={() => { setScheduleStep(3); setEditMode(false); }}>
-                        完成微調 <ArrowRight size={18} />
-                      </button>
-                    </div>
-                  </div>
-                )}
-
-                {/* Step 3 Actions */}
-                {scheduleStep === 3 && (
-                  <div className="glass-card animate-morph stagger-2" style={{ padding: '16px 24px', marginBottom: '24px', zIndex: 50, position: 'relative' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px', justifyContent: 'space-between', flexWrap: 'wrap' }}>
-                      <button className="btn-secondary" onClick={() => { setScheduleStep(2); setEditMode(true); }}>
-                        <ArrowLeft size={18} /> 返回微調
-                      </button>
-                      
-                      <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', alignItems: 'center' }}>
-                        <button className="btn-primary" onClick={setAsApproved}>
-                          <ShieldCheck size={18} /> 設定為審定版本
-                        </button>
-
-                        <button className="btn-primary" onClick={handleSyncToCloud} disabled={loading}>
-                          <CloudUpload size={18} /> {loading ? '同步中...' : '同步寫入雲端'}
-                        </button>
-                        
-                        <div ref={exportMenuRef} style={{ position: 'relative', zIndex: showExportMenu ? 100 : 1 }}>
-                          <button className="btn-primary" disabled={!hasShifts || exporting !== ''}
-                            onClick={() => setShowExportMenu(v => !v)}>
-                            <Download size={18} /> {exporting ? '匯出中...' : '匯出'} <ChevronDown size={16} />
-                          </button>
-                          {showExportMenu && (
-                            <div className="export-dropdown">
-                              <button onClick={() => { exportExcel(); setShowExportMenu(false); }}>
-                                <FileSpreadsheet size={16} /> Excel
-                              </button>
-                              <button onClick={() => { exportPNG(); setShowExportMenu(false); }}>
-                                <Image size={16} /> PNG
-                              </button>
-                              <button onClick={() => { exportPDF(); setShowExportMenu(false); }}>
-                                <FileText size={16} /> PDF
-                              </button>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {/* Schedule Tables */}
-                {hasShifts ? (
-                  <div ref={scheduleRef} className="animate-morph stagger-4">
-                    {renderLocationTable('山莊大堂', SHAN_ZHUANG_ROLES)}
-                    {renderLocationTable('宣教大樓', XUAN_JIAO_ROLES)}
-                  </div>
-                ) : (
-                  <div className="glass-card animate-morph stagger-4" style={{ padding: '60px 20px', textAlign: 'center' }}>
-                    <Users color="var(--text-muted)" size={48} style={{ margin: '0 auto 20px' }} />
-                    <h3 style={{ color: 'var(--text-secondary)', fontSize: '1.2rem', marginBottom: '10px' }}>尚未生成排班資料</h3>
-                    <p style={{ color: 'var(--text-muted)' }}>點擊上方的「自動生成排班」按鈕來開始</p>
-                  </div>
-                )}
-              </>
-            ) : (
-              <div className="glass-card animate-morph stagger-1" style={{ padding: '60px 20px', textAlign: 'center', marginTop: '40px' }}>
-                <h3 style={{ color: 'var(--text-secondary)', fontSize: '1.2rem', marginBottom: '10px' }}>尚未建立演算法</h3>
-                <p style={{ color: 'var(--text-muted)' }}>目前 {currentTeamName} 的排班引擎尚未實裝，請靜候後續更新。</p>
-              </div>
-            ))}
-          </>
-        );
-      })()}
+                    <AdminSchedulerTeam team={currentTeamName} initialCycle={selectedCycle} />
+                  )}
+                </>
+              );
+            })()}
     </>
   )}
       </main>

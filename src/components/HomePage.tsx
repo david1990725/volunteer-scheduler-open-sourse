@@ -2,10 +2,9 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { Calendar, MapPin, Clock, Sparkles, Video, Camera, X } from 'lucide-react';
 import type { Volunteer, Shift } from '../utils/scheduler';
-import { SHAN_ZHUANG_ROLES, XUAN_JIAO_ROLES } from '../utils/scheduler';
 import { getCycleDates, getLastSundayOfCycle } from '../utils/dateUtils';
 import { UserAvatar } from './UserAvatar';
-import { toTeamName } from '../utils/constants';
+import { toTeamName, toTeamKey, TEAM_DEFAULT_ROLES } from '../utils/constants';
 
 interface ApprovedVersion {
   timestamp: string;
@@ -127,67 +126,65 @@ export const HomePage: React.FC<HomePageProps> = ({
   }, [visibleTeams, selectedTeam, onSelectTeam]);
 
   /**
-   * 取得使用者在最近主日的排班資料 (只顯示當前所選團隊的排班)
+   * 取得使用者在最近主日的排班資料 (顯示所屬/所選團隊的排班)
    * @returns 包含地點與職位的陣列
    */
   const myAssignments = useMemo(() => {
-    if (!approvedShifts || selectedTeam !== '影視團隊') return [];
+    if (!approvedShifts) return [];
 
     return approvedShifts
       .filter((shift) => shift.date === nextSundayStr)
       .flatMap((shift) => {
-        const baseRoles = shift.location === '山莊大堂' ? SHAN_ZHUANG_ROLES : XUAN_JIAO_ROLES;
-        const extraRoles = ['燈控', '備用1', '備用2'];
-        const allRoles = [...baseRoles, ...extraRoles];
+        const roles = shift.roleKeys || Object.keys(shift.assignments || {});
+        const extraRoles = ['備用1', '備用2'];
+        const allRoles = Array.from(new Set([...roles, ...extraRoles]));
 
         return allRoles
           .map((role) => {
             const editKey = `${shift.location}|${shift.date}|${role}`;
             const isExtra = extraRoles.includes(role);
-            // 優先讀取手動調整(approvedEdits)，若無且為基本職位則讀取原始排班(assignments)
             const assignedPerson = approvedEdits?.[editKey] ?? (!isExtra ? shift.assignments[role] : undefined);
-
             return { role, location: shift.location, person: assignedPerson };
           })
           .filter((assignment) => assignment.person === currentUser.name)
           .map(({ location, role }) => ({ location, role }));
       });
-  }, [approvedShifts, approvedEdits, nextSundayStr, currentUser.name, selectedTeam]);
+  }, [approvedShifts, approvedEdits, nextSundayStr, currentUser.name]);
 
   /**
-   * 取得該主日所有地點的排班摘要
-   * @returns 依地點分組的排班角色列表
+   * 取得該主日所有地點的排班摘要 (依據當前所選團隊過濾或顯示全團隊)
    */
   const sundaySummary = useMemo(() => {
     if (!approvedShifts) return null;
 
-    const buildSummary = (locationName: string, baseRoles: readonly string[]) => {
+    const teamKey = toTeamKey(selectedTeam);
+    const targetRoles = TEAM_DEFAULT_ROLES[teamKey];
+
+    const buildSummary = (locationName: string) => {
       const shift = approvedShifts.find((s) => s.date === nextSundayStr && s.location === locationName);
       if (!shift) return null;
 
-      const roleList = baseRoles.map((role) => {
+      const allRoles = shift.roleKeys || Object.keys(shift.assignments || {});
+      const relevantRoles = targetRoles
+        ? (locationName === '山莊大堂' ? targetRoles.sz : targetRoles.xj)
+        : allRoles;
+
+      const roleList = (relevantRoles.length > 0 ? relevantRoles : allRoles).map((role) => {
         const editKey = `${locationName}|${shift.date}|${role}`;
         const person = approvedEdits?.[editKey] ?? shift.assignments[role] ?? '缺';
         return { role, person };
       });
 
-      // 附加燈控資訊
-      const lightKey = `${locationName}|${shift.date}|燈控`;
-      const lightPerson = approvedEdits?.[lightKey];
-      if (lightPerson) {
-        roleList.push({ role: '燈控', person: lightPerson });
-      }
-
-      return { location: locationName, roles: roleList };
+      return roleList.length > 0 ? { location: locationName, roles: roleList } : null;
     };
 
     const summaries = [
-      buildSummary('山莊大堂', SHAN_ZHUANG_ROLES),
-      buildSummary('宣教大樓', XUAN_JIAO_ROLES)
+      buildSummary('山莊大堂'),
+      buildSummary('宣教大樓')
     ].filter(Boolean) as { location: string; roles: { role: string; person: string }[] }[];
 
     return summaries.length > 0 ? summaries : null;
-  }, [approvedShifts, approvedEdits, nextSundayStr]);
+  }, [approvedShifts, approvedEdits, nextSundayStr, selectedTeam]);
 
   // 星期幾的中文
   const weekdayNames = ['日', '一', '二', '三', '四', '五', '六'];
@@ -350,72 +347,70 @@ export const HomePage: React.FC<HomePageProps> = ({
       </div>
 
       {/* 當週排班總覽 */}
-      {selectedTeam === '影視團隊' ? (
-        sundaySummary && (
-          <div className="glass-card animate-morph stagger-3" style={{ padding: '24px 30px', marginBottom: '24px' }}>
-            <h3 style={{
-              margin: '0 0 20px 0', fontSize: '1.15rem', color: 'var(--text-primary)',
-              display: 'flex', alignItems: 'center', gap: '8px',
-            }}>
-              <Calendar size={20} color="var(--icon-accent)" /> {nextSundayStr} {selectedTeam} 排班總覽
-            </h3>
+      {sundaySummary && sundaySummary.length > 0 ? (
+        <div className="glass-card animate-morph stagger-3" style={{ padding: '24px 30px', marginBottom: '24px' }}>
+          <h3 style={{
+            margin: '0 0 20px 0', fontSize: '1.15rem', color: 'var(--text-primary)',
+            display: 'flex', alignItems: 'center', gap: '8px',
+          }}>
+            <Calendar size={20} color="var(--icon-accent)" /> {nextSundayStr} 【{selectedTeam}】排班總覽
+          </h3>
 
-            {sundaySummary.map((loc, locIdx) => {
-              const tagClass = loc.location === '山莊大堂' ? 'shanzhuang' : 'xuanjiao';
-              return (
-                <div key={loc.location} style={{ marginBottom: locIdx < sundaySummary.length - 1 ? '20px' : 0 }}>
-                  <div style={{
-                    display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px',
-                  }}>
-                    <span className={`location location-${tagClass}`}
-                      style={{ padding: '3px 10px', borderRadius: '16px', fontSize: '0.8rem' }}>
-                      {loc.location}
-                    </span>
-                  </div>
-
-                  <div style={{
-                    display: 'grid',
-                    gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))',
-                    gap: '8px',
-                  }}>
-                    {loc.roles.map(r => {
-                      const isMissing = r.person === '缺';
-                      const isMe = r.person === currentUser.name;
-                      return (
-                        <div key={r.role} style={{
-                          padding: '10px 14px', borderRadius: '10px',
-                          background: isMe
-                            ? 'linear-gradient(135deg, rgba(234, 179, 8, 0.12), rgba(245, 158, 11, 0.06))'
-                            : 'var(--bg-input)',
-                          border: isMe ? '1px solid rgba(234, 179, 8, 0.25)' : '1px solid var(--bg-input-border)',
-                          transition: 'all 0.2s',
-                        }}>
-                          <div style={{
-                            fontSize: '0.75rem', color: 'var(--text-muted)',
-                            marginBottom: '4px', fontWeight: 500,
-                          }}>
-                            {r.role}
-                          </div>
-                          <div style={{
-                            fontSize: '0.95rem', fontWeight: 700,
-                            color: isMissing ? 'var(--text-missing)' : isMe ? 'var(--icon-accent)' : 'var(--text-primary)',
-                          }}>
-                            {isMissing ? '缺' : r.person}
-                            {isMe && ' ⭐'}
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
+          {sundaySummary.map((loc, locIdx) => {
+            const tagClass = loc.location === '山莊大堂' ? 'shanzhuang' : 'xuanjiao';
+            return (
+              <div key={loc.location} style={{ marginBottom: locIdx < sundaySummary.length - 1 ? '20px' : 0 }}>
+                <div style={{
+                  display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px',
+                }}>
+                  <span className={`location location-${tagClass}`}
+                    style={{ padding: '3px 10px', borderRadius: '16px', fontSize: '0.8rem' }}>
+                    {loc.location}
+                  </span>
                 </div>
-              );
-            })}
-          </div>
-        )
+
+                <div style={{
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))',
+                  gap: '8px',
+                }}>
+                  {loc.roles.map(r => {
+                    const isMissing = r.person === '缺';
+                    const isMe = r.person === currentUser.name;
+                    return (
+                      <div key={r.role} style={{
+                        padding: '10px 14px', borderRadius: '10px',
+                        background: isMe
+                          ? 'linear-gradient(135deg, rgba(234, 179, 8, 0.12), rgba(245, 158, 11, 0.06))'
+                          : 'var(--bg-input)',
+                        border: isMe ? '1px solid rgba(234, 179, 8, 0.25)' : '1px solid var(--bg-input-border)',
+                        transition: 'all 0.2s',
+                      }}>
+                        <div style={{
+                          fontSize: '0.75rem', color: 'var(--text-muted)',
+                          marginBottom: '4px', fontWeight: 500,
+                        }}>
+                          {r.role}
+                        </div>
+                        <div style={{
+                          fontSize: '0.95rem', fontWeight: 700,
+                          color: isMissing ? 'var(--text-missing)' : isMe ? 'var(--icon-accent)' : 'var(--text-primary)',
+                        }}>
+                          {isMissing ? '缺' : r.person}
+                          {isMe && ' ⭐'}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          })}
+        </div>
       ) : (
         <div className="glass-card animate-morph stagger-3" style={{ padding: '40px 30px', textAlign: 'center', marginBottom: '24px' }}>
-          <h3 style={{ margin: '0 0 10px 0', color: 'var(--text-primary)' }}>{selectedTeam} 排班系統</h3>
-          <p style={{ color: 'var(--text-muted)' }}>此團隊的專屬運算引擎及排班功能正在開發中，敬請期待！🚧</p>
+          <h3 style={{ margin: '0 0 10px 0', color: 'var(--text-primary)' }}>【{selectedTeam}】主日排班</h3>
+          <p style={{ color: 'var(--text-muted)' }}>本週尚未建立【{selectedTeam}】的排班資料，敬請靜候幹部排班作業。✨</p>
         </div>
       )}
 
@@ -498,7 +493,7 @@ export const HomePage: React.FC<HomePageProps> = ({
                     : 'linear-gradient(135deg, #eab308, #d97706)',
                   WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
                 }}>
-                  {overlayCycle ? `${overlayCycle[0]}月~${overlayCycle[1]}月` : ''} 完整排班表
+                  {overlayCycle ? `${overlayCycle[0]}月~${overlayCycle[1]}月` : ''} 最終整合服事表
                 </h2>
                 <button onClick={() => { setShowFullSchedule(false); setOverlayCycle(null); }} style={{
                   background: 'var(--bg-input)', border: '1px solid var(--bg-input-border)',
@@ -512,9 +507,9 @@ export const HomePage: React.FC<HomePageProps> = ({
               {/* Scrollable content */}
               <div style={{ flex: 1, overflow: 'auto', padding: '24px' }}>
                 <div style={{ maxWidth: '1400px', margin: '0 auto' }}>
-                  {renderFullScheduleTable('山莊大堂', SHAN_ZHUANG_ROLES, overlayShifts, overlayEdits, currentUser.name)}
+                  {renderFullScheduleTable('山莊大堂', overlayShifts, overlayEdits, currentUser.name)}
                   <div style={{ height: '24px' }} />
-                  {renderFullScheduleTable('宣教大樓', XUAN_JIAO_ROLES, overlayShifts, overlayEdits, currentUser.name)}
+                  {renderFullScheduleTable('宣教大樓', overlayShifts, overlayEdits, currentUser.name)}
                 </div>
               </div>
             </div>
@@ -526,10 +521,9 @@ export const HomePage: React.FC<HomePageProps> = ({
   );
 };
 
-/** 渲染完整排班表格 */
+/** 渲染完整排班表格 (動態支援所有已產出之團隊職能) */
 function renderFullScheduleTable(
   locationName: string,
-  roles: readonly string[],
   shifts: Shift[],
   edits: Record<string, string> | null,
   myName: string,
@@ -538,13 +532,21 @@ function renderFullScheduleTable(
   if (locationShifts.length === 0) return null;
   const tagClass = locationName === '山莊大堂' ? 'shanzhuang' : 'xuanjiao';
 
+  // 動態收集所有出現在此地點的職位
+  const allRoleKeys: string[] = [];
+  locationShifts.forEach(s => {
+    (s.roleKeys || Object.keys(s.assignments || {})).forEach(r => {
+      if (!allRoleKeys.includes(r)) allRoleKeys.push(r);
+    });
+  });
+
   const getCellVal = (date: string, role: string, fallback: string) => {
     const key = `${locationName}|${date}|${role}`;
     if (edits && key in edits) return edits[key];
     return fallback;
   };
 
-  const extras = ['燈控', ...(locationName === '山莊大堂' ? ['備用1', '備用2'] : ['備用1'])];
+  const extras = ['備用1', '備用2'];
 
   return (
     <div style={{
@@ -579,7 +581,7 @@ function renderFullScheduleTable(
             </tr>
           </thead>
           <tbody>
-            {roles.map(role => (
+            {allRoleKeys.map(role => (
               <tr key={role}>
                 <td style={{
                   position: 'sticky', left: 0, zIndex: 10, background: 'var(--bg-sticky)',
@@ -605,7 +607,7 @@ function renderFullScheduleTable(
               </tr>
             ))}
 
-            {/* Extra rows: 燈控、備用 */}
+            {/* Extra rows: 備用 */}
             {extras.map(field => {
               const hasAny = locationShifts.some(s => {
                 const key = `${locationName}|${s.date}|${field}`;
@@ -617,7 +619,7 @@ function renderFullScheduleTable(
                   <td style={{
                     position: 'sticky', left: 0, zIndex: 10, background: 'var(--bg-sticky)',
                     padding: '8px 14px', fontWeight: 600,
-                    color: field === '燈控' ? 'var(--text-lighting)' : 'var(--text-muted)',
+                    color: 'var(--text-muted)',
                     borderBottom: '1px solid var(--bg-table-border)',
                   }}>{field}</td>
                   {locationShifts.map(s => {
@@ -629,7 +631,7 @@ function renderFullScheduleTable(
                         padding: '8px 14px', textAlign: 'center',
                         borderBottom: '1px solid var(--bg-table-border)',
                         fontWeight: isMe ? 800 : 600,
-                        color: field === '燈控' ? 'var(--text-lighting)' : isMe ? 'var(--icon-accent)' : 'var(--text-secondary)',
+                        color: isMe ? 'var(--icon-accent)' : 'var(--text-secondary)',
                         background: isMe ? 'rgba(234, 179, 8, 0.06)' : undefined,
                       }}>
                         {val}{isMe && ' ⭐'}
