@@ -445,6 +445,7 @@ function App() {
                       team={currentTeamName} 
                       initialCycle={selectedCycle}
                       autoGenerate={autoGenerateScheduler}
+                      onClearAutoGenerate={() => setAutoGenerateScheduler(false)}
                     />
                   )}
                 </>

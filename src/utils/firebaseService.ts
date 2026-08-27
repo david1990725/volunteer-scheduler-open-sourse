@@ -21,12 +21,14 @@ import {
 import { db } from './firebase';
 import {
   toTeamKey,
+  toTeamName,
   VIDEO_SKILL_KEYS,
   REVERSE_VIDEO_SKILL_MAP,
   AUDIO_SKILL_KEYS,
   type VideoSkillKey,
   type AudioSkillKey,
 } from './constants';
+import { fetchCSVAsJson } from './fileUtils';
 import { mergeTeamSchedules, type FinalSchedule } from './schedulerFinal';
 import type { Shift } from './scheduler';
 
@@ -488,22 +490,67 @@ export async function fetchFormResponsesFromCloud(team?: string): Promise<ApiRes
   try {
     const colRef = collection(db, COLLECTIONS.FORM_RESPONSES);
     const enTeam = toTeamKey(team || 'video');
-    const q = query(colRef, where('team', '==', enTeam));
-    const snap = await getDocs(q);
+    const zhTeam = toTeamName(team || 'video');
 
+    // 1. 優先查 Firestore (以英文 team 查詢)
+    let q = query(colRef, where('team', '==', enTeam));
+    let snap = await getDocs(q);
+
+    // 若查無，嘗試以中文 team 查詢
     if (snap.empty) {
-      return { success: true, message: '目前沒有表單資料', data: [] };
+      q = query(colRef, where('team', '==', zhTeam));
+      snap = await getDocs(q);
     }
 
-    const list: Record<string, string>[] = [];
-    snap.forEach(d => {
-      const val = d.data();
-      if (val.data && typeof val.data === 'object') {
-        list.push({ ...val.data });
-      }
-    });
+    if (!snap.empty) {
+      const list: Record<string, string>[] = [];
+      snap.forEach(d => {
+        const val = d.data();
+        if (val.data && typeof val.data === 'object') {
+          list.push({ ...val.data });
+        } else if (val && typeof val === 'object' && !val.data) {
+          list.push({ ...val });
+        }
+      });
+      return { success: true, message: '讀取成功', data: list };
+    }
 
-    return { success: true, message: '讀取成功', data: list };
+    // 2. 若 Firestore 尚無資料，嘗試從 Google Sheets 備份讀取
+    if (APPS_SCRIPT_URL) {
+      const sheetRes = await fetchFromOldAppsScript<any>('fetchFormResponses', { team: zhTeam });
+      if (sheetRes && sheetRes.success && Array.isArray(sheetRes.data) && sheetRes.data.length > 0) {
+        // 同步回寫至 Firestore 供後續快速讀取
+        for (const row of sheetRes.data) {
+          const timestamp = row['時間戳記'] || new Date().toISOString();
+          const name = row['姓名'] || '未知';
+          const docId = `${sanitizeDocId(enTeam)}_${sanitizeDocId(name)}_${new Date(timestamp).getTime() || Date.now()}`;
+          setDoc(doc(db, COLLECTIONS.FORM_RESPONSES, docId), {
+            team: enTeam,
+            name,
+            timestamp,
+            data: row,
+            createdAt: serverTimestamp(),
+            syncedFrom: 'GoogleSheets',
+          }, { merge: true }).catch(e => console.warn(e));
+        }
+
+        return { success: true, message: '讀取成功 (來自 Google Sheets 備份)', data: sheetRes.data };
+      }
+    }
+
+    // 3. 若為影視團隊且雲端無資料，回退至本地 CSV 示範資料
+    if (enTeam === 'video') {
+      try {
+        const csvData = await fetchCSVAsJson('/schedule_responses.csv');
+        if (csvData && csvData.length > 0) {
+          return { success: true, message: '讀取成功 (本地示範資料)', data: csvData };
+        }
+      } catch (csvErr) {
+        console.warn('CSV fallback failed:', csvErr);
+      }
+    }
+
+    return { success: true, message: '目前沒有表單資料', data: [] };
   } catch (err: any) {
     console.error('[fetchFormResponsesFromCloud Error]:', err);
     return { success: false, message: err?.message || '讀取表單回覆失敗', data: null };
@@ -757,42 +804,67 @@ export async function fetchTeamScheduleDoc(
   try {
     const rawSheet = sheetName.trim();
     const teamKey = team ? toTeamKey(team) : 'video';
-    const teamDocId = `${sanitizeDocId(rawSheet)}_${teamKey}`;
-    const legacyDocId = sanitizeDocId(rawSheet);
+    const zhTeam = team ? toTeamName(team) : '影視團隊';
 
-    const teamSnap = await getDoc(doc(db, COLLECTIONS.SCHEDULES, teamDocId));
-    if (teamSnap.exists()) {
-      const val = teamSnap.data();
-      const matrix = parseScheduleDataFromDoc(val);
-      return {
-        success: true,
-        message: '讀取成功',
-        data: {
-          shifts: val.shifts || [],
-          data: matrix || [],
-          updatedAt: val.updatedAt?.toDate?.()?.toISOString() || new Date().toISOString(),
-        },
-      };
-    }
+    // 1. 嘗試所有可能的 Document ID 格式
+    const candidateDocIds = [
+      `${sanitizeDocId(rawSheet)}_${teamKey}`,
+      `${rawSheet}_${teamKey}`,
+      `${sanitizeDocId(rawSheet)}_${zhTeam}`,
+      `${rawSheet}_${zhTeam}`,
+      `${sanitizeDocId(rawSheet)}`,
+      `${rawSheet}`,
+    ];
 
-    if (teamKey === 'video') {
-      const legacySnap = await getDoc(doc(db, COLLECTIONS.SCHEDULES, legacyDocId));
-      if (legacySnap.exists()) {
-        const val = legacySnap.data();
-        const matrix = parseScheduleDataFromDoc(val);
-        return {
-          success: true,
-          message: '讀取成功 (舊版相容)',
-          data: {
-            shifts: val.shifts || [],
-            data: matrix || [],
-            updatedAt: val.updatedAt?.toDate?.()?.toISOString() || new Date().toISOString(),
-          },
-        };
+    for (const dId of candidateDocIds) {
+      try {
+        const snap = await getDoc(doc(db, COLLECTIONS.SCHEDULES, dId));
+        if (snap.exists()) {
+          const val = snap.data();
+          const matrix = parseScheduleDataFromDoc(val);
+          if ((val.shifts && val.shifts.length > 0) || (matrix && matrix.length > 0)) {
+            return {
+              success: true,
+              message: '讀取成功',
+              data: {
+                shifts: val.shifts || [],
+                data: matrix || [],
+                updatedAt: val.updatedAt?.toDate?.()?.toISOString() || new Date().toISOString(),
+              },
+            };
+          }
+        }
+      } catch {
+        // ignore
       }
     }
 
-    // 嘗試從 fetchScheduleFromCloud (支援 Google Sheets 回退讀取)
+    // 2. 嘗試依 collection 查詢匹配
+    try {
+      const colRef = collection(db, COLLECTIONS.SCHEDULES);
+      const q = query(colRef, where('team', '==', teamKey));
+      const qSnap = await getDocs(q);
+      for (const d of qSnap.docs) {
+        const val = d.data();
+        const sName = val.sheetName || d.id;
+        if (sName.includes(rawSheet) || rawSheet.includes(sName) || d.id.includes(sanitizeDocId(rawSheet))) {
+          const matrix = parseScheduleDataFromDoc(val);
+          return {
+            success: true,
+            message: '讀取成功 (查詢匹配)',
+            data: {
+              shifts: val.shifts || [],
+              data: matrix || [],
+              updatedAt: val.updatedAt?.toDate?.()?.toISOString() || new Date().toISOString(),
+            },
+          };
+        }
+      }
+    } catch (qErr) {
+      console.warn('[fetchTeamScheduleDoc query warning]:', qErr);
+    }
+
+    // 3. 嘗試從 Google Sheets 備份回退讀取
     const cloudRes = await fetchScheduleFromCloud(sheetName, { team: teamKey });
     if (cloudRes.success && cloudRes.data && cloudRes.data.length > 0) {
       return {

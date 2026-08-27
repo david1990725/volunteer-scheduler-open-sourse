@@ -159,5 +159,5 @@ export function parseGenericTeamScheduleResponses(
 function resolveName(raw: string, volunteers: Record<string, Volunteer>): string | null {
   if (volunteers[raw]) return raw;
   const match = Object.keys(volunteers).find(v => v.includes(raw) || raw.includes(v));
-  return match ?? null;
+  return match ?? raw;
 }

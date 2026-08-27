@@ -28,6 +28,7 @@ interface AdminSchedulerTeamProps {
   team: string;
   initialCycle?: [number, number];
   autoGenerate?: boolean;
+  onClearAutoGenerate?: () => void;
 }
 
 interface ApprovedVersion {
@@ -53,12 +54,22 @@ const mealRowBg: React.CSSProperties = {
   background: 'var(--bg-hover)',
 };
 
-export const AdminSchedulerTeam: React.FC<AdminSchedulerTeamProps> = ({ team, initialCycle, autoGenerate }) => {
+export const AdminSchedulerTeam: React.FC<AdminSchedulerTeamProps> = ({ team, initialCycle, autoGenerate, onClearAutoGenerate }) => {
   const teamKey: TeamKey = toTeamKey(team);
   const teamDisplayName = toTeamName(team);
 
   const { currentMonths, nextMonths } = getCycleDates();
   const [selectedCycle, setSelectedCycle] = useState<[number, number]>(initialCycle || nextMonths);
+
+  // 當外部傳入的 initialCycle 改變時 (例如在 RAW 表單頁切換月份並點擊「開始自動排班」)，即時同步
+  useEffect(() => {
+    if (initialCycle) {
+      setSelectedCycle(prev => {
+        if (prev[0] === initialCycle[0] && prev[1] === initialCycle[1]) return prev;
+        return initialCycle;
+      });
+    }
+  }, [initialCycle]);
   const [scheduleStep, setScheduleStep] = useState<1 | 2 | 3>(1);
   const [shifts, setShifts] = useState<Shift[]>([]);
   const [manualEdits, setManualEdits] = useState<Record<string, string>>({});
@@ -226,12 +237,14 @@ export const AdminSchedulerTeam: React.FC<AdminSchedulerTeamProps> = ({ team, in
     }
   }, [responseFile, selectedCycle, teamKey, teamDisplayName]);
 
-  // 若由外部觸發自動排班 (autoGenerate)，則在載入時自動執行一次生成
+  // 若由外部觸發自動排班 (autoGenerate)，則自動執行生成並清除觸發旗標
   useEffect(() => {
     if (autoGenerate) {
-      generateSchedule();
+      const targetCycle = initialCycle || selectedCycle;
+      generateSchedule(targetCycle);
+      onClearAutoGenerate?.();
     }
-  }, [autoGenerate, generateSchedule]);
+  }, [autoGenerate, initialCycle, selectedCycle, generateSchedule, onClearAutoGenerate]);
 
   // 帶入審定版本 (優先向 Firestore 雲端讀取，次之讀取本地該週期暫存)
   const loadApprovedVersion = async () => {
@@ -347,16 +360,36 @@ export const AdminSchedulerTeam: React.FC<AdminSchedulerTeamProps> = ({ team, in
       const key = getApprovedStorageKey(selectedCycle, teamKey);
       const localSaved = localStorage.getItem(key);
       if (localSaved) {
-        const parsed = JSON.parse(localSaved);
-        if (parsed && parsed.shifts && parsed.shifts.length > 0) {
-          setShifts(parsed.shifts);
-          setManualEdits(parsed.edits || {});
-          setEditMode(false);
-          setApprovedVersion(parsed);
-          alert(`✅ 已成功帶入本地暫存的 ${parsed.label}！`);
-          setLoading(false);
-          return;
-        }
+        try {
+          const parsed = JSON.parse(localSaved);
+          if (parsed && parsed.shifts && parsed.shifts.length > 0) {
+            setShifts(parsed.shifts);
+            setManualEdits(parsed.edits || {});
+            setEditMode(false);
+            setApprovedVersion(parsed);
+            alert(`✅ 已成功帶入本地暫存的 ${parsed.label}！`);
+            setLoading(false);
+            return;
+          }
+        } catch {}
+      }
+
+      // 3. Fallback: 嘗試讀取舊版 LocalStorage 鍵值
+      const legacyKey = `volunteer_scheduler_approved_${teamKey}`;
+      const legacySaved = localStorage.getItem(legacyKey);
+      if (legacySaved) {
+        try {
+          const parsed = JSON.parse(legacySaved);
+          if (parsed && parsed.shifts && parsed.shifts.length > 0) {
+            setShifts(parsed.shifts);
+            setManualEdits(parsed.edits || {});
+            setEditMode(false);
+            setApprovedVersion(parsed);
+            alert(`✅ 已成功帶入先前暫存的 ${parsed.label}！`);
+            setLoading(false);
+            return;
+          }
+        } catch {}
       }
 
       alert(`目前在雲端與本地尚未建立【${teamDisplayName}】${selectedCycle[0]}-${selectedCycle[1]}月的排班資料。請先點選「自動生成排班」或上傳 CSV。`);

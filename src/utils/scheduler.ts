@@ -535,7 +535,7 @@ function detectPrefTypes(category: string): string[] {
 function resolveName(raw: string, volunteers: Record<string, Volunteer>): string | null {
   if (volunteers[raw]) return raw;
   const match = Object.keys(volunteers).find(v => v.includes(raw) || raw.includes(v));
-  return match ?? null;
+  return match ?? raw;
 }
 
 /** 判斷本週是否有專職人員可以輪休 */
