@@ -276,16 +276,33 @@ export function parseScheduleResponsesData(
   // Phase 0: Parse form data
   // -------------------------------------------------------------------------
 
-  // 找出所有帶有中括號的日期欄位
-  let dates = Object.keys(data[0]).filter(f => f.includes('['));
-  
-  // 如果有提供目標日期，則嘗試過濾符合目標日期的欄位
+  // 找出所有資料列中帶有中括號的日期欄位
+  const allKeys = Array.from(new Set(data.flatMap(d => Object.keys(d))));
+  const allDateFields = allKeys.filter(f => f.includes('[') && f.includes(']'));
+
+  let dates: string[] = [];
   if (targetDates && targetDates.length > 0) {
-    const matched = dates.filter(f => targetDates.some(d => f.includes(`[${d}]`) || f.includes(d)));
-    if (matched.length > 0) {
-      dates = matched;
-    }
+    // 嚴格依據傳入的 targetDates 建立排班日期清單
+    dates = targetDates.map(d => {
+      const cleanD = d.replace(/\[|\]/g, '').trim(); // e.g. "07/05"
+      const [mStr, dayStr] = cleanD.split('/');
+      const mNum = parseInt(mStr, 10);
+      const dayNum = parseInt(dayStr, 10);
+
+      const found = allDateFields.find(f => {
+        if (f.includes(`[${cleanD}]`) || f.includes(cleanD)) return true;
+        if (!isNaN(mNum) && !isNaN(dayNum)) {
+          if (f.includes(`[${mNum}/${dayNum}]`) || f.includes(`[${mNum}/${String(dayNum).padStart(2, '0')}]`)) return true;
+        }
+        return false;
+      });
+
+      return found || `[${cleanD}]`;
+    });
+  } else {
+    dates = allDateFields.length > 0 ? allDateFields : Object.keys(data[0]).filter(f => f.includes('['));
   }
+
   const locationAvailability: Record<string, Record<string, string[]>> = {};
   dates.forEach(field => (locationAvailability[field] = { '山莊': [], '宣教': [] }));
 
@@ -307,6 +324,24 @@ export function parseScheduleResponsesData(
     }
   }
 
+  const getRowDateValue = (row: any, fieldName: string): string => {
+    if (row[fieldName] !== undefined && row[fieldName] !== '') return String(row[fieldName]);
+    const cleanD = fieldName.replace(/\[|\]/g, '').trim();
+    const [mStr, dayStr] = cleanD.split('/');
+    const mNum = parseInt(mStr, 10);
+    const dayNum = parseInt(dayStr, 10);
+
+    for (const k of Object.keys(row)) {
+      if (k.includes(cleanD)) return String(row[k]);
+      if (!isNaN(mNum) && !isNaN(dayNum)) {
+        if (k.includes(`[${mNum}/${dayNum}]`) || k.includes(`[${mNum}/${String(dayNum).padStart(2, '0')}]`) || k.includes(`${mNum}/${dayNum}`)) {
+          return String(row[k]);
+        }
+      }
+    }
+    return '';
+  };
+
   for (const row of latestDataMap.values()) {
     const name = row.resolvedName;
     if (!name) continue;
@@ -316,7 +351,7 @@ export function parseScheduleResponsesData(
     const prefTypes = detectPrefTypes(category);
 
     for (const field of dates) {
-      const avail = String(row[field] || '');
+      const avail = getRowDateValue(row, field);
       
       if (avail.includes('山莊')) {
         locationAvailability[field]['山莊'].push(name);

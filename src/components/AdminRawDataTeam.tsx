@@ -52,36 +52,8 @@ export const AdminRawDataTeam: React.FC<AdminRawDataProps> = ({ team, onStartAut
           setData(res.data);
           setSource('cloud');
 
-          // 動態偵測 RAW 資料中的排班週期
-          const allCols = Array.from(new Set(res.data.flatMap(d => Object.keys(d))));
-          const dateCols = allCols.filter(col => col.includes('[') && col.includes(']'));
-          
-          if (dateCols.length > 0) {
-            const rawDates = dateCols.map(col => col.replace(/\[|\]/g, '').trim());
-            const monthsSet = new Set<number>();
-            for (const dStr of rawDates) {
-              const parts = dStr.split('/');
-              if (parts.length === 2) {
-                const m = parseInt(parts[0], 10);
-                if (!isNaN(m)) monthsSet.add(m);
-              }
-            }
-
-            if (monthsSet.size > 0) {
-              const sortedMonths = Array.from(monthsSet).sort((a, b) => a - b);
-              const minMonth = sortedMonths[0];
-              const startMonth = minMonth % 2 === 0 ? minMonth - 1 : minMonth;
-              const endMonth = startMonth + 1;
-              const cycle: [number, number] = [startMonth, endMonth];
-              
-              setSelectedCycle(prev => {
-                if (prev[0] === cycle[0] && prev[1] === cycle[1]) {
-                  return prev;
-                }
-                return cycle;
-              });
-            }
-          }
+          // 保留目前使用者所選之排班週期，若尚未設定則依目前/下一週期
+          // (不強制覆寫為 RAW 資料中的最小月份)
         } else {
           setData([]);
           setSource('none');
