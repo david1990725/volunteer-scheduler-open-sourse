@@ -3,10 +3,16 @@
 // =============================================================================
 
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { sendLinePush, createBirthdayFlexMessage } from './utils/lineService';
+import { sendLinePush, createBirthdayFlexMessage, verifyCronAuth } from './utils/lineService';
 import { getAllVolunteers } from './utils/firebaseAdmin';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
+  // 🔒 驗證 Cron 授權
+  const authHeader = req.headers['authorization'];
+  if (!verifyCronAuth(authHeader)) {
+    return res.status(401).json({ success: false, error: 'Unauthorized: Invalid or missing CRON_SECRET authorization.' });
+  }
+
   try {
     const now = new Date();
     // 轉至 UTC+8

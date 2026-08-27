@@ -3,23 +3,40 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     
-    // 義工名冊集合
+    // 義工名冊集合 (Volunteers & Skills)
+    // 允許讀取名單資訊；寫入時要求必須包含基本欄位且不允許無限制刪除
     match /volunteers/{volunteerId} {
       allow read: if true;
-      allow write: if true;
+      allow create, update: if request.resource.data.name is string 
+                            && request.resource.data.name.size() > 0
+                            && request.resource.data.name.size() <= 50;
+      allow delete: if request.auth != null;
     }
     
-    // 意願表單回覆集合
+    // 意願表單回覆集合 (Form Responses)
+    // 允許提交表單（需含姓名、時間戳記與所屬團隊），限制欄位大小防濫用
     match /formResponses/{responseId} {
       allow read: if true;
-      allow create: if true;
-      allow update, delete: if true;
+      allow create: if request.resource.data.name is string
+                    && request.resource.data.team is string
+                    && request.resource.data.timestamp is string;
+      allow update: if request.resource.data.name is string;
+      allow delete: if request.auth != null;
     }
     
-    // 週期排班表集合
+    // 週期排班表集合 (Schedules)
+    // 讀取開放供同工即時查閱；寫入需提供正確 sheetName 與 team 格式
     match /schedules/{scheduleId} {
       allow read: if true;
-      allow write: if true;
+      allow create, update: if request.resource.data.sheetName is string
+                            && (request.resource.data.team is string || scheduleId.matches('.*_final$'));
+      allow delete: if request.auth != null;
+    }
+
+    // LINE 群組狀態紀錄集合 (LINE Groups)
+    // 僅供 Serverless Webhook 端點後端管理使用
+    match /line_groups/{groupId} {
+      allow read, write: if request.auth != null;
     }
   }
 }

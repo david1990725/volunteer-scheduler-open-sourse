@@ -67,9 +67,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const { rawBody, payload } = getPayload(req);
     const signature = (req.headers['x-line-signature'] || req.headers['X-Line-Signature']) as string | undefined;
 
-    // 🔒 驗證 LINE 簽名 (HMAC-SHA256)
-    if (signature && !verifyLineSignature(rawBody, signature)) {
-      console.warn('[Security Warning]: LINE Webhook signature verification mismatch');
+    // 🔒 嚴格驗證 LINE 簽名 (HMAC-SHA256)
+    if (!verifyLineSignature(rawBody, signature)) {
+      console.warn('[Security Warning]: LINE Webhook signature verification failed');
+      return res.status(403).json({ error: 'Invalid signature' });
     }
 
     const events: LineEvent[] = payload.events || [];

@@ -3,10 +3,16 @@
 // =============================================================================
 
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { sendLinePush, getLineConfig, LineMessage } from './utils/lineService';
+import { sendLinePush, getLineConfig, LineMessage, verifyCronAuth } from './utils/lineService';
 import { getAllVolunteers, getActiveGroups } from './utils/firebaseAdmin';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
+  // 🔒 驗證 Cron 授權
+  const authHeader = req.headers['authorization'];
+  if (!verifyCronAuth(authHeader)) {
+    return res.status(401).json({ success: false, error: 'Unauthorized: Invalid or missing CRON_SECRET authorization.' });
+  }
+
   try {
     const { systemUrl } = getLineConfig();
     const now = new Date();

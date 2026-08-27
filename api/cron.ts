@@ -3,11 +3,18 @@
 // =============================================================================
 
 import type { VercelRequest, VercelResponse } from '@vercel/node';
+import { verifyCronAuth } from './utils/lineService';
 import handleBirthday from './cron-birthday';
 import handleSaturday from './cron-saturday';
 import handleCycle from './cron-cycle';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
+  // 🔒 驗證 Cron 授權
+  const authHeader = req.headers['authorization'];
+  if (!verifyCronAuth(authHeader)) {
+    return res.status(401).json({ success: false, error: 'Unauthorized: Invalid or missing CRON_SECRET authorization.' });
+  }
+
   const job = req.query.job as string | undefined;
 
   if (job === 'saturday') {
@@ -29,30 +36,29 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     const results: Record<string, any> = {};
 
+    const createMockRes = (key: string): VercelResponse =>
+      ({
+        status: (_code: number) => ({
+          json: (data: any) => {
+            results[key] = data;
+            return {} as any;
+          },
+          send: (data: any) => {
+            results[key] = data;
+            return {} as any;
+          },
+        }),
+      } as unknown as VercelResponse);
+
     // 每日執行生日祝賀
-    // @ts-ignore
-    await handleBirthday(req, {
-      status: (code: number) => ({
-        json: (data: any) => { results.birthday = data; },
-      }),
-    });
+    await handleBirthday(req, createMockRes('birthday'));
 
     // 每日檢查是否為 15 或 20 號催填
-    // @ts-ignore
-    await handleCycle(req, {
-      status: (code: number) => ({
-        json: (data: any) => { results.cycle = data; },
-      }),
-    });
+    await handleCycle(req, createMockRes('cycle'));
 
     // 若剛好為週六下午，可一併執行週六服事提醒
     if (day === 6) {
-      // @ts-ignore
-      await handleSaturday(req, {
-        status: (code: number) => ({
-          json: (data: any) => { results.saturday = data; },
-        }),
-      });
+      await handleSaturday(req, createMockRes('saturday'));
     }
 
     return res.status(200).json({

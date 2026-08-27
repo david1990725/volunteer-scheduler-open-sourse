@@ -56,14 +56,25 @@ export function getLineConfig() {
 /** 🔒 驗證 LINE Webhook HMAC-SHA256 簽名 */
 export function verifyLineSignature(rawBody: string, signature: string | undefined): boolean {
   const { channelSecret } = getLineConfig();
-  if (!channelSecret) {
-    // 若尚未設定 Secret 則暫時放行（方便初始除錯），但在生產環境強烈建議設定
-    return true;
+  if (!channelSecret || !signature) {
+    return false;
   }
-  if (!signature) return false;
 
   const hash = crypto.createHmac('sha256', channelSecret).update(rawBody).digest('base64');
   return hash === signature;
+}
+
+/** 🔒 驗證 Cron / 管理排程端點授權 (支援 Authorization: Bearer <CRON_SECRET>) */
+export function verifyCronAuth(authHeader: string | undefined): boolean {
+  const cronSecret = process.env.CRON_SECRET;
+  // 若未設定 CRON_SECRET（本地開發模式），預設放行但記錄提醒；若有設定則嚴格比對 Bearer Token
+  if (!cronSecret) {
+    if (process.env.NODE_ENV === 'production') {
+      console.warn('[Security Warning]: CRON_SECRET is not configured in production environment.');
+    }
+    return true;
+  }
+  return authHeader === `Bearer ${cronSecret}`;
 }
 
 /** 發送 LINE 回覆訊息 (Reply API) */
