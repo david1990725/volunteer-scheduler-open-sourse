@@ -161,7 +161,15 @@ async function handlePostbackEvent(event: LineEvent) {
       return;
     }
 
-    const result = await applySlotFillToMatrix(docId, rowIndex, colIndex, volunteerName);
+    const result = await applySlotFillToMatrix(
+      docId,
+      rowIndex,
+      colIndex,
+      volunteerName,
+      loc,
+      date,
+      role
+    );
 
     if (result.success) {
       const confirmMsg: LineMessage = {

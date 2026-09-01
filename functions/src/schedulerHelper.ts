@@ -441,12 +441,15 @@ function updateMatrixCell(
   return false;
 }
 
-/** 即時寫入 Firestore 矩陣與 shifts 進行雙向補位同步 */
+/** 即時寫入 Firestore 矩陣與 shifts 進行全域排班文件雙向同步 */
 export async function applySlotFillToMatrix(
   docId: string,
   rowIndex: number,
   colIndex: number,
-  volunteerName: string
+  volunteerName: string,
+  targetLocParam?: string,
+  targetDateParam?: string,
+  targetRoleParam?: string
 ): Promise<{ success: boolean; message: string }> {
   try {
     const docRef = db.collection('schedules').doc(docId);
@@ -468,26 +471,30 @@ export async function applySlotFillToMatrix(
       return { success: false, message: `該職位剛剛已由 ${currentCell} 登記補位囉！` };
     }
 
-    // 1. 定位該儲存格的地點、日期與職位名稱
-    let targetLoc = '';
-    let targetDate = '';
-    const targetRole = String(matrix[rowIndex][0] || '').trim();
+    // 1. 定位該儲存格的地點、日期與職位名稱 (優先採用傳入的精準參數)
+    let targetLoc = targetLocParam || '';
+    let targetDate = targetDateParam || '';
+    let targetRole = targetRoleParam || String(matrix[rowIndex][0] || '').trim();
 
-    // 往上尋找地點
-    for (let r = rowIndex - 1; r >= 0; r--) {
-      const cell = String(matrix[r]?.[0] || '').trim();
-      if (cell.startsWith('【') && cell.endsWith('】')) {
-        targetLoc = cell.replace(/【|】/g, '').trim();
-        break;
+    // 往上尋找地點 (若未傳入)
+    if (!targetLoc) {
+      for (let r = rowIndex - 1; r >= 0; r--) {
+        const cell = String(matrix[r]?.[0] || '').trim();
+        if (cell.startsWith('【') && cell.endsWith('】')) {
+          targetLoc = cell.replace(/【|】/g, '').trim();
+          break;
+        }
       }
     }
 
-    // 往上尋找日期標頭
-    for (let r = rowIndex - 1; r >= 0; r--) {
-      const cell = String(matrix[r]?.[0] || '').trim();
-      if (cell.includes('職務') || cell.includes('日期') || cell === '崗位') {
-        targetDate = String(matrix[r]?.[colIndex] || '').trim();
-        break;
+    // 往上尋找日期標頭 (若未傳入)
+    if (!targetDate) {
+      for (let r = rowIndex - 1; r >= 0; r--) {
+        const cell = String(matrix[r]?.[0] || '').trim();
+        if (cell.includes('職務') || cell.includes('日期') || cell === '崗位') {
+          targetDate = String(matrix[r]?.[colIndex] || '').trim();
+          break;
+        }
       }
     }
 
@@ -505,63 +512,44 @@ export async function applySlotFillToMatrix(
 
     await docRef.set(updatePayload, { merge: true });
 
-    // 3. 雙向同步：自動跨文件同步 _final 與 團隊文件
-    const isFinalDoc = docId.endsWith('_final');
-    const basePrefix = docId.replace(/_(video|audio|light|stage|final)$/, '');
+    // 3. 全域雙向同步：掃描並同步寫入所有相關團隊排班表與 _final 整合服事表
+    try {
+      const allSchedules = await db.collection('schedules').get();
+      for (const sDoc of allSchedules.docs) {
+        if (sDoc.id === docId) continue;
+        const sData = sDoc.data() || {};
+        let needUpdate = false;
+        const sPayload: Record<string, any> = {
+          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        };
 
-    if (isFinalDoc) {
-      // 若原修改為 _final，同步回寫至對應的各團隊文件
-      const teams = ['video', 'audio', 'light', 'stage'];
-      for (const t of teams) {
-        const teamDocId = `${basePrefix}_${t}`;
-        try {
-          const teamRef = db.collection('schedules').doc(teamDocId);
-          const tSnap = await teamRef.get();
-          if (tSnap.exists) {
-            const tData = tSnap.data() || {};
-            const tMatrix = parseMatrixFromDoc(tData);
-            const tPayload: Record<string, any> = {
-              updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-            };
-            if (tMatrix && updateMatrixCell(tMatrix, targetDate, targetLoc, targetRole, volunteerName)) {
-              tPayload.dataJson = JSON.stringify(tMatrix);
-            }
-            if (Array.isArray(tData.shifts) && tData.shifts.length > 0) {
-              tPayload.shifts = updateShiftsArray(tData.shifts, targetDate, targetLoc, targetRole, volunteerName);
-            }
-            if (tPayload.dataJson || tPayload.shifts) {
-              await teamRef.set(tPayload, { merge: true });
-            }
-          }
-        } catch (e) {
-          console.warn(`[applySlotFill Sync to ${teamDocId} Warning]:`, e);
-        }
-      }
-    } else {
-      // 若原修改為團隊文件，同步回寫至 _final 文件
-      const finalDocId = `${basePrefix}_final`;
-      try {
-        const finalRef = db.collection('schedules').doc(finalDocId);
-        const fSnap = await finalRef.get();
-        if (fSnap.exists) {
-          const fData = fSnap.data() || {};
-          const fMatrix = parseMatrixFromDoc(fData);
-          const fPayload: Record<string, any> = {
-            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-          };
-          if (fMatrix && updateMatrixCell(fMatrix, targetDate, targetLoc, targetRole, volunteerName)) {
-            fPayload.dataJson = JSON.stringify(fMatrix);
-          }
-          if (Array.isArray(fData.shifts) && fData.shifts.length > 0) {
-            fPayload.shifts = updateShiftsArray(fData.shifts, targetDate, targetLoc, targetRole, volunteerName);
-          }
-          if (fPayload.dataJson || fPayload.shifts) {
-            await finalRef.set(fPayload, { merge: true });
+        // 同步更新 shifts 陣列
+        if (Array.isArray(sData.shifts) && sData.shifts.length > 0) {
+          const hasMatch = sData.shifts.some((s: any) => {
+            const matchD = !targetDate || (s.date || '').includes(targetDate) || targetDate.includes(s.date || '');
+            const matchL = !targetLoc || (s.location || '').includes(targetLoc) || targetLoc.includes(s.location || '');
+            return matchD && matchL && s.assignments && (targetRole in s.assignments || s.assignments[targetRole] !== undefined);
+          });
+
+          if (hasMatch) {
+            sPayload.shifts = updateShiftsArray(sData.shifts, targetDate, targetLoc, targetRole, volunteerName);
+            needUpdate = true;
           }
         }
-      } catch (e) {
-        console.warn(`[applySlotFill Sync to ${finalDocId} Warning]:`, e);
+
+        // 同步更新 dataJson 二維矩陣
+        const sMatrix = parseMatrixFromDoc(sData);
+        if (sMatrix && updateMatrixCell(sMatrix, targetDate, targetLoc, targetRole, volunteerName)) {
+          sPayload.dataJson = JSON.stringify(sMatrix);
+          needUpdate = true;
+        }
+
+        if (needUpdate) {
+          await sDoc.ref.set(sPayload, { merge: true });
+        }
       }
+    } catch (syncErr) {
+      console.warn('[applySlotFill Global Sync Warning]:', syncErr);
     }
 
     return { success: true, message: '班表已成功即時更新' };
