@@ -205,25 +205,36 @@ async function handleTextMessageEvent(event: LineEvent) {
     saveGroupStatus(event.source.groupId, 'group', 'active').catch(() => {});
   }
 
-  // 1. 查詢「本週服事」
-  if (userText.includes('本週服事') || userText.includes('本周服事') || userText.includes('服事名單') || userText === '排班') {
+  // 1. 查詢班表關鍵字：「本週服事」、「本週排班」、「本週班表」（相容簡體/異體字）
+  const isScheduleQuery =
+    userText.includes('本週服事') ||
+    userText.includes('本周服事') ||
+    userText.includes('本週排班') ||
+    userText.includes('本周排班') ||
+    userText.includes('本週班表') ||
+    userText.includes('本周班表');
+
+  if (isScheduleQuery) {
     const rosterText = await formatWeeklyTeamRoster();
     await sendLineReply(replyToken, [{ type: 'text', text: rosterText }]);
     return;
   }
 
-  // 2. 1 對 1 私訊時：依據同工的 UID / 技能樹偵測該同工可以補位的空缺 (已排除備用席位)
-  if (!isGroup) {
+  // 2. 互動按鈕關鍵字：「補位」、「我可以幫忙」
+  const isBackfillQuery = userText.includes('補位') || userText.includes('我可以幫忙');
+
+  if (isBackfillQuery) {
     const userId = event.source.userId || '';
-    const vol = await getVolunteerByLineId(userId);
+    const vol = userId ? await getVolunteerByLineId(userId) : null;
     const { vacancies, targetSundayStr } = await parseSundaySchedule();
 
-    const matchingVacancies = vol
+    // 私訊時依技能比對，群組時列出全體空缺
+    const matchingVacancies = (!isGroup && vol)
       ? vacancies.filter((v) => canVolunteerFillVacancy(vol, v.role, v.team))
       : vacancies;
 
     if (matchingVacancies.length > 0) {
-      const topVacancies = matchingVacancies.slice(0, 3);
+      const topVacancies = matchingVacancies.slice(0, 5);
       const vacancyListText = topVacancies
         .map((v) => `  • ${v.location}【${v.role}】`)
         .join('\n');
@@ -244,7 +255,7 @@ async function handleTextMessageEvent(event: LineEvent) {
         type: 'action',
         action: {
           type: 'message',
-          label: '查看本週名冊',
+          label: '查詢本週服事',
           text: '本週服事',
         },
       });
@@ -252,9 +263,9 @@ async function handleTextMessageEvent(event: LineEvent) {
       const replyWithQuickReply: LineMessage = {
         type: 'text',
         text:
-          `平安 ${vol?.name ? vol.name + ' 同工' : ''}！本週日 (${targetSundayStr}) 您的團隊尚有以下空缺需要支援：\n\n` +
+          `平安${vol?.name ? ' ' + vol.name + ' 同工' : ''}！本週日 (${targetSundayStr}) 尚有以下空缺需要支援：\n\n` +
           `${vacancyListText}\n\n` +
-          `若您本週方便參與服事，可直接點選下方快捷按鈕即時補位喔！👇`,
+          `若您方便參與服事，可直接點選下方按鈕即時補位喔！👇`,
         quickReply: {
           items: quickReplyItems,
         },
@@ -262,29 +273,36 @@ async function handleTextMessageEvent(event: LineEvent) {
 
       await sendLineReply(replyToken, [replyWithQuickReply]);
       return;
+    } else {
+      const noVacancyReply: LineMessage = {
+        type: 'text',
+        text:
+          `平安！本週日 (${targetSundayStr}) 目前各崗位同工皆已安排就緒，暫無待補空缺。\n` +
+          `非常感謝您的熱心擺上與願意服事的心！🙏\n\n` +
+          `您可以隨時輸入「本週服事」查詢完整名冊。`,
+      };
+      await sendLineReply(replyToken, [noVacancyReply]);
+      return;
     }
-
-    // 若本週無空缺，給予標準引導訊息
-    const reply: LineMessage = {
-      type: 'text',
-      text:
-        `平安！本週日 (${targetSundayStr}) 目前各崗位同工皆已安排就緒 👍\n\n` +
-        `您可以輸入「本週服事」查詢當週服事同工名單，或進入系統查看最新排班：\n${systemUrl}`,
-      quickReply: {
-        items: [
-          {
-            type: 'action',
-            action: {
-              type: 'message',
-              label: '查詢本週服事',
-              text: '本週服事',
-            },
-          },
-        ],
-      },
-    };
-    await sendLineReply(replyToken, [reply]);
   }
+
+  // 3. 任意文字處理：
+  // 群組中保持安靜，不回應任何非指令文字，避免干擾群組討論
+  if (isGroup) {
+    return;
+  }
+
+  // 1 對 1 私訊中僅回傳簡潔引導訊息，完全移除自動跳出 Quick Reply 機制
+  const reply: LineMessage = {
+    type: 'text',
+    text:
+      '平安！我是【義工排班官方小幫手】🤖\n\n' +
+      '您可以輸入以下指令：\n' +
+      '👉「本週服事」/「本週排班」/「本週班表」：查詢本週主日服事同工名單\n' +
+      '👉「補位」/「我可以幫忙」：查看即時空缺並進行補位登記\n\n' +
+      `排班系統網址：\n${systemUrl}`,
+  };
+  await sendLineReply(replyToken, [reply]);
 }
 
 // =============================================================================
