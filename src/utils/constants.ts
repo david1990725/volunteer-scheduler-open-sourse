@@ -73,6 +73,38 @@ export function toTeamName(nameOrKey: string): string {
   return trimmed;
 }
 
+/** 取得指定團隊的所有可能中英文別名（供資料庫查詢多條件匹配） */
+export function getTeamAliases(nameOrKey?: string): string[] {
+  const enTeam = toTeamKey(nameOrKey || 'video');
+  const zhTeam = toTeamName(nameOrKey || 'video');
+  const aliases = new Set<string>([enTeam, zhTeam]);
+
+  if (enTeam === 'video') {
+    aliases.add('動態攝影組');
+    aliases.add('平面拍照組');
+    aliases.add('動態攝影');
+    aliases.add('平面拍照');
+    aliases.add('影視');
+    aliases.add('攝影組');
+  } else if (enTeam === 'light') {
+    aliases.add('燈光');
+    aliases.add('燈光組');
+    aliases.add('舞台燈光組');
+    aliases.add('舞台燈光');
+  } else if (enTeam === 'stage') {
+    aliases.add('舞監');
+    aliases.add('舞監組');
+  } else if (enTeam === 'audio') {
+    aliases.add('音控');
+    aliases.add('音控組');
+  } else if (enTeam === 'admin') {
+    aliases.add('管理');
+    aliases.add('管理組');
+  }
+
+  return Array.from(aliases);
+}
+
 // -----------------------------------------------------------------------------
 // 影視團隊 7 軸技能 (videoSkills)
 // -----------------------------------------------------------------------------

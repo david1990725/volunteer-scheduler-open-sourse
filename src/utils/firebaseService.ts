@@ -22,6 +22,7 @@ import { db } from './firebase';
 import {
   toTeamKey,
   toTeamName,
+  getTeamAliases,
   VIDEO_SKILL_KEYS,
   REVERSE_VIDEO_SKILL_MAP,
   AUDIO_SKILL_KEYS,
@@ -491,27 +492,36 @@ export async function fetchFormResponsesFromCloud(team?: string): Promise<ApiRes
     const colRef = collection(db, COLLECTIONS.FORM_RESPONSES);
     const enTeam = toTeamKey(team || 'video');
     const zhTeam = toTeamName(team || 'video');
+    const teamAliases = getTeamAliases(team);
 
-    // 1. 優先查 Firestore (以英文 team 查詢)
-    let q = query(colRef, where('team', '==', enTeam));
-    let snap = await getDocs(q);
-
-    // 若查無，嘗試以中文 team 查詢
-    if (snap.empty) {
-      q = query(colRef, where('team', '==', zhTeam));
-      snap = await getDocs(q);
-    }
+    // 1. 使用 where('team', 'in', teamAliases) 一併查詢所有中英文及別名團隊紀錄
+    const q = query(colRef, where('team', 'in', teamAliases));
+    const snap = await getDocs(q);
 
     if (!snap.empty) {
       const list: Record<string, string>[] = [];
       snap.forEach(d => {
         const val = d.data();
         if (val.data && typeof val.data === 'object') {
-          list.push({ ...val.data });
+          const item = { ...val.data };
+          if (!item['姓名'] && val.name) item['姓名'] = val.name;
+          if (!item['時間戳記'] && val.timestamp) item['時間戳記'] = val.timestamp;
+          list.push(item);
         } else if (val && typeof val === 'object' && !val.data) {
-          list.push({ ...val });
+          const item = { ...val };
+          if (!item['姓名'] && val.name) item['姓名'] = val.name;
+          if (!item['時間戳記'] && val.timestamp) item['時間戳記'] = val.timestamp;
+          list.push(item);
         }
       });
+
+      // 依時間戳記由舊到新排序，確保後續去重時最新紀錄生效
+      list.sort((a, b) => {
+        const tA = new Date(a['時間戳記'] || a.timestamp || 0).getTime() || 0;
+        const tB = new Date(b['時間戳記'] || b.timestamp || 0).getTime() || 0;
+        return tA - tB;
+      });
+
       return { success: true, message: '讀取成功', data: list };
     }
 
@@ -561,8 +571,8 @@ export async function fetchFormResponsesFromCloud(team?: string): Promise<ApiRes
 export async function clearFormResponsesInCloud(team?: string): Promise<ApiResult> {
   try {
     const colRef = collection(db, COLLECTIONS.FORM_RESPONSES);
-    const enTeam = toTeamKey(team || 'video');
-    const q = query(colRef, where('team', '==', enTeam));
+    const teamAliases = getTeamAliases(team);
+    const q = query(colRef, where('team', 'in', teamAliases));
     const snap = await getDocs(q);
 
     if (snap.empty) {
@@ -586,15 +596,18 @@ export async function clearFormResponsesInCloud(team?: string): Promise<ApiResul
 export async function deleteFormResponseInCloud(team: string, timestamp: string): Promise<ApiResult> {
   try {
     const colRef = collection(db, COLLECTIONS.FORM_RESPONSES);
-    const enTeam = toTeamKey(team);
-    const q = query(colRef, where('team', '==', enTeam), where('timestamp', '==', timestamp));
+    const teamAliases = getTeamAliases(team);
+    const q = query(colRef, where('team', 'in', teamAliases), where('timestamp', '==', timestamp));
     const snap = await getDocs(q);
 
     if (snap.empty) {
       // 嘗試從內層 data['時間戳記'] 查詢
-      const allTeamQ = query(colRef, where('team', '==', enTeam));
+      const allTeamQ = query(colRef, where('team', 'in', teamAliases));
       const allSnap = await getDocs(allTeamQ);
-      const matched = allSnap.docs.filter(d => d.data().data?.['時間戳記'] === timestamp);
+      const matched = allSnap.docs.filter(d => {
+        const docData = d.data();
+        return docData.timestamp === timestamp || docData.data?.['時間戳記'] === timestamp;
+      });
 
       if (matched.length > 0) {
         const batch = writeBatch(db);

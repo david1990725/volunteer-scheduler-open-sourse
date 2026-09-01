@@ -49,9 +49,15 @@ export function parseGenericTeamScheduleResponses(
   const locationAvailability: Record<string, Record<string, string[]>> = {};
   dates.forEach(field => (locationAvailability[field] = { '山莊': [], '宣教': [] }));
 
-  // 確保同一志工多次提交時，只保留最新的一筆紀錄
+  // 確保同一志工多次提交時，只保留最新的一筆紀錄（依時間戳記由舊到新排序，確保最新紀錄覆蓋舊紀錄）
+  const sortedData = [...data].sort((a, b) => {
+    const tA = new Date(a['時間戳記'] || a.timestamp || 0).getTime() || 0;
+    const tB = new Date(b['時間戳記'] || b.timestamp || 0).getTime() || 0;
+    return tA - tB;
+  });
+
   const latestDataMap = new Map<string, any>();
-  for (const row of data) {
+  for (const row of sortedData) {
     const rawName = row['姓名']?.trim();
     if (rawName) {
       const resolvedName = resolveName(rawName, volunteers);
