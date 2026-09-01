@@ -197,19 +197,50 @@ export async function parseSundaySchedule(targetDate?: Date): Promise<{
   const assignmentsByLocation: Record<string, Array<{ role: string; person: string }>> = {};
   const vacancies: VacancySlot[] = [];
 
+  const seenAssignments = new Set<string>(); // key: `${location}|${role}|${date}`
+  const seenVacancies = new Set<string>();   // key: `${location}|${role}|${date}`
+
   try {
     const snap = await db.collection('schedules').get();
 
+    // 收集屬於目前週期的所有 documents
+    // 雙月週期常見名稱: e.g. 2026_09-10, 2026年_9-10月排班表, 2026年 9-10月排班表, 2026年_09-10月排班表
+    const allDocs: Array<{ id: string; data: any; isFinal: boolean }> = [];
     snap.forEach((docSnap) => {
       const docId = docSnap.id;
       const data = docSnap.data();
+      const isFinal = docId.endsWith('_final') || docId.includes('final');
+      allDocs.push({ id: docId, data, isFinal });
+    });
+
+    // 優先策略：若存在包含該主日日期的 `_final` 整合文件，則僅解析 `_final` 文件以避免重複
+    // 若無 `_final` 或 `_final` 中無資料，則解析各團隊文件並透過 Set 去重
+    let docsToProcess = allDocs.filter((d) => d.isFinal);
+    let hasTargetSundayInFinal = false;
+
+    for (const d of docsToProcess) {
+      const matrix = parseMatrixFromDoc(d.data);
+      if (matrix && matrix.some((row) => row.some((c) => String(c).includes(sundayStr) || String(c).includes(sundayShortStr)))) {
+        hasTargetSundayInFinal = true;
+        break;
+      }
+    }
+
+    if (!hasTargetSundayInFinal) {
+      // 若 _final 沒有或不存在，改為讀取非 _final 的個別團隊排班表
+      docsToProcess = allDocs.filter((d) => !d.isFinal);
+    }
+
+    for (const docObj of docsToProcess) {
+      const docId = docObj.id;
+      const data = docObj.data;
       const sheetName = data.sheetName || docId;
       const matrix = parseMatrixFromDoc(data);
 
-      if (!matrix || matrix.length === 0) return;
+      if (!matrix || matrix.length === 0) continue;
 
       let currentLocation = '大堂';
-      let dateColMap: Record<number, string> = {}; // colIndex -> date string (e.g. 03/01)
+      let dateColMap: Record<number, string> = {}; // colIndex -> date string (e.g. 09/06)
 
       for (let r = 0; r < matrix.length; r++) {
         const row = matrix[r] || [];
@@ -227,7 +258,7 @@ export async function parseSundaySchedule(targetDate?: Date): Promise<{
           dateColMap = {};
           for (let c = 1; c < row.length; c++) {
             const cellVal = String(row[c] || '').trim();
-            // 比對是否為目標週日 (支援 03/01, 3/1, 03-01, 3-1 等)
+            // 比對是否為目標週日 (支援 09/06, 9/6, 09-06, 9-6 等)
             if (
               cellVal === sundayStr ||
               cellVal === sundayShortStr ||
@@ -264,41 +295,49 @@ export async function parseSundaySchedule(targetDate?: Date): Promise<{
 
         for (const col of targetCols) {
           const cellVal = String(row[col] || '').trim();
-          const dateLabel = dateColMap[col];
+          const dateLabel = dateColMap[col] || sundayStr;
+          const uniqueKey = `${currentLocation}|${roleName}|${dateLabel}`;
 
           // 判斷是否為空缺
           if (!cellVal || cellVal === '缺' || cellVal === '待補' || cellVal === '未填' || cellVal === '徵求' || cellVal === '-') {
-            vacancies.push({
-              docId,
-              sheetName,
-              rowIndex: r,
-              colIndex: col,
-              date: dateLabel || sundayStr,
-              location: currentLocation,
-              role: roleName,
-              team: roleName.includes('燈') ? 'light' : roleName.includes('音') ? 'audio' : roleName.includes('舞') ? 'stage' : 'video',
-            });
+            if (!seenVacancies.has(uniqueKey)) {
+              seenVacancies.add(uniqueKey);
+              vacancies.push({
+                docId,
+                sheetName,
+                rowIndex: r,
+                colIndex: col,
+                date: dateLabel,
+                location: currentLocation,
+                role: roleName,
+                team: roleName.includes('燈') ? 'light' : roleName.includes('音') ? 'audio' : roleName.includes('舞') ? 'stage' : 'video',
+              });
+            }
           } else {
             // 已安排同工
             const person = cellVal;
-            if (!assignmentsByVolunteer[person]) assignmentsByVolunteer[person] = [];
-            assignmentsByVolunteer[person].push({
-              volunteerName: person,
-              location: currentLocation,
-              role: roleName,
-              date: dateLabel || sundayStr,
-              sheetName,
-            });
+            if (!seenAssignments.has(uniqueKey)) {
+              seenAssignments.add(uniqueKey);
 
-            if (!assignmentsByLocation[currentLocation]) assignmentsByLocation[currentLocation] = [];
-            assignmentsByLocation[currentLocation].push({
-              role: roleName,
-              person,
-            });
+              if (!assignmentsByVolunteer[person]) assignmentsByVolunteer[person] = [];
+              assignmentsByVolunteer[person].push({
+                volunteerName: person,
+                location: currentLocation,
+                role: roleName,
+                date: dateLabel,
+                sheetName,
+              });
+
+              if (!assignmentsByLocation[currentLocation]) assignmentsByLocation[currentLocation] = [];
+              assignmentsByLocation[currentLocation].push({
+                role: roleName,
+                person,
+              });
+            }
           }
         }
       }
-    });
+    }
   } catch (err) {
     console.error('[parseSundaySchedule Error]:', err);
   }
@@ -334,7 +373,75 @@ export async function formatWeeklyTeamRoster(): Promise<string> {
   return text;
 }
 
-/** 即時寫入 Firestore 矩陣進行補位 */
+/** 輔助：更新排班文件中的 shifts 陣列 */
+function updateShiftsArray(
+  shifts: any[],
+  targetDate: string,
+  targetLoc: string,
+  targetRole: string,
+  volunteerName: string
+): any[] {
+  if (!Array.isArray(shifts)) return [];
+  return shifts.map((shift: any) => {
+    const shiftDate = String(shift.date || '').trim();
+    const shiftLoc = String(shift.location || '').trim();
+    const matchDate = shiftDate.includes(targetDate) || targetDate.includes(shiftDate);
+    const matchLoc = !targetLoc || shiftLoc.includes(targetLoc) || targetLoc.includes(shiftLoc);
+
+    if (matchDate && matchLoc) {
+      const assignments = { ...(shift.assignments || {}) };
+      assignments[targetRole] = volunteerName;
+      return { ...shift, assignments };
+    }
+    return shift;
+  });
+}
+
+/** 輔助：在 2D 矩陣中尋找對應的 location, date, role 並填入義工姓名 */
+function updateMatrixCell(
+  matrix: string[][],
+  targetDate: string,
+  targetLoc: string,
+  targetRole: string,
+  volunteerName: string
+): boolean {
+  if (!Array.isArray(matrix)) return false;
+  let curLoc = '';
+  let dateColMap: Record<number, string> = {};
+
+  for (let r = 0; r < matrix.length; r++) {
+    const row = matrix[r] || [];
+    const firstCell = String(row[0] || '').trim();
+
+    if (firstCell.startsWith('【') && firstCell.endsWith('】')) {
+      curLoc = firstCell.replace(/【|】/g, '').trim();
+      dateColMap = {};
+      continue;
+    }
+
+    if (firstCell.includes('職務') || firstCell.includes('日期') || firstCell === '崗位') {
+      dateColMap = {};
+      for (let c = 1; c < row.length; c++) {
+        const cellVal = String(row[c] || '').trim();
+        if (cellVal.includes(targetDate) || targetDate.includes(cellVal)) {
+          dateColMap[c] = cellVal;
+        }
+      }
+      continue;
+    }
+
+    if (firstCell === targetRole && (!targetLoc || curLoc.includes(targetLoc) || targetLoc.includes(curLoc))) {
+      for (const colStr of Object.keys(dateColMap)) {
+        const col = Number(colStr);
+        row[col] = volunteerName;
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
+/** 即時寫入 Firestore 矩陣與 shifts 進行雙向補位同步 */
 export async function applySlotFillToMatrix(
   docId: string,
   rowIndex: number,
@@ -361,15 +468,101 @@ export async function applySlotFillToMatrix(
       return { success: false, message: `該職位剛剛已由 ${currentCell} 登記補位囉！` };
     }
 
+    // 1. 定位該儲存格的地點、日期與職位名稱
+    let targetLoc = '';
+    let targetDate = '';
+    const targetRole = String(matrix[rowIndex][0] || '').trim();
+
+    // 往上尋找地點
+    for (let r = rowIndex - 1; r >= 0; r--) {
+      const cell = String(matrix[r]?.[0] || '').trim();
+      if (cell.startsWith('【') && cell.endsWith('】')) {
+        targetLoc = cell.replace(/【|】/g, '').trim();
+        break;
+      }
+    }
+
+    // 往上尋找日期標頭
+    for (let r = rowIndex - 1; r >= 0; r--) {
+      const cell = String(matrix[r]?.[0] || '').trim();
+      if (cell.includes('職務') || cell.includes('日期') || cell === '崗位') {
+        targetDate = String(matrix[r]?.[colIndex] || '').trim();
+        break;
+      }
+    }
+
+    // 2. 更新當前文件的矩陣與 shifts
     matrix[rowIndex][colIndex] = volunteerName;
 
-    await docRef.set(
-      {
-        dataJson: JSON.stringify(matrix),
-        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-      },
-      { merge: true }
-    );
+    const updatePayload: Record<string, any> = {
+      dataJson: JSON.stringify(matrix),
+      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+    };
+
+    if (Array.isArray(data.shifts) && data.shifts.length > 0) {
+      updatePayload.shifts = updateShiftsArray(data.shifts, targetDate, targetLoc, targetRole, volunteerName);
+    }
+
+    await docRef.set(updatePayload, { merge: true });
+
+    // 3. 雙向同步：自動跨文件同步 _final 與 團隊文件
+    const isFinalDoc = docId.endsWith('_final');
+    const basePrefix = docId.replace(/_(video|audio|light|stage|final)$/, '');
+
+    if (isFinalDoc) {
+      // 若原修改為 _final，同步回寫至對應的各團隊文件
+      const teams = ['video', 'audio', 'light', 'stage'];
+      for (const t of teams) {
+        const teamDocId = `${basePrefix}_${t}`;
+        try {
+          const teamRef = db.collection('schedules').doc(teamDocId);
+          const tSnap = await teamRef.get();
+          if (tSnap.exists) {
+            const tData = tSnap.data() || {};
+            const tMatrix = parseMatrixFromDoc(tData);
+            const tPayload: Record<string, any> = {
+              updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+            };
+            if (tMatrix && updateMatrixCell(tMatrix, targetDate, targetLoc, targetRole, volunteerName)) {
+              tPayload.dataJson = JSON.stringify(tMatrix);
+            }
+            if (Array.isArray(tData.shifts) && tData.shifts.length > 0) {
+              tPayload.shifts = updateShiftsArray(tData.shifts, targetDate, targetLoc, targetRole, volunteerName);
+            }
+            if (tPayload.dataJson || tPayload.shifts) {
+              await teamRef.set(tPayload, { merge: true });
+            }
+          }
+        } catch (e) {
+          console.warn(`[applySlotFill Sync to ${teamDocId} Warning]:`, e);
+        }
+      }
+    } else {
+      // 若原修改為團隊文件，同步回寫至 _final 文件
+      const finalDocId = `${basePrefix}_final`;
+      try {
+        const finalRef = db.collection('schedules').doc(finalDocId);
+        const fSnap = await finalRef.get();
+        if (fSnap.exists) {
+          const fData = fSnap.data() || {};
+          const fMatrix = parseMatrixFromDoc(fData);
+          const fPayload: Record<string, any> = {
+            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+          };
+          if (fMatrix && updateMatrixCell(fMatrix, targetDate, targetLoc, targetRole, volunteerName)) {
+            fPayload.dataJson = JSON.stringify(fMatrix);
+          }
+          if (Array.isArray(fData.shifts) && fData.shifts.length > 0) {
+            fPayload.shifts = updateShiftsArray(fData.shifts, targetDate, targetLoc, targetRole, volunteerName);
+          }
+          if (fPayload.dataJson || fPayload.shifts) {
+            await finalRef.set(fPayload, { merge: true });
+          }
+        }
+      } catch (e) {
+        console.warn(`[applySlotFill Sync to ${finalDocId} Warning]:`, e);
+      }
+    }
 
     return { success: true, message: '班表已成功即時更新' };
   } catch (err: any) {

@@ -43,6 +43,7 @@ export async function findTeamVacanciesForVolunteer(
   // 判斷該同工所屬的團隊 (預設 video)
   const teams = volunteer.jobTitles && volunteer.jobTitles.length > 0 ? volunteer.jobTitles : ['video'];
   const vacancies: Array<{ date: string; location: string; role: string; team: string }> = [];
+  const seen = new Set<string>();
 
   for (const team of teams) {
     const schedule = await getSchedule(cycleKey, team);
@@ -58,12 +59,16 @@ export async function findTeamVacanciesForVolunteer(
           if (role.includes('備用')) continue;
 
           if (assignee === '缺' || !assignee || assignee === '') {
-            vacancies.push({
-              date: sundayStr,
-              location: shift.location,
-              role,
-              team,
-            });
+            const key = `${shift.location}|${role}|${sundayStr}`;
+            if (!seen.has(key)) {
+              seen.add(key);
+              vacancies.push({
+                date: sundayStr,
+                location: shift.location,
+                role,
+                team,
+              });
+            }
           }
         }
       }
@@ -86,8 +91,12 @@ export async function formatWeeklyTeamRoster(): Promise<string> {
 
     if (currentShifts.length > 0) {
       let rosterText = `📅【本週日 (${sundayStr}) 全員服事名單】\n`;
+      const seenLoc = new Set<string>();
 
       for (const shift of currentShifts) {
+        if (seenLoc.has(shift.location)) continue;
+        seenLoc.add(shift.location);
+
         rosterText += `\n━━━━━━━━━━━━━━━\n📍 ${shift.location}\n`;
         if (shift.assignments) {
           const lines = Object.entries(shift.assignments)
@@ -116,6 +125,7 @@ export async function formatWeeklyTeamRoster(): Promise<string> {
 
   let rosterText = `📅【本週日 (${sundayStr}) 服事同工名單】\n`;
   let hasAnyShift = false;
+  const seenEntries = new Set<string>();
 
   for (const t of teams) {
     const schedule = await getSchedule(cycleKey, t.key);
@@ -131,9 +141,14 @@ export async function formatWeeklyTeamRoster(): Promise<string> {
       for (const shift of currentShifts) {
         rosterText += `📍 ${shift.location}：\n`;
         if (shift.assignments) {
-          const lines = Object.entries(shift.assignments).map(
-            ([role, person]) => `  • ${role}：${person || '缺'}`
-          );
+          const lines = Object.entries(shift.assignments)
+            .filter(([role, person]) => {
+              const key = `${shift.location}|${role}|${person}`;
+              if (seenEntries.has(key)) return false;
+              seenEntries.add(key);
+              return true;
+            })
+            .map(([role, person]) => `  • ${role}：${person || '缺'}`);
           rosterText += lines.join('\n') + '\n';
         }
       }

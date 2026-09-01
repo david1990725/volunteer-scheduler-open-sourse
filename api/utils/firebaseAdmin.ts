@@ -198,7 +198,71 @@ export async function getFinalSchedule(cycleKey: string): Promise<ScheduleDoc | 
   return null;
 }
 
-/** 即時補位更新排班表（同時更新團隊 doc 與 _final doc） */
+/** 解析 2D 矩陣資料 */
+function parseMatrixFromDoc(docData: any): string[][] | null {
+  if (!docData) return null;
+  if (typeof docData.dataJson === 'string') {
+    try {
+      const parsed = JSON.parse(docData.dataJson);
+      if (Array.isArray(parsed)) return parsed;
+    } catch {
+      return null;
+    }
+  }
+  if (Array.isArray(docData.rows)) {
+    return docData.rows.map((r: any) => (Array.isArray(r.cells) ? r.cells : Array.isArray(r) ? r : []));
+  }
+  if (Array.isArray(docData.data)) {
+    return docData.data;
+  }
+  return null;
+}
+
+/** 輔助：在 2D 矩陣中尋找對應的 location, date, role 並填入義工姓名 */
+function updateMatrixCell(
+  matrix: string[][],
+  targetDate: string,
+  targetLoc: string,
+  targetRole: string,
+  volunteerName: string
+): boolean {
+  if (!Array.isArray(matrix)) return false;
+  let curLoc = '';
+  let dateColMap: Record<number, string> = {};
+
+  for (let r = 0; r < matrix.length; r++) {
+    const row = matrix[r] || [];
+    const firstCell = String(row[0] || '').trim();
+
+    if (firstCell.startsWith('【') && firstCell.endsWith('】')) {
+      curLoc = firstCell.replace(/【|】/g, '').trim();
+      dateColMap = {};
+      continue;
+    }
+
+    if (firstCell.includes('職務') || firstCell.includes('日期') || firstCell === '崗位') {
+      dateColMap = {};
+      for (let c = 1; c < row.length; c++) {
+        const cellVal = String(row[c] || '').trim();
+        if (cellVal.includes(targetDate) || targetDate.includes(cellVal)) {
+          dateColMap[c] = cellVal;
+        }
+      }
+      continue;
+    }
+
+    if (firstCell === targetRole && (!targetLoc || curLoc.includes(targetLoc) || targetLoc.includes(curLoc))) {
+      for (const colStr of Object.keys(dateColMap)) {
+        const col = Number(colStr);
+        row[col] = volunteerName;
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
+/** 即時補位更新排班表（同時更新團隊 doc 與 _final doc 的 shifts 及 dataJson） */
 export async function applySlotFill(
   cycleKey: string,
   team: string,
@@ -236,28 +300,48 @@ export async function applySlotFill(
 
     const docId = schedule.id || `${cycleKey}_${team}`;
     const docRef = doc(db, 'schedules', docId);
-    await setDoc(docRef, { shifts: updatedShifts, updatedAt: serverTimestamp() }, { merge: true });
+
+    const updatePayload: Record<string, any> = {
+      shifts: updatedShifts,
+      updatedAt: serverTimestamp(),
+    };
+
+    const teamMatrix = parseMatrixFromDoc(schedule);
+    if (teamMatrix && updateMatrixCell(teamMatrix, targetDate, location, role, volunteerName)) {
+      updatePayload.dataJson = JSON.stringify(teamMatrix);
+    }
+
+    await setDoc(docRef, updatePayload, { merge: true });
 
     // 同步更新 _final doc (若存在)
     try {
       const finalSchedule = await getFinalSchedule(cycleKey);
-      if (finalSchedule && finalSchedule.shifts && finalSchedule.id?.endsWith('_final')) {
-        const updatedFinalShifts = finalSchedule.shifts.map((shift) => {
-          const shiftDate = shift.date.trim();
-          const shiftLoc = shift.location.trim();
-          const matchDate = shiftDate.includes(targetDate) || targetDate.includes(shiftDate);
-          const matchLoc = !location || shiftLoc.includes(location) || location.includes(shiftLoc);
-
-          if (matchDate && matchLoc && shift.assignments && (shift.assignments[role] === '缺' || !shift.assignments[role] || shift.assignments[role] === '')) {
-            shift.assignments[role] = volunteerName;
-          }
-          return shift;
-        });
-
-        await setDoc(doc(db, 'schedules', finalSchedule.id), {
-          shifts: updatedFinalShifts,
+      if (finalSchedule && finalSchedule.id?.endsWith('_final')) {
+        const finalDocRef = doc(db, 'schedules', finalSchedule.id);
+        const finalPayload: Record<string, any> = {
           updatedAt: serverTimestamp(),
-        }, { merge: true });
+        };
+
+        if (finalSchedule.shifts) {
+          finalPayload.shifts = finalSchedule.shifts.map((shift) => {
+            const shiftDate = shift.date.trim();
+            const shiftLoc = shift.location.trim();
+            const matchDate = shiftDate.includes(targetDate) || targetDate.includes(shiftDate);
+            const matchLoc = !location || shiftLoc.includes(location) || location.includes(shiftLoc);
+
+            if (matchDate && matchLoc && shift.assignments && (shift.assignments[role] === '缺' || !shift.assignments[role] || shift.assignments[role] === '')) {
+              shift.assignments[role] = volunteerName;
+            }
+            return shift;
+          });
+        }
+
+        const finalMatrix = parseMatrixFromDoc(finalSchedule);
+        if (finalMatrix && updateMatrixCell(finalMatrix, targetDate, location, role, volunteerName)) {
+          finalPayload.dataJson = JSON.stringify(finalMatrix);
+        }
+
+        await setDoc(finalDocRef, finalPayload, { merge: true });
       }
     } catch (finalErr) {
       console.warn('[SlotFill Final Sync Warning]:', finalErr);
