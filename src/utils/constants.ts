@@ -20,6 +20,10 @@ export const TEAMS: Record<string, string> = {
 
 export const REVERSE_TEAMS: Record<string, TeamKey> = {
   '影視團隊': 'video',
+  '動態攝影組': 'video',
+  '平面拍照組': 'video',
+  '動態攝影': 'video',
+  '平面拍照': 'video',
   '燈光團隊': 'light',
   '舞監團隊': 'stage',
   '音控團隊': 'audio',

@@ -151,7 +151,7 @@ export const FormVideo: React.FC<FrontendFormProps> = ({ currentUser, onLogout, 
         <div className="glass-card animate-morph stagger-2" style={{ padding: '30px', marginBottom: '20px' }}>
           <label style={{ display: 'block', fontSize: '1.2rem', fontWeight: 700, marginBottom: '20px', color: 'var(--text-primary)' }}>所屬組別 (可複選) <span style={{ color: 'var(--text-missing)' }}>*</span></label>
           <div style={{ display: 'flex', gap: '15px', flexWrap: 'wrap' }}>
-            {['動態攝影組', '平面拍照組', '舞台燈光組'].map(g => {
+            {['動態攝影組', '平面拍照組'].map(g => {
               const isChecked = groups.includes(g);
               return (
                 <label key={g} style={{ 
