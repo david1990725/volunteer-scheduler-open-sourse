@@ -289,21 +289,27 @@ async function handleTextMessageEvent(event: LineEvent) {
     }
   }
 
-  // 3. 任意文字處理：
-  // 群組中保持安靜，不回應任何非指令文字，避免干擾群組討論
-  if (isGroup) {
+  // 3. 功能選單指令：「功能」、「說明」、「指令」、「help」
+  const isHelpQuery =
+    userText === '功能' ||
+    userText === '說明' ||
+    userText === '指令' ||
+    userText.toLowerCase() === 'help';
+
+  if (isHelpQuery) {
+    const reply: LineMessage = {
+      type: 'text',
+      text:
+        '平安！我是【義工排班官方小幫手】🤖\n\n' +
+        '您可以輸入以下指令：\n' +
+        '👉「本週服事」/「本週排班」/「本週班表」：查詢本週主日服事同工名單\n' +
+        '👉「補位」/「我可以幫忙」：查看即時空缺並進行補位登記\n\n' +
+        `排班系統網址：\n${systemUrl}`,
+    };
+    await sendLineReply(replyToken, [reply]);
     return;
   }
 
-  // 1 對 1 私訊中僅回傳簡潔引導訊息，完全移除自動跳出 Quick Reply 機制
-  const reply: LineMessage = {
-    type: 'text',
-    text:
-      '平安！我是【義工排班官方小幫手】🤖\n\n' +
-      '您可以輸入以下指令：\n' +
-      '👉「本週服事」/「本週排班」/「本週班表」：查詢本週主日服事同工名單\n' +
-      '👉「補位」/「我可以幫忙」：查看即時空缺並進行補位登記\n\n' +
-      `排班系統網址：\n${systemUrl}`,
-  };
-  await sendLineReply(replyToken, [reply]);
+  // 4. 其他任意文字：群組與私訊皆保持完全安靜，絕不干擾任何對話
+  return;
 }

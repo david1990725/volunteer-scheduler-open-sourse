@@ -82,13 +82,11 @@ async function handleSingleEvent(event: LineEvent) {
     if (event.type === 'follow' && event.replyToken) {
       const welcomeText =
         '平安！歡迎加入【義工排班官方小幫手】🎉\n\n' +
-        '本帳號將提供：\n' +
-        '1. 📅 每週六下午 16:00 週日服事貼心提醒\n' +
-        '2. 📝 每期服事意願表單催填通知\n' +
-        '3. ⚡ 即時空缺補位與班表查詢\n' +
-        '4. 🎂 專屬生日祝福\n\n' +
-        '隨時輸入「本週服事」即可快速查詢名單！\n' +
-        `排班系統網址：${systemUrl}`;
+        '您可以輸入以下指令：\n' +
+        '👉「本週服事」/「本週排班」/「本週班表」：查詢本週主日服事同工名單\n' +
+        '👉「補位」/「我可以幫忙」：查看即時空缺並進行補位登記\n' +
+        '👉「功能」：查看功能指令選單\n\n' +
+        `排班系統網址：\n${systemUrl}`;
 
       await sendLineReply(event.replyToken, [{ type: 'text', text: welcomeText }]);
       return;
@@ -286,23 +284,29 @@ async function handleTextMessageEvent(event: LineEvent) {
     }
   }
 
-  // 3. 任意文字處理：
-  // 群組中保持安靜，不回應任何非指令文字，避免干擾群組討論
-  if (isGroup) {
+  // 3. 功能選單指令：「功能」、「說明」、「指令」、「help」
+  const isHelpQuery =
+    userText === '功能' ||
+    userText === '說明' ||
+    userText === '指令' ||
+    userText.toLowerCase() === 'help';
+
+  if (isHelpQuery) {
+    const reply: LineMessage = {
+      type: 'text',
+      text:
+        '平安！我是【義工排班官方小幫手】🤖\n\n' +
+        '您可以輸入以下指令：\n' +
+        '👉「本週服事」/「本週排班」/「本週班表」：查詢本週主日服事同工名單\n' +
+        '👉「補位」/「我可以幫忙」：查看即時空缺並進行補位登記\n\n' +
+        `排班系統網址：\n${systemUrl}`,
+    };
+    await sendLineReply(replyToken, [reply]);
     return;
   }
 
-  // 1 對 1 私訊中僅回傳簡潔引導訊息，完全移除自動跳出 Quick Reply 機制
-  const reply: LineMessage = {
-    type: 'text',
-    text:
-      '平安！我是【義工排班官方小幫手】🤖\n\n' +
-      '您可以輸入以下指令：\n' +
-      '👉「本週服事」/「本週排班」/「本週班表」：查詢本週主日服事同工名單\n' +
-      '👉「補位」/「我可以幫忙」：查看即時空缺並進行補位登記\n\n' +
-      `排班系統網址：\n${systemUrl}`,
-  };
-  await sendLineReply(replyToken, [reply]);
+  // 4. 其他任意文字：群組與私訊皆保持完全安靜，絕不干擾任何對話
+  return;
 }
 
 // =============================================================================
