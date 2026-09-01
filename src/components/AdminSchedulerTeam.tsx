@@ -10,9 +10,13 @@ import {
   ArrowLeft,
   ChevronDown,
   FileSpreadsheet,
+  FileText,
+  Image as ImageIcon,
   Users,
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
+import html2canvas from 'html2canvas';
+import { jsPDF } from 'jspdf';
 import {
   parseSkillTreeData,
   parseScheduleResponsesData,
@@ -78,6 +82,7 @@ export const AdminSchedulerTeam: React.FC<AdminSchedulerTeamProps> = ({ team, in
   const [uploadedFileName, setUploadedFileName] = useState('');
   const [responseFile, setResponseFile] = useState<File | null>(null);
   const [showExportMenu, setShowExportMenu] = useState(false);
+  const [exporting, setExporting] = useState<string>('');
   const [cloudSheetExists, setCloudSheetExists] = useState<boolean | null>(null);
   const [checkingSheet, setCheckingSheet] = useState(false);
 
@@ -564,6 +569,94 @@ export const AdminSchedulerTeam: React.FC<AdminSchedulerTeamProps> = ({ team, in
     }
   }, [shifts, getSheetData, teamDisplayName, selectedCycle, teamRoles]);
 
+  // --- PNG / PDF Export --------------------------------------------------
+  const captureSchedule = useCallback(async (): Promise<HTMLCanvasElement | null> => {
+    if (!scheduleRef.current || shifts.length === 0) return null;
+
+    const isLight = document.documentElement.classList.contains('light-theme');
+    const clone = scheduleRef.current.cloneNode(true) as HTMLElement;
+    clone.style.width = '1920px';
+    clone.style.padding = '40px';
+    const bgColor = !isLight ? '#0a0e1a' : '#eef2f7';
+    clone.style.background = bgColor;
+    clone.style.position = 'absolute';
+    clone.style.left = '-9999px';
+    clone.style.top = '0';
+    clone.classList.add('export-mode');
+
+    // Disable animations on clone so html2canvas doesn't capture them at opacity 0
+    clone.style.animation = 'none';
+    clone.style.transition = 'none';
+    clone.style.opacity = '1';
+    const animatedEls = clone.querySelectorAll('.animate-morph');
+    animatedEls.forEach(el => {
+      (el as HTMLElement).style.animation = 'none';
+      (el as HTMLElement).style.transition = 'none';
+      (el as HTMLElement).style.opacity = '1';
+    });
+
+    document.body.appendChild(clone);
+
+    try {
+      return await html2canvas(clone, {
+        scale: 2,
+        useCORS: true,
+        backgroundColor: bgColor,
+        width: 1920,
+        windowWidth: 1920,
+      });
+    } finally {
+      document.body.removeChild(clone);
+    }
+  }, [shifts]);
+
+  const exportPNG = useCallback(async () => {
+    setExporting('png');
+    try {
+      const canvas = await captureSchedule();
+      if (!canvas) return;
+      const dataUrl = canvas.toDataURL('image/png');
+      const a = document.createElement('a');
+      a.href = dataUrl;
+      a.download = `${teamDisplayName}_${selectedCycle[0]}-${selectedCycle[1]}月排班表.png`;
+      a.style.display = 'none';
+      document.body.appendChild(a);
+      a.click();
+      setTimeout(() => document.body.removeChild(a), 200);
+    } catch (err) {
+      console.error('PNG export failed:', err);
+      alert('匯出 PNG 失敗');
+    } finally {
+      setExporting('');
+    }
+  }, [captureSchedule, teamDisplayName, selectedCycle]);
+
+  const exportPDF = useCallback(async () => {
+    setExporting('pdf');
+    try {
+      const canvas = await captureSchedule();
+      if (!canvas) return;
+      const imgData = canvas.toDataURL('image/png');
+      const pdf = new jsPDF({ orientation: 'landscape', unit: 'px', format: [1920, 1080] });
+      const pdfW = pdf.internal.pageSize.getWidth();
+      const pdfH = pdf.internal.pageSize.getHeight();
+      const imgRatio = canvas.width / canvas.height;
+      let drawW = pdfW;
+      let drawH = pdfW / imgRatio;
+      if (drawH > pdfH) {
+        drawH = pdfH;
+        drawW = pdfH * imgRatio;
+      }
+      pdf.addImage(imgData, 'PNG', 0, 0, drawW, drawH);
+      pdf.save(`${teamDisplayName}_${selectedCycle[0]}-${selectedCycle[1]}月排班表.pdf`);
+    } catch (err) {
+      console.error('PDF export failed:', err);
+      alert('匯出 PDF 失敗');
+    } finally {
+      setExporting('');
+    }
+  }, [captureSchedule, teamDisplayName, selectedCycle]);
+
   // 渲染表格
   const renderLocationTable = (locationName: string, roles: readonly string[]) => {
     const locationShifts = shifts.filter(s => s.location === locationName);
@@ -935,13 +1028,23 @@ export const AdminSchedulerTeam: React.FC<AdminSchedulerTeamProps> = ({ team, in
               </button>
 
               <div ref={exportMenuRef} style={{ position: 'relative', zIndex: showExportMenu ? 100 : 1 }}>
-                <button className="btn-primary" disabled={!hasShifts} onClick={() => setShowExportMenu(v => !v)}>
-                  <Download size={18} /> 匯出 <ChevronDown size={16} />
+                <button
+                  className="btn-primary"
+                  disabled={!hasShifts || exporting !== ''}
+                  onClick={() => setShowExportMenu(v => !v)}
+                >
+                  <Download size={18} /> {exporting ? '匯出中...' : '匯出'} <ChevronDown size={16} />
                 </button>
                 {showExportMenu && (
                   <div className="export-dropdown">
                     <button onClick={() => { exportExcel(); setShowExportMenu(false); }}>
                       <FileSpreadsheet size={16} /> Excel
+                    </button>
+                    <button onClick={() => { exportPNG(); setShowExportMenu(false); }}>
+                      <ImageIcon size={16} /> PNG
+                    </button>
+                    <button onClick={() => { exportPDF(); setShowExportMenu(false); }}>
+                      <FileText size={16} /> PDF
                     </button>
                   </div>
                 )}
