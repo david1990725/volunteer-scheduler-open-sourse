@@ -161,7 +161,7 @@ export const FormAudio: React.FC<FrontendFormProps> = ({ currentUser, onLogout, 
                   borderRadius: '12px', gap: '20px', flexWrap: 'wrap'
                 }}>
                   <div style={{ fontSize: '1.2rem', fontWeight: 700, width: '80px', color: 'var(--text-primary)' }}>{date}</div>
-                  <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', flex: 1 }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '12px', flex: 1 }}>
                     {['山莊IN HOUSE', '山莊OB', '宣教IN HOUSE', '宣教OB'].map(loc => {
                       const checked = (availability[date] || []).includes(loc);
                       return (
@@ -170,7 +170,7 @@ export const FormAudio: React.FC<FrontendFormProps> = ({ currentUser, onLogout, 
                           background: checked ? 'var(--icon-bg)' : 'var(--bg-card)', 
                           padding: '12px 16px', borderRadius: '12px', 
                           border: checked ? '1px solid var(--icon-accent)' : '1px solid var(--bg-input-border)', 
-                          whiteSpace: 'nowrap', flex: 1, minWidth: '140px', justifyContent: 'center',
+                          whiteSpace: 'nowrap', justifyContent: 'center',
                           boxShadow: checked ? '0 4px 12px rgba(234, 179, 8, 0.1)' : 'none',
                           transition: 'all 0.2s'
                         }}>
