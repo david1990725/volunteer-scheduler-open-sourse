@@ -48,8 +48,8 @@ export const TEAM_DEFAULT_ROLES: Record<TeamKey | string, { sz: string[]; xj: st
     xj: ['宣教IN', '宣教OB'],
   },
   stage: {
-    sz: ['舞監'],
-    xj: ['舞監'],
+    sz: ['舞監1', '舞監2'],
+    xj: ['舞監1', '舞監2'],
   },
   admin: {
     sz: [],
@@ -199,6 +199,10 @@ export const ROLE_MAP: Record<string, string> = {
   light_xj: '宣教燈光',
   stage_sz: '山莊舞監',
   stage_xj: '宣教舞監',
+  stage1_sz: '山莊舞監1',
+  stage2_sz: '山莊舞監2',
+  stage1_xj: '宣教舞監1',
+  stage2_xj: '宣教舞監2',
   ih_sz: '山莊IN',
   ih_xj: '宣教IN',
   ob_sz: '山莊OB',

@@ -32,9 +32,9 @@ export const FormLight: React.FC<FrontendFormProps> = ({ currentUser, onLogout, 
     setAvailability(prev => {
       const current = prev[date] || [];
       if (current.includes(location)) {
-        return { ...prev, [date]: current.filter(l => l !== location) };
+        return { ...prev, [date]: [] };
       } else {
-        return { ...prev, [date]: [...current, location] };
+        return { ...prev, [date]: [location] };
       }
     });
   };
@@ -164,23 +164,24 @@ export const FormLight: React.FC<FrontendFormProps> = ({ currentUser, onLogout, 
                     {['山莊燈光', '宣教燈光'].map(loc => {
                       const checked = (availability[date] || []).includes(loc);
                       return (
-                        <label key={loc} style={{ 
-                          display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', 
-                          background: checked ? 'var(--icon-bg)' : 'var(--bg-card)', 
-                          padding: '12px 16px', borderRadius: '12px', 
-                          border: checked ? '1px solid var(--icon-accent)' : '1px solid var(--bg-input-border)', 
-                          whiteSpace: 'nowrap', flex: 1, minWidth: '120px', justifyContent: 'center',
-                          boxShadow: checked ? '0 4px 12px rgba(234, 179, 8, 0.1)' : 'none',
-                          transition: 'all 0.2s'
-                        }}>
-                          <input 
-                            type="checkbox" 
-                            checked={checked}
-                            onChange={() => toggleAvailability(date, loc)}
-                            style={{ accentColor: 'var(--icon-accent)', width: '22px', height: '22px' }}
-                          />
-                          <span style={{ fontSize: '1.05rem', fontWeight: checked ? 600 : 400, color: checked ? 'var(--text-primary)' : 'var(--text-secondary)' }}>{loc}</span>
-                        </label>
+                          <label key={loc} style={{ 
+                            display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', 
+                            background: checked ? 'var(--icon-bg)' : 'var(--bg-card)', 
+                            padding: '12px 16px', borderRadius: '12px', 
+                            border: checked ? '1px solid var(--icon-accent)' : '1px solid var(--bg-input-border)', 
+                            whiteSpace: 'nowrap', flex: 1, minWidth: '140px', justifyContent: 'center',
+                            boxShadow: checked ? '0 4px 12px rgba(234, 179, 8, 0.1)' : 'none',
+                            transition: 'all 0.2s'
+                          }}>
+                            <input 
+                              type="radio" 
+                              checked={checked}
+                              onClick={() => toggleAvailability(date, loc)}
+                              onChange={() => {}}
+                              style={{ accentColor: 'var(--icon-accent)', width: '22px', height: '22px', flexShrink: 0 }}
+                            />
+                            <span style={{ fontSize: '1.05rem', fontWeight: checked ? 600 : 400, color: checked ? 'var(--text-primary)' : 'var(--text-secondary)' }}>{loc}</span>
+                          </label>
                       );
                     })}
                   </div>
