@@ -3,10 +3,10 @@
 // =============================================================================
 
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { verifyCronAuth } from './utils/lineService';
-import handleBirthday from './cron-birthday';
-import handleSaturday from './cron-saturday';
-import handleCycle from './cron-cycle';
+import { verifyCronAuth } from './utils/lineService.js';
+import handleBirthday from './cron-birthday.js';
+import handleSaturday from './cron-saturday.js';
+import handleCycle from './cron-cycle.js';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   // 🔒 驗證 Cron 授權

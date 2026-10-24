@@ -4,6 +4,7 @@ import type { Volunteer } from '../utils/scheduler';
 import { parseSkillTreeData } from '../utils/scheduler';
 import * as cloudService from '../utils/googleSheets';
 import { UserAvatar } from './UserAvatar';
+import { auth } from '../utils/firebase';
 import {
   toTeamKey,
   toTeamName,
@@ -30,7 +31,8 @@ export const AdminRosterTeam: React.FC<AdminRosterTeamProps> = ({ team }) => {
     userLevel: string;
     avatar: string;
     birthday: string;
-  }>({ name: '', jobTitle: [], userLevel: 'user', avatar: '', birthday: '' });
+    managedTeams: string[];
+  }>({ name: '', jobTitle: [], userLevel: 'user', avatar: '', birthday: '', managedTeams: [] });
   
   const [saving, setSaving] = useState(false);
 
@@ -135,6 +137,7 @@ export const AdminRosterTeam: React.FC<AdminRosterTeamProps> = ({ team }) => {
       userLevel: user.userLevel || user.role || 'user',
       avatar: user.pictureUrl || '',
       birthday: user.birthday || '',
+      managedTeams: user.managedTeams || [],
     });
   };
 
@@ -156,6 +159,7 @@ export const AdminRosterTeam: React.FC<AdminRosterTeamProps> = ({ team }) => {
         userLevel: editForm.userLevel,
         pictureUrl: editForm.avatar.trim(),
         birthday: editForm.birthday.trim(),
+        managedTeams: editForm.managedTeams,
       };
       const res = await cloudService.updateUser(payload);
       if (res.success) {
@@ -182,6 +186,36 @@ export const AdminRosterTeam: React.FC<AdminRosterTeamProps> = ({ team }) => {
         return { ...prev, jobTitle: [...current, option] };
       }
     });
+  };
+
+  const toggleManagedTeam = (option: string) => {
+    const teamKey = toTeamKey(option);
+    setEditForm(prev => ({
+      ...prev,
+      managedTeams: prev.managedTeams.includes(teamKey)
+        ? prev.managedTeams.filter(team => team !== teamKey)
+        : [...prev.managedTeams, teamKey],
+    }));
+  };
+
+  const createInvite = async (user: Volunteer) => {
+    if (!user.volunteerId) { alert('找不到此名冊成員的識別資料，請重新整理後再試。'); return; }
+    try {
+      const firebaseToken = await auth.currentUser?.getIdToken();
+      const baseUrl = import.meta.env.VITE_FUNCTIONS_URL || `https://asia-east1-${import.meta.env.VITE_FIREBASE_PROJECT_ID}.cloudfunctions.net`;
+      if (!firebaseToken || !baseUrl) throw new Error('請先使用 LINE 登入管理帳號。');
+      const response = await fetch(`${baseUrl}/createLineBindingInvite`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${firebaseToken}` },
+        body: JSON.stringify({ volunteerId: user.volunteerId }),
+      });
+      const payload = await response.json().catch(() => null) as { url?: string; error?: string } | null;
+      if (!response.ok || !payload?.url) throw new Error(payload?.error || '無法產生邀請連結');
+      await navigator.clipboard.writeText(payload.url);
+      alert(`「${user.name}」的邀請連結已複製，可私訊給本人；連結 7 天內有效且僅能使用一次。`);
+    } catch (err) {
+      alert(err instanceof Error ? err.message : '無法產生邀請連結');
+    }
   };
 
   const toggleAddJobTitle = (option: string) => {
@@ -350,6 +384,19 @@ export const AdminRosterTeam: React.FC<AdminRosterTeamProps> = ({ team }) => {
                 )}
               </div>
 
+              {isEditing && editForm.userLevel === 'admin' && (
+                <div>
+                  <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '8px' }}>管理團隊範圍（留空代表總管理員）</div>
+                  <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                    {TEAM_OPTIONS.map(option => (
+                      <label key={option} style={{ fontSize: '0.85rem', color: 'var(--text-primary)' }}>
+                        <input type="checkbox" checked={editForm.managedTeams.includes(toTeamKey(option))} onChange={() => toggleManagedTeam(option)} /> {option}
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               <div>
                 <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '6px', display: 'flex', alignItems: 'center', gap: '6px' }}>
                   <Cake size={14} color="var(--icon-accent)" /> 生日
@@ -380,9 +427,12 @@ export const AdminRosterTeam: React.FC<AdminRosterTeamProps> = ({ team }) => {
                     </button>
                   </>
                 ) : (
-                  <button className="btn-secondary" onClick={() => handleEdit(user)} style={{ padding: '8px 16px', fontSize: '0.9rem', width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
-                    <Edit2 size={16} /> 編輯資料
-                  </button>
+                  <>
+                    {!user.lineId && <button className="btn-primary" onClick={() => createInvite(user)} style={{ padding: '8px 16px', fontSize: '0.9rem', width: '100%', marginBottom: '8px' }}>產生綁定邀請連結</button>}
+                    <button className="btn-secondary" onClick={() => handleEdit(user)} style={{ padding: '8px 16px', fontSize: '0.9rem', width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
+                      <Edit2 size={16} /> 編輯資料
+                    </button>
+                  </>
                 )}
               </div>
             </div>

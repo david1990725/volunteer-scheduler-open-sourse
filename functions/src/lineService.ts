@@ -17,6 +17,9 @@ export interface LineEvent {
     id: string;
     type: string;
     text?: string;
+    mention?: {
+      mentionees: Array<{ type: string; userId?: string; index?: number; length?: number }>;
+    };
   };
   postback?: {
     data: string;
@@ -47,6 +50,7 @@ export function getLineConfig() {
   return {
     channelAccessToken: process.env.LINE_CHANNEL_ACCESS_TOKEN || '',
     channelSecret: process.env.LINE_CHANNEL_SECRET || '',
+    lineLoginChannelId: process.env.LINE_LOGIN_CHANNEL_ID || '',
     systemUrl: process.env.SYSTEM_URL || 'https://bolproduction.vercel.app',
     adminEmail: process.env.ADMIN_EMAIL || '',
   };
@@ -55,7 +59,8 @@ export function getLineConfig() {
 /** 🔒 驗證 LINE Webhook HMAC-SHA256 簽名 */
 export function verifyLineSignature(rawBody: string, signature: string | undefined): boolean {
   const { channelSecret } = getLineConfig();
-  if (!channelSecret) return true; // 若尚未設定 Secret 則暫時放行
+  // Webhook 未設定 secret 時必須停止處理，不能以開發方便放行公開端點。
+  if (!channelSecret) return false;
   if (!signature) return false;
 
   const hash = crypto.createHmac('sha256', channelSecret).update(rawBody).digest('base64');

@@ -45,6 +45,13 @@ export interface VolunteerRecord {
   isBackfillLeader?: boolean;
 }
 
+export function canServeNetworkDirector(volunteer: VolunteerRecord): boolean {
+  return Boolean(
+    volunteer.skillRoles?.includes('director_sz') || volunteer.skillRoles?.includes('director_xj') ||
+    ((volunteer.videoSkills?.networkDirector || 0) > 0 && (volunteer.videoSkills?.ad || 0) >= 5)
+  );
+}
+
 export interface ShiftSlot {
   date: string;
   location: string;
@@ -272,6 +279,17 @@ export async function applySlotFill(
   volunteerName: string
 ): Promise<{ success: boolean; message: string }> {
   try {
+    const volunteer = (await getAllVolunteers()).find(v => v.name === volunteerName);
+    if (!volunteer) return { success: false, message: '找不到已綁定的同工' };
+    if (role === '網路導播' && (!location.includes('山莊') || !canServeNetworkDirector(volunteer))) {
+      return { success: false, message: '不符合山莊網路導播補位資格' };
+    }
+    const finalScheduleForConflict = await getFinalSchedule(cycleKey);
+    const conflict = finalScheduleForConflict?.shifts?.some(shift =>
+      (shift.date.includes(targetDate) || targetDate.includes(shift.date)) &&
+      Object.values(shift.assignments || {}).includes(volunteerName)
+    );
+    if (conflict) return { success: false, message: '您當日已有服事安排，請洽排班幹部協調' };
     const schedule = await getSchedule(cycleKey, team);
     if (!schedule || !schedule.shifts) {
       return { success: false, message: `找不到週期 ${cycleKey} 的排班表` };

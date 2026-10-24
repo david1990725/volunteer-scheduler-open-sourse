@@ -25,6 +25,16 @@ export interface VolunteerRecord {
   birthday?: string;
   isFullTimer?: boolean;
   isBackfillLeader?: boolean;
+  managedTeams?: string[];
+  isActive?: boolean;
+}
+
+export interface VolunteerAuthRecord {
+  volunteerId: string;
+  name: string;
+  userLevel: string;
+  managedTeams: string[];
+  isActive: boolean;
 }
 
 export interface ParsedAssignment {
@@ -127,6 +137,22 @@ export async function getVolunteerByLineId(lineId: string): Promise<VolunteerRec
     console.error('[getVolunteerByLineId Error]:', err);
   }
   return null;
+}
+
+/** 供登入與綁定使用的最小身分資料；不把完整名冊送回前端。 */
+export async function getVolunteerAuthRecordByLineId(lineId: string): Promise<VolunteerAuthRecord | null> {
+  if (!lineId) return null;
+  const snap = await db.collection('volunteers').where('lineId', '==', lineId).limit(1).get();
+  if (snap.empty) return null;
+  const record = snap.docs[0];
+  const data = record.data() as any;
+  return {
+    volunteerId: record.id,
+    name: data.name || record.id,
+    userLevel: data.userLevel || 'user',
+    managedTeams: Array.isArray(data.managedTeams) ? data.managedTeams : [],
+    isActive: data.isActive !== false,
+  };
 }
 
 /** 記錄或更新群組狀態 */
@@ -474,7 +500,7 @@ export async function applySlotFillToMatrix(
     // 1. 定位該儲存格的地點、日期與職位名稱 (優先採用傳入的精準參數)
     let targetLoc = targetLocParam || '';
     let targetDate = targetDateParam || '';
-    let targetRole = targetRoleParam || String(matrix[rowIndex][0] || '').trim();
+    const targetRole = targetRoleParam || String(matrix[rowIndex][0] || '').trim();
 
     // 往上尋找地點 (若未傳入)
     if (!targetLoc) {
@@ -564,6 +590,13 @@ export function canVolunteerFillVacancy(volunteer: VolunteerRecord, roleName: st
   // 1. 若該職位為備用席位，不列入推播
   if (roleName.includes('備用') || roleName.includes('備份')) return false;
 
+  if (roleName === '網路導播') {
+    return Boolean(
+      volunteer.skillRoles?.includes('director_sz') || volunteer.skillRoles?.includes('director_xj') ||
+      ((volunteer.videoSkills?.networkDirector || 0) > 0 && (volunteer.videoSkills?.ad || 0) >= 5)
+    );
+  }
+
   // 2. 全能補位幹部 (Backfill Leader) 或 全職同工 -> 具備所有補位資格
   if (volunteer.isBackfillLeader || volunteer.isFullTimer) return true;
 
@@ -608,4 +641,3 @@ export function canVolunteerFillVacancy(volunteer: VolunteerRecord, roleName: st
 
   return false;
 }
-

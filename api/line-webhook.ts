@@ -9,18 +9,18 @@ import {
   getLineConfig,
   LineEvent,
   LineMessage,
-} from './utils/lineService';
+} from './utils/lineService.js';
 import {
   getVolunteerByLineId,
   saveGroupStatus,
   applySlotFill,
-} from './utils/firebaseAdmin';
+} from './utils/firebaseAdmin.js';
 import {
   getUpcomingSunday,
   findTeamVacanciesForVolunteer,
   formatWeeklyTeamRoster,
   sendAdminNotificationEmail,
-} from './utils/schedulerHelper';
+} from './utils/schedulerHelper.js';
 
 /** 取得解析後的 Request Body 與字串 */
 function getPayload(req: VercelRequest): { rawBody: string; payload: any } {
@@ -29,14 +29,14 @@ function getPayload(req: VercelRequest): { rawBody: string; payload: any } {
       if (typeof req.body === 'string') {
         try {
           return { rawBody: req.body, payload: JSON.parse(req.body) };
-        } catch (e) {
+        } catch {
           return { rawBody: req.body, payload: {} };
         }
       } else if (Buffer.isBuffer(req.body)) {
         const str = req.body.toString('utf8');
         try {
           return { rawBody: str, payload: JSON.parse(str) };
-        } catch (e) {
+        } catch {
           return { rawBody: str, payload: {} };
         }
       } else if (typeof req.body === 'object') {
@@ -99,8 +99,8 @@ async function handleSingleEvent(event: LineEvent) {
       const welcomeText =
         '平安！歡迎加入【義工排班官方小幫手】🎉\n\n' +
         '本帳號將提供：\n' +
-        '1. 📅 每週六下午 16:00 週日服事貼心提醒\n' +
-        '2. 📝 每期服事意願表單催填通知\n' +
+        '1. 📅 每週服事名單提醒\n' +
+        '2. 📝 可隨時重新送出服事意願表單\n' +
         '3. ⚡ 即時空缺補位與班表查詢\n' +
         '4. 🎂 專屬生日祝福\n\n' +
         '隨時輸入「本週服事」即可快速查詢名單！\n' +
@@ -110,8 +110,8 @@ async function handleSingleEvent(event: LineEvent) {
       return;
     }
 
-    // 2. 加入群組 (join / memberJoined)
-    if ((event.type === 'join' || event.type === 'memberJoined') && event.replyToken) {
+    // 2. Bot 加入群組
+    if (event.type === 'join' && event.replyToken) {
       const groupId = event.source.groupId || event.source.roomId;
       if (groupId) {
         await saveGroupStatus(groupId, event.source.type || 'group', 'active');
@@ -119,17 +119,16 @@ async function handleSingleEvent(event: LineEvent) {
 
       const groupWelcome =
         '平安！感謝邀請【義工排班官方小幫手】加入群組 🤝\n\n' +
-        '小幫手將會在：\n' +
-        '⏰ 每週六下午 16:00 自動公佈【本週日服事同工完整名單】\n' +
-        '📢 週期意願表單開放 (15號) 與截止 (20號) 時提醒大家填報！\n\n' +
+        '小幫手會在每週排班完成後，提供【本週日服事同工完整名單】。\n' +
+        '意願表單可隨時填寫，重送時以同一週期的最新版本為準。\n\n' +
         '隨時輸入「本週服事」即可快速查詢本週服事同工名單！';
 
       await sendLineReply(event.replyToken, [{ type: 'text', text: groupWelcome }]);
       return;
     }
 
-    // 3. 離開群組 (leave / memberLeft)
-    if (event.type === 'leave' || event.type === 'memberLeft') {
+    // 3. 只有 Bot 自己離開群組才停用群組；成員離開不影響群組公告。
+    if (event.type === 'leave') {
       const groupId = event.source.groupId || event.source.roomId;
       if (groupId) {
         await saveGroupStatus(groupId, event.source.type || 'group', 'left');
@@ -170,7 +169,11 @@ async function handlePostbackEvent(event: LineEvent) {
 
     // 尋找此 userId 對應的義工姓名
     const vol = await getVolunteerByLineId(userId);
-    const volunteerName = vol?.name || '熱心同工';
+    if (!vol) {
+      await sendLineReply(replyToken, [{ type: 'text', text: '⚠️ 請先綁定有效的同工帳號。' }]);
+      return;
+    }
+    const volunteerName = vol.name;
 
     const result = await applySlotFill(cycle, team, date, loc, role, volunteerName);
 

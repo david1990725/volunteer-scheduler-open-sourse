@@ -36,7 +36,7 @@ export const TEAM_KEY_OPTIONS: TeamKey[] = ['video', 'light', 'stage', 'audio', 
 /** 各團隊在山莊大堂與宣教大樓的預設職位清單 */
 export const TEAM_DEFAULT_ROLES: Record<TeamKey | string, { sz: string[]; xj: string[] }> = {
   video: {
-    sz: ['導播', 'AD', 'CAM1', 'CAM2', 'CAM3', 'CAM4', '平面'],
+    sz: ['導播', '平面', 'CAM1', 'CAM2', 'CAM3', '網路導播', 'CAM4', 'AD'],
     xj: ['導播', '信息版'],
   },
   light: {
@@ -106,14 +106,15 @@ export function getTeamAliases(nameOrKey?: string): string[] {
 }
 
 // -----------------------------------------------------------------------------
-// 影視團隊 7 軸技能 (videoSkills)
+// 影視團隊 8 軸技能 (videoSkills)
 // -----------------------------------------------------------------------------
 
-export const VIDEO_SKILL_KEYS = ['director', 'ad', 'photo', 'cam1', 'cam2', 'cam3', 'cam4'] as const;
+export const VIDEO_SKILL_KEYS = ['director', 'networkDirector', 'ad', 'photo', 'cam1', 'cam2', 'cam3', 'cam4'] as const;
 export type VideoSkillKey = typeof VIDEO_SKILL_KEYS[number];
 
 export const VIDEO_SKILL_MAP: Record<VideoSkillKey, string> = {
   director: '導播',
+  networkDirector: '網路導播',
   ad: 'AD',
   photo: '平面',
   cam1: 'CAM1',
@@ -124,6 +125,7 @@ export const VIDEO_SKILL_MAP: Record<VideoSkillKey, string> = {
 
 export const REVERSE_VIDEO_SKILL_MAP: Record<string, VideoSkillKey> = {
   '導播': 'director',
+  '網路導播': 'networkDirector',
   'AD': 'ad',
   '平面': 'photo',
   'Photo': 'photo',
@@ -188,6 +190,7 @@ export const AUDIO_SKILL_AXES: {
 export const ROLE_MAP: Record<string, string> = {
   director_sz: '山莊導播',
   director_xj: '宣教導播',
+  network_director: '網路導播',
   ad: 'AD',
   photo: '平面',
   cam1: 'CAM1',

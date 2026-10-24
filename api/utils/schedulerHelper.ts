@@ -2,7 +2,7 @@
 // Helper routines for Date, Cycle, and Vacancy calculations
 // =============================================================================
 
-import { getSchedule, getFinalSchedule, VolunteerRecord } from './firebaseAdmin';
+import { getSchedule, getFinalSchedule, canServeNetworkDirector, type VolunteerRecord } from './firebaseAdmin.js';
 
 /** 取得當週週日日期字串 (MM/DD) */
 export function getUpcomingSunday(baseDate: Date = new Date()): { sundayStr: string; sundayDate: Date; cycleKey: string } {
@@ -57,6 +57,7 @@ export async function findTeamVacanciesForVolunteer(
         for (const [role, assignee] of Object.entries(shift.assignments)) {
           // 備用人員非主要服事空缺，不應觸發呼叫補位機制
           if (role.includes('備用')) continue;
+          if (role === '網路導播' && (!shift.location.includes('山莊') || !canServeNetworkDirector(volunteer))) continue;
 
           if (assignee === '缺' || !assignee || assignee === '') {
             const key = `${shift.location}|${role}|${sundayStr}`;
@@ -102,7 +103,8 @@ export async function formatWeeklyTeamRoster(): Promise<string> {
           const lines = Object.entries(shift.assignments)
             .filter(([role, person]) => {
               // 備用人員若無人擔任，不顯示於群組名單避免誤解為缺額
-              if (role.includes('備用') && (!person || person === '缺' || person.trim() === '')) return false;
+              const assigned = String(person || '');
+              if (role.includes('備用') && (!assigned || assigned === '缺' || assigned.trim() === '')) return false;
               return true;
             })
             .map(([role, person]) => `  • ${role}：${person || '缺'}`);

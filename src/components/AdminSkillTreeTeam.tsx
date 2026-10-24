@@ -491,7 +491,7 @@ export const AdminSkillTreeTeam: React.FC<AdminSkillTreeTeamProps> = ({ team }) 
               </div>
 
               {/* 根據團隊類型切換：
-                  1. 影視團隊：7 軸雷達圖 (0-10) + 特殊排班機制核選
+                  1. 影視團隊：8 軸雷達圖 (0-10) + 特殊排班機制核選
                   2. 音控團隊：4 軸雷達圖 (0-3) + 各軸獨立 Level 滑桿
                   3. 燈光 / 舞監：Level 1~3 晉升面板 */}
               {isVideoTeam ? (
@@ -542,6 +542,9 @@ export const AdminSkillTreeTeam: React.FC<AdminSkillTreeTeamProps> = ({ team }) 
                           </div>
                         </div>
                       ))}
+                      <div style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', lineHeight: 1.6 }}>
+                        網路導播排班資格：具備任一地點導播資格，或網路導播技能大於 0 且 AD 技能至少 5。此職位僅設於山莊。
+                      </div>
                     </div>
                   </div>
 

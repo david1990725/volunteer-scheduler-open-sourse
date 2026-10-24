@@ -1,0 +1,55 @@
+// Target Firestore Rules for the authenticated-backend migration.
+//
+// This file is intentionally not referenced by firebase.json yet. The current
+// browser client performs anonymous direct writes, so deploying these rules
+// before its operations move to Firebase Functions would interrupt production.
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() { return request.auth != null; }
+    function isSuperAdmin() {
+      return signedIn() && request.auth.token.role == 'super_admin';
+    }
+    function manages(teamId) {
+      return isSuperAdmin() ||
+        (signedIn() && request.auth.token.role == 'team_lead' &&
+          teamId in request.auth.token.managedTeams);
+    }
+    function isSelf(volunteerId) {
+      return signedIn() && request.auth.token.volunteerId == volunteerId;
+    }
+
+    // Full roster and sensitive fields are server-managed. Team-scoped views
+    // are published separately under team_members after authorization.
+    match /volunteers/{volunteerId} {
+      allow get: if isSuperAdmin() || isSelf(volunteerId);
+      allow list: if isSuperAdmin();
+      allow write: if false;
+    }
+
+    match /team_members/{teamId}/members/{volunteerId} {
+      allow read: if manages(teamId);
+      allow write: if false;
+    }
+
+    // A member can read and submit only their own response. The Function
+    // validates team membership and immutable owner/cycle fields before write.
+    match /formResponses/{responseId} {
+      allow read: if isSuperAdmin() ||
+        (signedIn() && resource.data.team in request.auth.token.managedTeams) ||
+        (signedIn() && resource.data.volunteerId == request.auth.token.volunteerId);
+      allow create: if signedIn() &&
+        request.resource.data.volunteerId == request.auth.token.volunteerId;
+      allow update, delete: if false;
+    }
+
+    // Back-end only: the UI reads a filtered public schedule projection.
+    match /schedules/{scheduleId} { allow read, write: if false; }
+    match /public_schedules/{scheduleId} { allow read: if true; allow write: if false; }
+    match /line_groups/{groupId} { allow read, write: if false; }
+    match /binding_requests/{requestId} { allow read, write: if false; }
+    match /binding_invites/{inviteId} { allow read, write: if false; }
+    match /audit_logs/{logId} { allow read, write: if false; }
+  }
+}

@@ -1,4 +1,4 @@
-import React, { useState, useRef, useCallback, useEffect } from 'react';
+import React, { useState, useRef, useCallback, useEffect, useMemo } from 'react';
 import {
   Download,
   RotateCcw,
@@ -20,13 +20,16 @@ import { jsPDF } from 'jspdf';
 import {
   parseSkillTreeData,
   parseScheduleResponsesData,
+  canServeNetworkDirector,
   type Shift,
+  type Volunteer,
 } from '../utils/scheduler';
 import { parseGenericTeamScheduleResponses } from '../utils/schedulerGeneric';
 import { parseSpreadsheetFile, fetchCSVAsJson } from '../utils/fileUtils';
 import { getCycleDates, getSundaysForCycle } from '../utils/dateUtils';
 import * as cloudService from '../utils/googleSheets';
 import { toTeamKey, toTeamName, TEAM_DEFAULT_ROLES, type TeamKey } from '../utils/constants';
+import { calculateMeals, displayAssignee } from '../utils/scheduleMeals';
 
 interface AdminSchedulerTeamProps {
   team: string;
@@ -77,6 +80,7 @@ export const AdminSchedulerTeam: React.FC<AdminSchedulerTeamProps> = ({ team, in
   const [scheduleStep, setScheduleStep] = useState<1 | 2 | 3>(1);
   const [shifts, setShifts] = useState<Shift[]>([]);
   const [manualEdits, setManualEdits] = useState<Record<string, string>>({});
+  const [volunteerLookup, setVolunteerLookup] = useState<Record<string, Volunteer>>({});
   const [editMode, setEditMode] = useState(false);
   const [loading, setLoading] = useState(false);
   const [uploadedFileName, setUploadedFileName] = useState('');
@@ -123,10 +127,10 @@ export const AdminSchedulerTeam: React.FC<AdminSchedulerTeamProps> = ({ team, in
   const scheduleRef = useRef<HTMLDivElement>(null);
   const exportMenuRef = useRef<HTMLDivElement>(null);
 
-  const teamRoles = TEAM_DEFAULT_ROLES[teamKey] || {
+  const teamRoles = useMemo(() => TEAM_DEFAULT_ROLES[teamKey] || {
     sz: ['服事員'],
     xj: ['服事員'],
-  };
+  }, [teamKey]);
 
   const editKey = (loc: string, date: string, field: string) => `${loc}|${date}|${field}`;
 
@@ -140,11 +144,28 @@ export const AdminSchedulerTeam: React.FC<AdminSchedulerTeamProps> = ({ team, in
   const setEdit = (loc: string, date: string, field: string, value: string) =>
     setManualEdits(prev => ({ ...prev, [editKey(loc, date, field)]: value }));
 
-  const getCellValue = (loc: string, date: string, role: string, fallback: string) => {
+  const manualWarning = (loc: string, date: string, role: string, value: string) => {
+    const name = value.trim().replace(/（兼任）$/, '');
+    if (!name || name === '缺') return '';
+    const notes: string[] = [];
+    if (role === '網路導播' && loc !== '山莊大堂') notes.push('網路導播僅設於山莊');
+    if (role === '網路導播' && volunteerLookup[name] && !canServeNetworkDirector(volunteerLookup[name])) notes.push('未達網路導播資格');
+    const roles = shifts.filter(shift => shift.date === date).flatMap(shift =>
+      Object.entries(shift.assignments || {}).filter(([otherRole]) => !otherRole.includes('餐')).map(([otherRole, person]) =>
+        [shift.location, otherRole, getCellValue(shift.location, date, otherRole, person)] as const));
+    const duplicates = roles.filter(([otherLoc, otherRole, person]) =>
+      (otherLoc !== loc || otherRole !== role) && person.trim().replace(/（兼任）$/, '') === name);
+    if (duplicates.length && !(role === '網路導播' && duplicates.every(([otherLoc, otherRole]) => otherLoc === '山莊大堂' && otherRole === '導播'))) {
+      notes.push('同日已有其他服事');
+    }
+    return notes.join('；');
+  };
+
+  const getCellValue = useCallback((loc: string, date: string, role: string, fallback: string) => {
     const key = editKey(loc, date, role);
     if (key in manualEdits) return manualEdits[key];
     return fallback;
-  };
+  }, [manualEdits]);
 
   // 檢查雲端工作表狀態
   const checkCloudSheetExistence = useCallback(async (cycle: [number, number]) => {
@@ -202,10 +223,14 @@ export const AdminSchedulerTeam: React.FC<AdminSchedulerTeamProps> = ({ team, in
       if (responseFile) {
         responseData = await parseSpreadsheetFile(responseFile);
       } else {
-        const cloudRes = await cloudService.fetchFormResponsesFromCloud(teamDisplayName);
+        const targetCycle = overrideCycle || selectedCycle;
+        const currentYear = new Date().getFullYear();
+        const cycleYear = targetCycle[0] < currentMonths[0] ? currentYear + 1 : currentYear;
+        const cycleId = `${cycleYear}-${String(targetCycle[0]).padStart(2, '0')}-${String(targetCycle[1]).padStart(2, '0')}`;
+        const cloudRes = await cloudService.fetchFormResponsesFromCloud(teamDisplayName, cycleId);
         if (cloudRes.success && cloudRes.data && cloudRes.data.length > 0) {
           responseData = cloudRes.data;
-        } else if (teamKey === 'video') {
+        } else if (teamKey === 'video' && import.meta.env.DEV && import.meta.env.VITE_ENABLE_DEMO_DATA === 'true') {
           responseData = await fetchCSVAsJson('/schedule_responses.csv');
         } else {
           responseData = [];
@@ -220,16 +245,27 @@ export const AdminSchedulerTeam: React.FC<AdminSchedulerTeamProps> = ({ team, in
 
       const resVolunteers = await cloudService.fetchVolunteers();
       const volunteers = parseSkillTreeData(resVolunteers.data || []);
+      setVolunteerLookup(volunteers);
 
       const targetCycle = overrideCycle || selectedCycle;
       const year = new Date().getFullYear();
       const targetSundays = getSundaysForCycle(year, targetCycle);
+      const sheetNamePrefix = `${year}年 ${targetCycle[0]}-${targetCycle[1]}月排班表`;
+      const otherTeams = (['video', 'audio', 'light', 'stage'] as const).filter(key => key !== teamKey);
+      const otherDocs = await Promise.all(otherTeams.map(key => cloudService.fetchTeamScheduleDoc(sheetNamePrefix, key)));
+      const bookedElsewhere: Record<string, string[]> = {};
+      otherDocs.forEach(result => {
+        for (const shift of result.data?.shifts || []) {
+          const names = Object.values(shift.assignments || {}).filter(name => name && name !== '缺');
+          bookedElsewhere[shift.date] = [...new Set([...(bookedElsewhere[shift.date] || []), ...names])];
+        }
+      });
 
       let newShifts: Shift[] = [];
       if (teamKey === 'video') {
-        newShifts = parseScheduleResponsesData(responseData, volunteers, targetSundays);
+        newShifts = parseScheduleResponsesData(responseData, volunteers, targetSundays, bookedElsewhere);
       } else {
-        newShifts = parseGenericTeamScheduleResponses(responseData, volunteers, teamKey, targetSundays);
+        newShifts = parseGenericTeamScheduleResponses(responseData, volunteers, teamKey, targetSundays, bookedElsewhere);
       }
 
       setShifts(newShifts);
@@ -240,7 +276,7 @@ export const AdminSchedulerTeam: React.FC<AdminSchedulerTeamProps> = ({ team, in
     } finally {
       setLoading(false);
     }
-  }, [responseFile, selectedCycle, teamKey, teamDisplayName]);
+  }, [responseFile, selectedCycle, teamKey, teamDisplayName, currentMonths]);
 
   // 若由外部觸發自動排班 (autoGenerate)，則自動執行生成並清除觸發旗標
   useEffect(() => {
@@ -261,8 +297,8 @@ export const AdminSchedulerTeam: React.FC<AdminSchedulerTeamProps> = ({ team, in
       // 1. 優先從 Firebase 雲端讀取該團隊在該週期的班表
       const cloudRes = await cloudService.fetchTeamScheduleDoc(sheetNamePrefix, teamKey);
       if (cloudRes.success && cloudRes.data) {
-        let loadedShifts = cloudRes.data.shifts || [];
-        let loadedEdits: Record<string, string> = {};
+        const loadedShifts = cloudRes.data.shifts || [];
+        const loadedEdits: Record<string, string> = {};
 
         // 若 shifts 陣列為空但有 2D 矩陣資料 (例如舊版相容或 Google Sheets 備份)，由 2D 矩陣解析
         if (loadedShifts.length === 0 && cloudRes.data.data && cloudRes.data.data.length > 1) {
@@ -425,7 +461,7 @@ export const AdminSchedulerTeam: React.FC<AdminSchedulerTeamProps> = ({ team, in
   };
 
   // 產生 2D 矩陣
-  const getSheetData = useCallback((locationName: string, roles: readonly string[]): string[][] | null => {
+  const getSheetData = useCallback((locationName: string, roles: readonly string[], display = false): string[][] | null => {
     const locationShifts = shifts.filter(s => s.location === locationName);
     if (locationShifts.length === 0) return null;
 
@@ -433,25 +469,21 @@ export const AdminSchedulerTeam: React.FC<AdminSchedulerTeamProps> = ({ team, in
     const rows: string[][] = [header];
 
     for (const role of roles) {
-      rows.push([role, ...locationShifts.map(s => getCellValue(locationName, s.date, role, s.assignments[role] || '缺'))]);
+      rows.push([role, ...locationShifts.map(s => {
+        const person = getCellValue(locationName, s.date, role, s.assignments[role] || '缺');
+        return display ? displayAssignee(role, person, s, manualEdits) : person;
+      })]);
     }
 
     const calculateDefaultMeal = (locName: string, shift: Shift, roleList: readonly string[]) => {
-      let active = 0;
-      for (const r of roleList) {
-        const p = getCellValue(locName, shift.date, r, shift.assignments[r] || '缺');
-        if (p && p !== '缺' && p.trim() !== '') active++;
-      }
-      const sp1 = getEdit(locName, shift.date, '備用1');
-      if (sp1 && sp1.trim() !== '' && sp1 !== '缺') active++;
-      const sp2 = getEdit(locName, shift.date, '備用2');
-      if (sp2 && sp2.trim() !== '' && sp2 !== '缺') active++;
-      return active;
+      void locName; void roleList;
+      return calculateMeals(shifts, shift.date, manualEdits);
     };
 
     const mealVal = (s: Shift, field: string) => {
       const valKey = editKey(locationName, s.date, field);
-      const baseNum = calculateDefaultMeal(locationName, s, roles);
+      const counts = calculateDefaultMeal(locationName, s, roles);
+      const baseNum = locationName === '山莊大堂' ? counts.szBreakfast : field === '早餐' ? counts.xjBreakfast : counts.xjLunch;
       const v = valKey in manualEdits ? manualEdits[valKey] : String(baseNum);
       return `${v} 份`;
     };
@@ -464,7 +496,7 @@ export const AdminSchedulerTeam: React.FC<AdminSchedulerTeamProps> = ({ team, in
     }
 
     return rows;
-  }, [shifts, manualEdits]);
+  }, [shifts, manualEdits, getCellValue]);
 
   // 同步寫入雲端
   const handleSyncToCloud = async () => {
@@ -534,7 +566,7 @@ export const AdminSchedulerTeam: React.FC<AdminSchedulerTeamProps> = ({ team, in
     try {
       const workbook = XLSX.utils.book_new();
       const buildSheet = (locationName: string, roles: readonly string[]) => {
-        const rows = getSheetData(locationName, roles);
+        const rows = getSheetData(locationName, roles, true);
         if (!rows) return;
         const ws = XLSX.utils.aoa_to_sheet(rows);
         XLSX.utils.book_append_sheet(workbook, ws, locationName);
@@ -706,7 +738,9 @@ export const AdminSchedulerTeam: React.FC<AdminSchedulerTeamProps> = ({ team, in
                             value={displayed}
                             placeholder="—"
                             onChange={e => setEdit(locationName, shift.date, role, e.target.value)}
+                            title={manualWarning(locationName, shift.date, role, displayed)}
                           />
+                          {manualWarning(locationName, shift.date, role, displayed) && <small style={{ color: '#f59e0b', display: 'block' }}>⚠ {manualWarning(locationName, shift.date, role, displayed)}</small>}
                         </td>
                       );
                     }
@@ -718,7 +752,7 @@ export const AdminSchedulerTeam: React.FC<AdminSchedulerTeamProps> = ({ team, in
                             <span className="empty-slot">缺</span>
                           ) : (
                             <span style={{ fontWeight: 600, color: isOverride ? 'var(--text-override)' : undefined }}>
-                              {displayed}
+                              {displayAssignee(role, displayed, shift, manualEdits)}
                             </span>
                           )}
                         </div>
@@ -774,15 +808,7 @@ export const AdminSchedulerTeam: React.FC<AdminSchedulerTeamProps> = ({ team, in
                     山莊早餐數量
                   </td>
                   {locationShifts.map(shift => {
-                    let active = 0;
-                    for (const r of roles) {
-                      const p = getCellValue(locationName, shift.date, r, shift.assignments[r] || '缺');
-                      if (p && p !== '缺' && p.trim() !== '') active++;
-                    }
-                    const sp1 = getEdit(locationName, shift.date, '備用1');
-                    if (sp1 && sp1.trim() !== '' && sp1 !== '缺') active++;
-                    const sp2 = getEdit(locationName, shift.date, '備用2');
-                    if (sp2 && sp2.trim() !== '' && sp2 !== '缺') active++;
+                    const active = calculateMeals(shifts, shift.date, manualEdits).szBreakfast;
 
                     const valKey = editKey(locationName, shift.date, '早餐');
                     const val = valKey in manualEdits ? manualEdits[valKey] : String(active);
@@ -814,15 +840,7 @@ export const AdminSchedulerTeam: React.FC<AdminSchedulerTeamProps> = ({ team, in
                       宣教早餐數量
                     </td>
                     {locationShifts.map(shift => {
-                      let active = 0;
-                      for (const r of roles) {
-                        const p = getCellValue(locationName, shift.date, r, shift.assignments[r] || '缺');
-                        if (p && p !== '缺' && p.trim() !== '') active++;
-                      }
-                      const sp1 = getEdit(locationName, shift.date, '備用1');
-                      if (sp1 && sp1.trim() !== '' && sp1 !== '缺') active++;
-                      const sp2 = getEdit(locationName, shift.date, '備用2');
-                      if (sp2 && sp2.trim() !== '' && sp2 !== '缺') active++;
+                      const active = calculateMeals(shifts, shift.date, manualEdits).xjBreakfast;
 
                       const valKey = editKey(locationName, shift.date, '早餐');
                       const val = valKey in manualEdits ? manualEdits[valKey] : String(active);
@@ -852,15 +870,7 @@ export const AdminSchedulerTeam: React.FC<AdminSchedulerTeamProps> = ({ team, in
                       宣教午餐數量
                     </td>
                     {locationShifts.map(shift => {
-                      let active = 0;
-                      for (const r of roles) {
-                        const p = getCellValue(locationName, shift.date, r, shift.assignments[r] || '缺');
-                        if (p && p !== '缺' && p.trim() !== '') active++;
-                      }
-                      const sp1 = getEdit(locationName, shift.date, '備用1');
-                      if (sp1 && sp1.trim() !== '' && sp1 !== '缺') active++;
-                      const sp2 = getEdit(locationName, shift.date, '備用2');
-                      if (sp2 && sp2.trim() !== '' && sp2 !== '缺') active++;
+                      const active = calculateMeals(shifts, shift.date, manualEdits).xjLunch;
 
                       const valKey = editKey(locationName, shift.date, '午餐');
                       const val = valKey in manualEdits ? manualEdits[valKey] : String(active);

@@ -9,6 +9,7 @@ import { getCycleDates } from './utils/dateUtils';
 import { useInteractiveLighting } from './hooks/useInteractiveLighting';
 import { useLiff } from './hooks/useLiff';
 import * as cloudService from './utils/googleSheets';
+import { auth, signOutFirebase } from './utils/firebase';
 import { Login } from './components/Login';
 import { FormVideo } from './components/FormVideo';
 import { FormLight } from './components/FormLight';
@@ -20,6 +21,7 @@ import { AdminSkillTreeTeam } from './components/AdminSkillTreeTeam';
 import { AdminSchedulerTeam } from './components/AdminSchedulerTeam';
 import { AdminNav } from './components/AdminNav';
 import { HomePage } from './components/HomePage';
+import { GroupBindingRequest } from './components/GroupBindingRequest';
 
 interface ApprovedVersion {
   timestamp: string;
@@ -30,27 +32,25 @@ interface ApprovedVersion {
 }
 
 function App() {
+  const userSessionKey = 'volunteer_scheduler_user';
+  const getSavedUser = (): Volunteer | null => {
+    const saved = localStorage.getItem(userSessionKey) || sessionStorage.getItem(userSessionKey);
+    if (!saved) return null;
+    try { return JSON.parse(saved); } catch { return null; }
+  };
   const [view, setView] = useState<'login' | 'loading' | 'home' | 'frontend' | 'admin'>(() => {
-    const saved = localStorage.getItem('volunteer_scheduler_user');
-    return saved ? 'home' : 'login';
+    return getSavedUser() ? 'home' : 'login';
   });
   
   const [adminTeam, setAdminTeam] = useState<'video' | 'light' | 'stage' | 'audio'>('video');
   const [adminSubTab, setAdminSubTab] = useState<'roster' | 'skills' | 'raw' | 'scheduler'>('roster');
   const [adminTeamSelected, setAdminTeamSelected] = useState(false);
   const [homeSelectedTeam, setHomeSelectedTeam] = useState<string>('');
+  const [bindingRequestId, setBindingRequestId] = useState(() => new URLSearchParams(window.location.search).get('bindingRequest'));
   
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [currentUser, setCurrentUser] = useState<Volunteer | null>(() => {
-    const saved = localStorage.getItem('volunteer_scheduler_user');
-    if (saved) {
-      try {
-        return JSON.parse(saved);
-      } catch (e) {
-        return null;
-      }
-    }
-    return null;
+    return getSavedUser();
   });
   const { profile, logout: liffLogout } = useLiff();
 
@@ -61,7 +61,8 @@ function App() {
         console.log('[Avatar] 偵測到使用者更新了 LINE 個人頭像，動態同步中...', profile.pictureUrl);
         const updatedUser = { ...currentUser, pictureUrl: profile.pictureUrl };
         setCurrentUser(updatedUser);
-        localStorage.setItem('volunteer_scheduler_user', JSON.stringify(updatedUser));
+        const targetStorage = localStorage.getItem(userSessionKey) ? localStorage : sessionStorage;
+        targetStorage.setItem(userSessionKey, JSON.stringify(updatedUser));
         // 同步寫入 Firestore
         cloudService.updateVolunteerLineId({
           name: currentUser.name,
@@ -75,12 +76,26 @@ function App() {
 
   const handleLogout = () => {
     liffLogout();
-    localStorage.removeItem('volunteer_scheduler_user');
+    void signOutFirebase();
+    localStorage.removeItem(userSessionKey);
+    sessionStorage.removeItem(userSessionKey);
     setView('login');
     setCurrentUser(null);
     setAdminTeam('video');
     setAdminSubTab('roster');
   };
+
+  useEffect(() => {
+    const unsubscribe = auth.onAuthStateChanged(user => {
+      if (!user && currentUser && !import.meta.env.DEV) {
+        localStorage.removeItem(userSessionKey);
+        sessionStorage.removeItem(userSessionKey);
+        setCurrentUser(null);
+        setView('login');
+      }
+    });
+    return unsubscribe;
+  }, [currentUser]);
 
   const [approvedVersion, setApprovedVersion] = useState<ApprovedVersion | null>(() => {
     try {
@@ -249,7 +264,7 @@ function App() {
         }
       });
     }
-  }, [currentUser, view]);
+  }, [currentUser, view, approvedVersion?.isLocalAdminEdit]);
 
   // --- Offline Sync ---
   useEffect(() => {
@@ -324,11 +339,21 @@ function App() {
       )}
 
       <main className="animate-morph stagger-1">
-        {view === 'login' && (
-          <Login onLogin={(user) => {
+        {bindingRequestId && currentUser && (
+          <GroupBindingRequest requestId={bindingRequestId} onComplete={() => {
+            window.history.replaceState({}, document.title, window.location.pathname);
+            setBindingRequestId(null);
+          }} />
+        )}
+
+        {(!bindingRequestId || !currentUser) && view === 'login' && (
+          <Login onLogin={(user, _allVolunteers, rememberDevice) => {
             setView('loading');
             setTimeout(() => {
-              localStorage.setItem('volunteer_scheduler_user', JSON.stringify(user));
+              const targetStorage = rememberDevice ? localStorage : sessionStorage;
+              const otherStorage = rememberDevice ? sessionStorage : localStorage;
+              otherStorage.removeItem(userSessionKey);
+              targetStorage.setItem(userSessionKey, JSON.stringify(user));
               setCurrentUser(user);
               setView('home');
               if (user.userLevel === 'admin' || user.role === 'admin') {
@@ -339,7 +364,7 @@ function App() {
           }} />
         )}
 
-        {view === 'home' && currentUser && (
+        {!bindingRequestId && view === 'home' && currentUser && (
           <>
             <div className="desktop-nav" style={{ marginBottom: '24px', justifyContent: 'center' }}>
               {(currentUser.userLevel === 'admin' || currentUser.role === 'admin') && (

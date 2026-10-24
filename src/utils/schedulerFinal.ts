@@ -1,4 +1,5 @@
 import type { Shift } from './scheduler';
+import { calculateMeals } from './scheduleMeals';
 
 export interface FinalScheduleMealCount {
   szBreakfast: number; // 山莊早餐
@@ -67,16 +68,19 @@ export function mergeTeamSchedules(
 
         if (teamShift) {
           // 合併職位與人選
-          const roles = teamShift.roleKeys || Object.keys(teamShift.assignments || {});
+          const roles = Array.from(new Set([...(teamShift.roleKeys || []), ...Object.keys(teamShift.assignments || {})]));
           for (const role of roles) {
-            if (!mergedRoleKeys.includes(role)) {
-              mergedRoleKeys.push(role);
+            // 不同團隊可能都有「備用1」等同名欄位。保留第一個原名稱，
+            // 後續以團隊前綴區分，避免合併時覆寫前一個團隊的人選。
+            const mergedRole = mergedAssignments[role] === undefined ? role : `${tk}｜${role}`;
+            if (!mergedRoleKeys.includes(mergedRole)) {
+              mergedRoleKeys.push(mergedRole);
             }
             const assigned = teamShift.assignments[role] || '缺';
-            mergedAssignments[role] = assigned;
+            mergedAssignments[mergedRole] = assigned;
 
             if (teamShift.overrides && teamShift.overrides[role]) {
-              mergedOverrides[role] = true;
+              mergedOverrides[mergedRole] = true;
             }
           }
         }
@@ -98,27 +102,7 @@ export function mergeTeamSchedules(
         overrides: mergedOverrides,
       });
 
-      // 4. 計算出勤人數 (排除「缺」與空白)
-      let activeCount = 0;
-      for (const role of mergedRoleKeys) {
-        const person = mergedAssignments[role];
-        if (person && person !== '缺' && person.trim() !== '') {
-          activeCount++;
-        }
-      }
-
-      // 加上備用人員
-      const spare1 = manualEdits[`${loc}|${date}|備用1`];
-      if (spare1 && spare1.trim() !== '') activeCount++;
-      const spare2 = manualEdits[`${loc}|${date}|備用2`];
-      if (spare2 && spare2.trim() !== '') activeCount++;
-
-      if (loc === '山莊大堂') {
-        meals[date].szBreakfast = activeCount;
-      } else {
-        meals[date].xjBreakfast = activeCount;
-        meals[date].xjLunch = activeCount;
-      }
+      meals[date] = calculateMeals(finalShifts, date);
     }
   }
 
@@ -159,7 +143,7 @@ export function generateFinalScheduleMatrix(
     // 取出所有該地點出現過的職位
     const allRoleKeys: string[] = [];
     locationShifts.forEach(s => {
-      s.roleKeys.forEach(r => {
+      Array.from(new Set([...(s.roleKeys || []), ...Object.keys(s.assignments || {})])).forEach(r => {
         if (!allRoleKeys.includes(r)) allRoleKeys.push(r);
       });
     });
@@ -175,9 +159,9 @@ export function generateFinalScheduleMatrix(
       rows.push(row);
     }
 
-    // 備用人員
+    // 舊資料若尚未把備用列寫入 roleKeys，才補上顯示列。
     const spareLabels = ['備用1', '備用2'];
-    for (const label of spareLabels) {
+    for (const label of spareLabels.filter(label => !allRoleKeys.includes(label))) {
       const row = [
         label,
         ...locationShifts.map(s => manualEdits[`${locationName}|${s.date}|${label}`] || s.assignments[label] || ''),

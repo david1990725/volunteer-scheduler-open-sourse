@@ -3,8 +3,8 @@
 // =============================================================================
 
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { sendLinePush, getLineConfig, LineMessage, verifyCronAuth } from './utils/lineService';
-import { getAllVolunteers, getActiveGroups } from './utils/firebaseAdmin';
+import { sendLinePush, getLineConfig, type LineMessage, verifyCronAuth } from './utils/lineService.js';
+import { getAllVolunteers, getActiveGroups } from './utils/firebaseAdmin.js';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   // 🔒 驗證 Cron 授權

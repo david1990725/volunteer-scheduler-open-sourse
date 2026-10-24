@@ -5,6 +5,7 @@
 import { initializeApp, getApps, getApp } from 'firebase/app';
 import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager } from 'firebase/firestore';
 import { getAnalytics, isSupported } from 'firebase/analytics';
+import { getAuth, signInWithCustomToken, setPersistence, browserLocalPersistence, browserSessionPersistence, signOut } from 'firebase/auth';
 
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY || "",
@@ -18,6 +19,17 @@ const firebaseConfig = {
 
 // 初始化 App (避免在 HMR 重複初始化)
 export const app = getApps().length > 0 ? getApp() : initializeApp(firebaseConfig);
+export const auth = getAuth(app);
+
+/** Firebase Rules 遷移期間由 Functions 驗證 LINE ID token 後換取 Custom Token。 */
+export async function signInWithLineCustomToken(firebaseToken: string, rememberDevice = false) {
+  await setPersistence(auth, rememberDevice ? browserLocalPersistence : browserSessionPersistence);
+  return signInWithCustomToken(auth, firebaseToken);
+}
+
+export async function signOutFirebase() {
+  await signOut(auth);
+}
 
 // 初始化 Firestore 並啟用離線多標籤頁快取
 export const db = initializeFirestore(app, {

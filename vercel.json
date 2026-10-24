@@ -1,16 +1,1 @@
-{
-  "crons": [
-    {
-      "path": "/api/cron-birthday",
-      "schedule": "0 1 * * *"
-    },
-    {
-      "path": "/api/cron-cycle",
-      "schedule": "0 1 * * *"
-    },
-    {
-      "path": "/api/cron-saturday",
-      "schedule": "0 8 * * 6"
-    }
-  ]
-}
+{}

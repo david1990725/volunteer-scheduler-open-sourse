@@ -15,20 +15,8 @@ export function getSundaysForCycle(year: number, months: [number, number]): stri
   const [m1, m2] = months;
   const sundays: string[] = [];
 
-  const now = new Date();
-  const currentMonth = now.getMonth() + 1;
-  const currentYear = now.getFullYear();
-
-  let y1 = year;
-  let y2 = year;
-
-  // If the target month is earlier in calendar than the current month and we are in the later part of the year, it is next year
-  if (m1 < currentMonth && currentMonth >= 10) {
-    y1 = currentYear + 1;
-  }
-  if (m2 < currentMonth && currentMonth >= 10) {
-    y2 = currentYear + 1;
-  }
+  const y1 = year;
+  const y2 = m2 < m1 ? year + 1 : year;
 
   // Find all Sundays in m1
   let d = new Date(y1, m1 - 1, 1);
@@ -56,6 +44,8 @@ export function getCycleDates(): {
   currentMonths: [number, number];
   nextMonths: [number, number];
   sundays: string[]; // e.g. "05/05", "05/12"
+  currentCycleId: string;
+  nextCycleId: string;
 } {
   const now = new Date();
   const month = now.getMonth() + 1;
@@ -76,13 +66,20 @@ export function getCycleDates(): {
   if (targetMonth2 > 12) targetMonth2 -= 12;
 
   const nextMonths: [number, number] = [targetMonth1, targetMonth2];
-  const sundays = getSundaysForCycle(year, nextMonths);
+  const nextCycleYear = targetMonth1 < currentCycleStartMonth ? year + 1 : year;
+  const sundays = getSundaysForCycle(nextCycleYear, nextMonths);
 
   return {
     isOpen: true, // 預設全時開啟
     currentMonths: [currentCycleStartMonth, currentCycleEndMonth],
     nextMonths,
-    sundays
+    sundays,
+    currentCycleId: `${year}-${String(currentCycleStartMonth).padStart(2, '0')}-${String(currentCycleEndMonth).padStart(2, '0')}`,
+    nextCycleId: `${nextCycleYear}-${String(targetMonth1).padStart(2, '0')}-${String(targetMonth2).padStart(2, '0')}`,
   };
 }
 
+/** 週期 ID 是表單與班表的資料邊界；不可依執行當天推測其年份。 */
+export function getCycleId(year: number, months: [number, number]): string {
+  return `${year}-${String(months[0]).padStart(2, '0')}-${String(months[1]).padStart(2, '0')}`;
+}

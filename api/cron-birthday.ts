@@ -3,8 +3,8 @@
 // =============================================================================
 
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { sendLinePush, createBirthdayFlexMessage, verifyCronAuth } from './utils/lineService';
-import { getAllVolunteers } from './utils/firebaseAdmin';
+import { sendLinePush, createBirthdayFlexMessage, verifyCronAuth } from './utils/lineService.js';
+import { getAllVolunteers } from './utils/firebaseAdmin.js';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   // 🔒 驗證 Cron 授權

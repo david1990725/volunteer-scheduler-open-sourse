@@ -16,6 +16,7 @@ import {
 import {
   getAllVolunteers,
   getVolunteerByLineId,
+  getVolunteerAuthRecordByLineId,
   saveGroupStatus,
   getActiveGroups,
   parseSundaySchedule,
@@ -23,6 +24,162 @@ import {
   applySlotFillToMatrix,
   canVolunteerFillVacancy,
 } from './schedulerHelper';
+import {
+  createBindingInvite, redeemBindingInvite, createGroupBindingRequest,
+  listGroupBindingCandidates, completeGroupBindingRequest, type BindingActor,
+} from './bindingService';
+
+async function verifyLineIdToken(idToken: string): Promise<string> {
+  const { lineLoginChannelId } = getLineConfig();
+  if (!idToken || !lineLoginChannelId) throw new Error('LINE Login is not configured');
+  const verifyResponse = await fetch('https://api.line.me/oauth2/v2.1/verify', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({ id_token: idToken, client_id: lineLoginChannelId }).toString(),
+  });
+  if (!verifyResponse.ok) throw new Error('Invalid LINE token');
+  const verified = await verifyResponse.json() as { sub?: string };
+  if (!verified.sub) throw new Error('LINE token has no subject');
+  return verified.sub;
+}
+
+async function authenticateFirebaseRequest(req: { headers: { authorization?: string | string[] } }): Promise<BindingActor> {
+  const header = typeof req.headers.authorization === 'string' ? req.headers.authorization : '';
+  const match = header.match(/^Bearer (.+)$/);
+  if (!match) throw new Error('Unauthorized');
+  const decoded = await (await import('firebase-admin')).auth().verifyIdToken(match[1]);
+  const role = typeof decoded.role === 'string' ? decoded.role : 'volunteer';
+  const managedTeams = Array.isArray(decoded.managedTeams)
+    ? decoded.managedTeams.filter((team): team is string => typeof team === 'string') : [];
+  const volunteerId = typeof decoded.volunteerId === 'string' ? decoded.volunteerId : decoded.uid;
+  return { volunteerId, role, managedTeams };
+}
+
+/**
+ * 以 LINE Login ID token 換取 Firebase Custom Token。
+ * LINE profile / localStorage 不再是權限資料來源；只有已綁定且有效名冊成員可取得 token。
+ */
+export const issueFirebaseToken = onRequest(
+  {
+    cors: true,
+    region: 'asia-east1',
+    secrets: ['LINE_LOGIN_CHANNEL_ID'],
+  },
+  async (req, res) => {
+    if (req.method !== 'POST') {
+      res.status(405).json({ error: 'Method not allowed' });
+      return;
+    }
+
+    const idToken = typeof req.body?.idToken === 'string' ? req.body.idToken : '';
+    if (!idToken || !getLineConfig().lineLoginChannelId) {
+      res.status(400).json({ error: 'LINE Login is not configured' });
+      return;
+    }
+
+    let stage: 'line_verification' | 'roster_lookup' | 'token_creation' = 'line_verification';
+    try {
+      const lineId = await verifyLineIdToken(idToken);
+      stage = 'roster_lookup';
+      const volunteer = await getVolunteerAuthRecordByLineId(lineId);
+      if (!volunteer || !volunteer.isActive) {
+        res.status(403).json({ error: 'LINE account is not bound to an active roster member' });
+        return;
+      }
+
+      const role = volunteer.userLevel === 'admin' && volunteer.managedTeams.length === 0
+        ? 'super_admin'
+        : volunteer.managedTeams.length > 0 ? 'team_lead' : 'volunteer';
+      stage = 'token_creation';
+      const firebaseToken = await (await import('firebase-admin')).auth().createCustomToken(volunteer.volunteerId, {
+        role,
+        managedTeams: volunteer.managedTeams,
+        volunteerId: volunteer.volunteerId,
+      });
+      res.status(200).json({ firebaseToken, volunteerId: volunteer.volunteerId, role });
+    } catch (err) {
+      console.error('[issueFirebaseToken Error]:', err);
+      // 回傳可供支援判讀的安全分類；原始例外只保留在 Cloud Logging。
+      const code = stage === 'line_verification'
+        ? 'LINE_TOKEN_VERIFICATION_FAILED'
+        : stage === 'roster_lookup'
+          ? 'ROSTER_LOOKUP_FAILED'
+          : 'FIREBASE_TOKEN_CREATION_FAILED';
+      res.status(500).json({ error: 'Unable to issue Firebase token', code });
+    }
+  },
+);
+
+/** 由已登入的總管理員／團隊幹部產生一次性邀請連結。 */
+export const createLineBindingInvite = onRequest({ cors: true, region: 'asia-east1' }, async (req, res) => {
+  if (req.method !== 'POST') { res.status(405).json({ error: 'Method not allowed' }); return; }
+  try {
+    const actor = await authenticateFirebaseRequest(req);
+    const volunteerId = typeof req.body?.volunteerId === 'string' ? req.body.volunteerId : '';
+    const invitation = await createBindingInvite(actor, volunteerId);
+    const { systemUrl } = getLineConfig();
+    res.status(201).json({
+      url: `${systemUrl}/?bindingInvite=${encodeURIComponent(invitation.token)}`,
+      expiresAt: invitation.expiresAt.toISOString(),
+    });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'Unable to create binding invite';
+    res.status(message === 'Unauthorized' ? 401 : 403).json({ error: message });
+  }
+});
+
+/** 同工開啟邀請連結後以自己的 LINE ID token 兌換，綁定採 transaction 保證單次使用。 */
+export const redeemLineBindingInvite = onRequest(
+  { cors: true, region: 'asia-east1', secrets: ['LINE_LOGIN_CHANNEL_ID'] },
+  async (req, res) => {
+    if (req.method !== 'POST') { res.status(405).json({ error: 'Method not allowed' }); return; }
+    try {
+      const token = typeof req.body?.token === 'string' ? req.body.token : '';
+      const idToken = typeof req.body?.idToken === 'string' ? req.body.idToken : '';
+      const lineId = await verifyLineIdToken(idToken);
+      const result = await redeemBindingInvite(token, lineId);
+      res.status(200).json(result);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Unable to redeem binding invite';
+      res.status(400).json({ error: message });
+    }
+  },
+);
+
+/** 只有發出群組指令的已登入幹部可讀取可選名冊。 */
+export const groupBindingCandidates = onRequest({ cors: true, region: 'asia-east1' }, async (req, res) => {
+  if (req.method !== 'GET') { res.status(405).json({ error: 'Method not allowed' }); return; }
+  try {
+    const actor = await authenticateFirebaseRequest(req);
+    const requestId = typeof req.query.requestId === 'string' ? req.query.requestId : '';
+    const candidates = await listGroupBindingCandidates(actor, requestId);
+    res.status(200).json({ candidates });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'Unable to read candidates';
+    res.status(403).json({ error: message });
+  }
+});
+
+export const completeGroupLineBinding = onRequest({ cors: true, region: 'asia-east1' }, async (req, res) => {
+  if (req.method !== 'POST') { res.status(405).json({ error: 'Method not allowed' }); return; }
+  try {
+    const actor = await authenticateFirebaseRequest(req);
+    const requestId = typeof req.body?.requestId === 'string' ? req.body.requestId : '';
+    const volunteerId = typeof req.body?.volunteerId === 'string' ? req.body.volunteerId : '';
+    await completeGroupBindingRequest(actor, requestId, volunteerId);
+    res.status(200).json({ success: true });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'Unable to complete binding';
+    res.status(403).json({ error: message });
+  }
+});
+
+// 暫時保留部署過程中建立的備援端點，避免非互動部署自動刪除線上資源。
+// 前端只使用未加 V2 的正式名稱；完成上線驗收後再集中移除這些相容端點。
+export const createLineBindingInviteV2 = createLineBindingInvite;
+export const redeemLineBindingInviteV2 = redeemLineBindingInvite;
+export const groupBindingCandidatesV2 = groupBindingCandidates;
+export const completeGroupLineBindingV2 = completeGroupLineBinding;
 
 // =============================================================================
 // 1. LINE Webhook HTTPS Endpoint
@@ -51,12 +208,17 @@ export const lineWebhook = onRequest(
     }
 
     try {
-      const rawBody = typeof req.body === 'string' ? req.body : JSON.stringify(req.body || {});
+      // LINE 簽名必須以未解析的 request body 驗證；JSON 重新序列化會改變位元組內容。
+      const rawBody = req.rawBody instanceof Buffer
+        ? req.rawBody.toString('utf8')
+        : typeof req.body === 'string' ? req.body : JSON.stringify(req.body || {});
       const signature = (req.headers['x-line-signature'] || req.headers['X-Line-Signature']) as string | undefined;
 
-      // 🔒 驗證 LINE 簽名 (HMAC-SHA256)
-      if (signature && !verifyLineSignature(rawBody, signature)) {
-        console.warn('[Security Warning]: LINE Webhook signature mismatch');
+      // 沒有簽名或驗證失敗都不可處理事件，否則任何人都能偽造補位或群組狀態。
+      if (!signature || !verifyLineSignature(rawBody, signature)) {
+        console.warn('[Security Warning]: rejected LINE Webhook with invalid signature');
+        res.status(401).send('Unauthorized');
+        return;
       }
 
       const payload = typeof req.body === 'object' ? req.body : JSON.parse(rawBody || '{}');
@@ -92,8 +254,8 @@ async function handleSingleEvent(event: LineEvent) {
       return;
     }
 
-    // 2. 加入群組 (join / memberJoined)
-    if ((event.type === 'join' || event.type === 'memberJoined') && event.replyToken) {
+    // 2. Bot 加入群組
+    if (event.type === 'join' && event.replyToken) {
       const groupId = event.source.groupId || event.source.roomId;
       if (groupId) {
         await saveGroupStatus(groupId, event.source.type || 'group', 'active');
@@ -101,17 +263,16 @@ async function handleSingleEvent(event: LineEvent) {
 
       const groupWelcome =
         '平安！感謝邀請【義工排班官方小幫手】加入群組 🤝\n\n' +
-        '小幫手將會在：\n' +
-        '⏰ 每週六下午 16:00 自動公佈【本週日服事同工完整名單】\n' +
-        '📢 週期意願表單開放 (15號) 與截止 (20號) 時提醒大家填報！\n\n' +
+        '小幫手會在每週排班完成後，提供【本週日服事同工完整名單】。\n' +
+        '意願表單可隨時填寫，重送時以同一週期的最新版本為準。\n\n' +
         '隨時輸入「本週服事」即可快速查詢本週服事同工名單！';
 
       await sendLineReply(event.replyToken, [{ type: 'text', text: groupWelcome }]);
       return;
     }
 
-    // 3. 離開群組 (leave / memberLeft)
-    if (event.type === 'leave' || event.type === 'memberLeft') {
+    // 3. 只有 Bot 自己離開群組才停用群組；成員離開不影響群組公告。
+    if (event.type === 'leave') {
       const groupId = event.source.groupId || event.source.roomId;
       if (groupId) {
         await saveGroupStatus(groupId, event.source.type || 'group', 'left');
@@ -152,10 +313,27 @@ async function handlePostbackEvent(event: LineEvent) {
     const userId = event.source.userId || '';
 
     const vol = await getVolunteerByLineId(userId);
-    const volunteerName = vol?.name || '熱心同工';
+    const volunteerName = vol?.name || '';
 
     if (!docId || rowIndex < 0 || colIndex < 0) {
       await sendLineReply(replyToken, [{ type: 'text', text: '⚠️ 補位參數有誤，請進入系統手動調整。' }]);
+      return;
+    }
+
+    if (!vol || (role === '網路導播' && (loc !== '山莊' || !canVolunteerFillVacancy(vol, role, 'video')))) {
+      await sendLineReply(replyToken, [{ type: 'text', text: '⚠️ 此職位目前不符合您的補位資格。' }]);
+      return;
+    }
+    const currentSchedule = await parseSundaySchedule();
+    const offeredSlot = currentSchedule.vacancies.some(slot =>
+      slot.docId === docId && slot.rowIndex === rowIndex && slot.colIndex === colIndex &&
+      slot.role === role && slot.location === loc);
+    if (!offeredSlot) {
+      await sendLineReply(replyToken, [{ type: 'text', text: '⚠️ 此補位已不在本週空缺，請重新查詢班表。' }]);
+      return;
+    }
+    if (currentSchedule.assignmentsByVolunteer[volunteerName]?.length) {
+      await sendLineReply(replyToken, [{ type: 'text', text: '⚠️ 您當日已有服事安排，請洽排班幹部協調。' }]);
       return;
     }
 
@@ -201,6 +379,38 @@ async function handleTextMessageEvent(event: LineEvent) {
 
   if (isGroup && event.source.groupId) {
     saveGroupStatus(event.source.groupId, 'group', 'active').catch(() => {});
+  }
+
+  const isBindingCommand = /^綁定\s+.+\s+進系統$/.test(userText);
+  if (isBindingCommand) {
+    const mentionedUserId = event.message?.mention?.mentionees
+      .map(mention => mention.userId)
+      .find((id): id is string => Boolean(id));
+    const requesterLineId = event.source.userId || '';
+    const requester = requesterLineId ? await getVolunteerAuthRecordByLineId(requesterLineId) : null;
+    if (!isGroup || !mentionedUserId) {
+      await sendLineReply(replyToken, [{ type: 'text', text: '請在工作群組使用「綁定 @新同工 進系統」，並以 LINE 的實際標記選取同工。' }]);
+      return;
+    }
+    if (!requester || !requester.isActive || (requester.userLevel !== 'admin' && requester.managedTeams.length === 0)) {
+      await sendLineReply(replyToken, [{ type: 'text', text: '只有已綁定且具管理權限的幹部可以執行綁定。' }]);
+      return;
+    }
+    try {
+      const actor: BindingActor = {
+        volunteerId: requester.volunteerId,
+        role: requester.userLevel === 'admin' && requester.managedTeams.length === 0 ? 'super_admin' : 'team_lead',
+        managedTeams: requester.managedTeams,
+      };
+      const request = await createGroupBindingRequest(actor, mentionedUserId);
+      const url = `${systemUrl}/?bindingRequest=${encodeURIComponent(request.requestId)}`;
+      await sendLinePush(requesterLineId, [{ type: 'text', text: `請在 20 分鐘內開啟此連結，從您管理範圍內選擇名冊成員完成綁定：\n${url}` }]);
+      await sendLineReply(replyToken, [{ type: 'text', text: '已將受保護的名冊選擇連結私訊給發起幹部。' }]);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : '無法建立綁定操作';
+      await sendLineReply(replyToken, [{ type: 'text', text: message }]);
+    }
+    return;
   }
 
   // 1. 查詢班表關鍵字：「本週服事」、「本週排班」、「本週班表」（相容簡體/異體字）
@@ -371,7 +581,7 @@ export const saturdayReminder = onSchedule(
   }
 );
 
-/** 雙月 15 號與 20 號 09:00 表單催填通知 */
+/** 雙月 15、20 號提醒填寫或更新意願；表單不會因提醒而關閉。 */
 export const cycleFormReminder = onSchedule(
   {
     schedule: '0 9 15,20 2,4,6,8,10,12 *',
@@ -381,51 +591,23 @@ export const cycleFormReminder = onSchedule(
   },
   async () => {
     const { systemUrl } = getLineConfig();
-    const now = new Date();
-    const utc = now.getTime() + now.getTimezoneOffset() * 60000;
-    const twDate = new Date(utc + 8 * 3600000);
-
-    const month = twDate.getMonth() + 1;
-    const date = twDate.getDate();
-
-    const nextCycleStart = month === 12 ? 1 : month + 1;
-    const nextCycleEnd = nextCycleStart + 1;
-    const nextCycleName = `${nextCycleStart}-${nextCycleEnd}月`;
-
-    let pushMessageText = '';
-    if (date === 15) {
-      pushMessageText =
-        `📢【${nextCycleName} 服事意願表單開放填報】\n\n` +
-        `各位同工平安！\n` +
-        `新一期（${nextCycleName}）的服事意願登記已正式開放！\n\n` +
-        `請各位同工撥空點選下方連結完成填報：\n` +
-        `🔗 ${systemUrl}\n\n` +
-        `⏰ 表單將於本月 20 號截止，感謝大家的忠心擺上！🙏`;
-    } else {
-      pushMessageText =
-        `⚠️【即將截止！${nextCycleName} 服事意願最後催填提醒】\n\n` +
-        `各位同工平安！\n` +
-        `新一期（${nextCycleName}）服事意願登記將於【今日截止】！\n\n` +
-        `尚未填寫的同工請盡速完成登記，以利排班作業：\n` +
-        `🔗 ${systemUrl}\n\n` +
-        `感謝大家的配搭與付出！✨`;
-    }
-
-    const msg: LineMessage = {
-      type: 'text',
-      text: pushMessageText,
-    };
-
     const volunteers = await getAllVolunteers();
     const activeGroups = await getActiveGroups();
-
-    for (const vol of volunteers) {
-      if (vol.lineId) await sendLinePush(vol.lineId, [msg]);
+    const message: LineMessage = {
+      type: 'text',
+      text:
+        '📝【服事意願提醒】\n\n' +
+        '各位同工平安！您可隨時填寫或更新下一期的服事意願。\n' +
+        '若需要修改，直接重新送出即可，系統會以該週期最新一份資料為準；表單不會關閉。\n\n' +
+        `🔗 ${systemUrl}`,
+    };
+    for (const volunteer of volunteers) {
+      if (volunteer.lineId) await sendLinePush(volunteer.lineId, [message]);
     }
     for (const groupId of activeGroups) {
-      await sendLinePush(groupId, [msg]);
+      await sendLinePush(groupId, [message]);
     }
-  }
+  },
 );
 
 /** 每日 09:00 生日祝福 Flex Message (支援多種日期格式相容) */
@@ -454,7 +636,7 @@ export const dailyBirthdayReminder = onSchedule(
       let match = false;
 
       // 支援格式：YYYY-MM-DD, YYYY/MM/DD, MM-DD, MM/DD, M-D, M/D, X月X日
-      const reg = /(\d{1,2})[\/\-\.月](\d{1,2})/;
+      const reg = /(\d{1,2})[-/.月](\d{1,2})/;
       const found = raw.match(reg);
       if (found) {
         const bm = parseInt(found[1], 10);

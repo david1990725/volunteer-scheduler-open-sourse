@@ -3,9 +3,9 @@
 // =============================================================================
 
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { sendLinePush, LineMessage, verifyCronAuth } from './utils/lineService';
-import { getAllVolunteers, getActiveGroups, getSchedule, getFinalSchedule } from './utils/firebaseAdmin';
-import { getUpcomingSunday, formatWeeklyTeamRoster } from './utils/schedulerHelper';
+import { sendLinePush, type LineMessage, verifyCronAuth } from './utils/lineService.js';
+import { getAllVolunteers, getActiveGroups, getSchedule, getFinalSchedule } from './utils/firebaseAdmin.js';
+import { getUpcomingSunday, formatWeeklyTeamRoster } from './utils/schedulerHelper.js';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   // 🔒 驗證 Cron 授權

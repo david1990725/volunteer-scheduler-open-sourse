@@ -37,3 +37,4 @@ pnpm-debug.log*
 
 # Scratch & Temporary data
 scratch
+.vercel

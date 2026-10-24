@@ -2,41 +2,55 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-    
-    // 義工名冊集合 (Volunteers & Skills)
-    // 允許讀取名單資訊；寫入時要求必須包含基本欄位且不允許無限制刪除
+    function signedIn() { return request.auth != null; }
+    function superAdmin() { return signedIn() && request.auth.token.role == 'super_admin'; }
+    function teamLead(team) {
+      return signedIn() && request.auth.token.role == 'team_lead' &&
+        team in request.auth.token.managedTeams;
+    }
+    function self(volunteerId) { return signedIn() && request.auth.uid == volunteerId; }
+
     match /volunteers/{volunteerId} {
-      allow read: if true;
-      allow create, update: if request.resource.data.name is string 
-                            && request.resource.data.name.size() > 0
-                            && request.resource.data.name.size() <= 50;
-      allow delete: if request.auth != null;
-    }
-    
-    // 意願表單回覆集合 (Form Responses)
-    // 允許提交表單（需含姓名、時間戳記與所屬團隊），限制欄位大小防濫用
-    match /formResponses/{responseId} {
-      allow read: if true;
-      allow create: if request.resource.data.name is string
-                    && request.resource.data.team is string
-                    && request.resource.data.timestamp is string;
-      allow update: if request.resource.data.name is string;
-      allow delete: if request.auth != null;
-    }
-    
-    // 週期排班表集合 (Schedules)
-    // 讀取開放供同工即時查閱；寫入需提供正確 sheetName 與 team 格式
-    match /schedules/{scheduleId} {
-      allow read: if true;
-      allow create, update: if request.resource.data.sheetName is string
-                            && (request.resource.data.team is string || scheduleId.matches('.*_final$'));
-      allow delete: if request.auth != null;
+      allow read: if signedIn();
+      allow create, delete: if superAdmin();
+      allow update: if superAdmin() ||
+        (teamLead('video') && request.resource.data.diff(resource.data).affectedKeys()
+          .hasOnly(['videoSkills', 'isFullTimer', 'isBackfillLeader', 'updatedAt'])) ||
+        (teamLead('audio') && request.resource.data.diff(resource.data).affectedKeys()
+          .hasOnly(['audioSkills', 'updatedAt'])) ||
+        (teamLead('light') && request.resource.data.diff(resource.data).affectedKeys()
+          .hasOnly(['lightLevel', 'updatedAt'])) ||
+        (teamLead('stage') && request.resource.data.diff(resource.data).affectedKeys()
+          .hasOnly(['stageLevel', 'updatedAt'])) ||
+        (self(volunteerId) && request.resource.data.diff(resource.data).affectedKeys()
+          .hasOnly(['lineDisplayName', 'pictureUrl', 'updatedAt']));
     }
 
-    // LINE 群組狀態紀錄集合 (LINE Groups)
-    // 僅供 Serverless Webhook 端點後端管理使用
-    match /line_groups/{groupId} {
-      allow read, write: if request.auth != null;
+    match /formResponses/{responseId} {
+      allow create: if signedIn() &&
+        request.resource.data.volunteerId == request.auth.uid &&
+        request.resource.data.name is string &&
+        request.resource.data.team is string &&
+        request.resource.data.cycleId is string;
+      allow read: if superAdmin() ||
+        (signedIn() && request.auth.token.role == 'team_lead') ||
+        (signedIn() && resource.data.volunteerId == request.auth.uid);
+      allow update, delete: if superAdmin() ||
+        (signedIn() && request.auth.token.role == 'team_lead');
     }
+
+    match /schedules/{scheduleId} {
+      allow read: if signedIn();
+      allow create, update: if superAdmin() ||
+        (signedIn() && request.auth.token.role == 'team_lead' &&
+          (scheduleId.matches('.*_final$') ||
+           (request.resource.data.team is string &&
+            request.resource.data.team in request.auth.token.managedTeams)));
+      allow delete: if superAdmin();
+    }
+
+    match /line_groups/{groupId} { allow read, write: if false; }
+    match /binding_requests/{requestId} { allow read, write: if false; }
+    match /binding_invites/{inviteId} { allow read, write: if false; }
   }
 }

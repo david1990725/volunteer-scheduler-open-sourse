@@ -435,6 +435,12 @@ function handleLinePostback(event) {
     var rowIndex = parseInt(params.rowIndex, 10);
     var colIndex = parseInt(params.colIndex, 10);
 
+    // 舊版試算表沒有可驗證的技能與身分資料；網路導播一律交由新版補位流程處理。
+    if (role === '網路導播') {
+      sendLineReply(event.replyToken, [{ type: 'text', text: '⚠️ 網路導播請使用新版排班系統補位。' }]);
+      return;
+    }
+
     // 1. 即時更新班表
     var updateResult = applySlotFillToSchedule(sheetName, rowIndex, colIndex, user);
 

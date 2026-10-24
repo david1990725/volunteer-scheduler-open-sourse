@@ -10,6 +10,7 @@ export function parseGenericTeamScheduleResponses(
   volunteers: Record<string, Volunteer>,
   team: string = 'light',
   targetDates?: string[],
+  bookedElsewhere: Record<string, string[]> = {},
 ): Shift[] {
   if (data.length === 0) return [];
 
@@ -100,6 +101,20 @@ export function parseGenericTeamScheduleResponses(
     }
   }
 
+  /** 音控的四個職位不是單純的場地可用性；必須與表單勾選的職位相符。 */
+  const canServeRole = (field: string, name: string, role: string): boolean => {
+    if (enTeam !== 'audio') return true;
+    const row = latestDataMap.get(name);
+    const value = row ? getRowDateValue(row, field) : '';
+    const required: Record<string, string> = {
+      '山莊IN': '山莊IN',
+      '山莊OB': '山莊OB',
+      '宣教IN': '宣教IN',
+      '宣教OB': '宣教OB',
+    };
+    return !required[role] || value.includes(required[role]);
+  };
+
   // 2. 逐週排班（以歷史累積服事次數平衡為原則）
   const shifts: Shift[] = [];
   const totalShifts: Record<string, number> = {};
@@ -114,7 +129,7 @@ export function parseGenericTeamScheduleResponses(
     // --- 山莊大堂排班 ---
     for (const role of teamRoles.sz) {
       const availableCandidates = (locationAvailability[field]['山莊'] || []).filter(
-        n => !assignedThisWeek.has(n)
+        n => !assignedThisWeek.has(n) && !bookedElsewhere[date]?.includes(n) && canServeRole(field, n, role)
       );
 
       if (availableCandidates.length > 0) {
@@ -132,7 +147,7 @@ export function parseGenericTeamScheduleResponses(
     // --- 宣教大樓排班 ---
     for (const role of teamRoles.xj) {
       const availableCandidates = (locationAvailability[field]['宣教'] || []).filter(
-        n => !assignedThisWeek.has(n)
+        n => !assignedThisWeek.has(n) && !bookedElsewhere[date]?.includes(n) && canServeRole(field, n, role)
       );
 
       if (availableCandidates.length > 0) {
@@ -148,7 +163,7 @@ export function parseGenericTeamScheduleResponses(
 
     // --- 備用人員排班 (山莊與宣教各最多 2 位未排班之可用同工) ---
     const szSpareCandidates = (locationAvailability[field]['山莊'] || []).filter(
-      n => !assignedThisWeek.has(n)
+      n => !assignedThisWeek.has(n) && !bookedElsewhere[date]?.includes(n)
     );
     szSpareCandidates.sort((a, b) => (totalShifts[a] || 0) - (totalShifts[b] || 0));
     if (szSpareCandidates.length > 0) {
@@ -163,7 +178,7 @@ export function parseGenericTeamScheduleResponses(
     }
 
     const xjSpareCandidates = (locationAvailability[field]['宣教'] || []).filter(
-      n => !assignedThisWeek.has(n)
+      n => !assignedThisWeek.has(n) && !bookedElsewhere[date]?.includes(n)
     );
     xjSpareCandidates.sort((a, b) => (totalShifts[a] || 0) - (totalShifts[b] || 0));
     if (xjSpareCandidates.length > 0) {
@@ -181,7 +196,7 @@ export function parseGenericTeamScheduleResponses(
       date,
       location: '山莊大堂',
       assignments: szAssign,
-      roleKeys: teamRoles.sz,
+      roleKeys: [...teamRoles.sz, '備用1', '備用2'],
       overrides: {},
     });
 
@@ -189,7 +204,7 @@ export function parseGenericTeamScheduleResponses(
       date,
       location: '宣教大樓',
       assignments: xjAssign,
-      roleKeys: teamRoles.xj,
+      roleKeys: [...teamRoles.xj, '備用1', '備用2'],
       overrides: {},
     });
   }

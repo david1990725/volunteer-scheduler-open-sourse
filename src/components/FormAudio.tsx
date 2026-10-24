@@ -13,7 +13,7 @@ interface FrontendFormProps {
 }
 
 export const FormAudio: React.FC<FrontendFormProps> = ({ currentUser, onLogout, onBackToAdmin, onBackToHome }) => {
-  const { isOpen, sundays, nextMonths } = getCycleDates();
+  const { isOpen, sundays, nextMonths, nextCycleId } = getCycleDates();
   const [availability, setAvailability] = useState<Record<string, string[]>>({});
   const [submitted, setSubmitted] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -60,7 +60,7 @@ export const FormAudio: React.FC<FrontendFormProps> = ({ currentUser, onLogout, 
         responseRow[`[${date}]`] = locs.join(', ');
       });
 
-      const res = await cloudService.submitVolunteerForm({ data: responseRow, team: '音控團隊' });
+      const res = await cloudService.submitVolunteerForm({ data: responseRow, team: '音控團隊', cycleId: nextCycleId, volunteerId: currentUser.volunteerId || currentUser.name });
       
       if (!res.success) {
         throw new Error(res.message);

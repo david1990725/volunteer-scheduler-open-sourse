@@ -4,6 +4,7 @@
 
 import {
   toTeamKey,
+  TEAM_DEFAULT_ROLES,
   ROLE_MAP,
   REVERSE_ROLE_MAP,
 } from './constants';
@@ -12,10 +13,11 @@ import {
 
 export interface Volunteer {
   name: string;
+  volunteerId?: string;
   userLevel: 'admin' | 'user';
   jobTitles: string[]; // 英文團隊陣列: ['video', 'light', 'stage', 'audio', 'admin']
   skillRoles: string[]; // 英文角色陣列: ['director_sz', 'cam1', ...]
-  videoSkills: Record<string, number>; // 7 軸數值 (director, ad, photo, cam1~cam4: 0~10)
+  videoSkills: Record<string, number>; // 8 軸數值 (director, networkDirector, ad, photo, cam1~cam4: 0~10)
   lightLevel: number; // 1 ~ 3
   stageLevel: number; // 1 ~ 3
   audioSkills: Record<string, number>; // 4 軸數值 (ih_xj, ih_sz, ob_xj, ob_sz: 0~3)
@@ -25,6 +27,7 @@ export interface Volunteer {
   birthday?: string; // 生日 (YYYY-MM-DD 或 MM-DD)
   isFullTimer?: boolean; // 是否為全職同工 (享有專職輪休與優先導播排班)
   isBackfillLeader?: boolean; // 是否為全能補位 (在後處理階段補位每月最關鍵空缺)
+  managedTeams?: string[]; // 團隊幹部可管理的團隊
   // 向後相容欄位別名 (相容部分現有介面)
   role?: 'admin' | 'user';
   roles?: string[];
@@ -41,8 +44,8 @@ export interface Shift {
 
 // --- Constants ---------------------------------------------------------------
 
-export const SHAN_ZHUANG_ROLES = ['導播', 'AD', 'CAM1', 'CAM2', 'CAM3', 'CAM4', '平面'];
-export const XUAN_JIAO_ROLES = ['導播', '信息版'];
+export const SHAN_ZHUANG_ROLES = TEAM_DEFAULT_ROLES.video.sz;
+export const XUAN_JIAO_ROLES = TEAM_DEFAULT_ROLES.video.xj;
 
 const CAM_ROLES = ['CAM1', 'CAM2', 'CAM3', 'CAM4'];
 
@@ -62,7 +65,7 @@ export const LIAO_NAME: string = import.meta.env?.VITE_BACKFILL_LEADER || '全�
 const ROLE_PRIORITY: Record<string, number> = {
   '導播': 10, '平面': 8,
   'CAM1': 6, 'CAM2': 5,
-  'CAM3': 4, 'CAM4': 3,
+  'CAM3': 4, '網路導播': 3.5, 'CAM4': 3,
   'AD': 2,
 };
 
@@ -75,11 +78,24 @@ const isCamOperator = (p: Volunteer): boolean => {
     CAM_ROLES.some(r => (p.skills?.[r] || 0) > 0);
 };
 
+/** 網路導播獨立資格：既有導播認證，或網路導播技能與 AD 門檻。 */
+export const canServeNetworkDirector = (p: Pick<Volunteer, 'skillRoles' | 'videoSkills' | 'roles'>): boolean => {
+  const certified = p.skillRoles?.includes('director_sz') || p.skillRoles?.includes('director_xj') ||
+    p.roles?.includes('山莊導播') || p.roles?.includes('宣教導播');
+  return Boolean(certified || ((p.videoSkills?.networkDirector || 0) > 0 && (p.videoSkills?.ad || 0) >= 5));
+};
+
 /** 取得某人對某職位的資格與技能值 */
 const getRoleSkill = (p: Volunteer, role: string): { hasRole: boolean; skill: number } => {
   const vs = p.videoSkills || {};
   const sr = p.skillRoles || [];
   const roles = p.roles || [];
+
+  if (role === '網路導播') {
+    const hasRole = canServeNetworkDirector(p);
+    const skill = vs.networkDirector || (hasRole ? (vs.director || 10) : 0);
+    return { hasRole, skill };
+  }
 
   if (role === '平面') {
     const skill = vs.photo ?? p.skills?.['平面'] ?? 0;
@@ -172,10 +188,11 @@ export function parseSkillTreeData(data: any[]): Record<string, Volunteer> {
       }).filter(Boolean)
     ));
 
-    // 解析 7 軸 videoSkills (director, ad, photo, cam1~cam4)
+    // 解析 8 軸 videoSkills
     const rawVideo = row.videoSkills || row.skills || {};
     const videoSkills: Record<string, number> = {
       director: parseInt(rawVideo.director ?? rawVideo['導播'] ?? row.D_Skill ?? 0, 10) || 0,
+      networkDirector: parseInt(rawVideo.networkDirector ?? rawVideo['網路導播'] ?? row.NetworkDirector_Skill ?? 0, 10) || 0,
       ad: parseInt(rawVideo.ad ?? rawVideo['AD'] ?? row.AD_Skill ?? 0, 10) || 0,
       photo: parseInt(rawVideo.photo ?? rawVideo['平面'] ?? row.Photo_Skill ?? 0, 10) || 0,
       cam1: parseInt(rawVideo.cam1 ?? rawVideo['CAM1'] ?? row.Cam1_Skill ?? 0, 10) || 0,
@@ -187,6 +204,7 @@ export function parseSkillTreeData(data: any[]): Record<string, Volunteer> {
     // 繁體中文舊 skills 相容物件 (供歷史讀取)
     const skills: Record<string, number> = {
       '導播': videoSkills.director,
+      '網路導播': videoSkills.networkDirector,
       'AD': videoSkills.ad,
       '平面': videoSkills.photo,
       'CAM1': videoSkills.cam1,
@@ -236,6 +254,8 @@ export function parseSkillTreeData(data: any[]): Record<string, Volunteer> {
       stageLevel: Math.max(1, Math.min(3, stageLevel)),
       audioSkills,
       lineId,
+      volunteerId: String(row.volunteerId || row.id || '').trim() || undefined,
+      managedTeams: Array.isArray(row.managedTeams) ? row.managedTeams : [],
       lineDisplayName,
       pictureUrl,
       birthday,
@@ -269,6 +289,7 @@ export function parseScheduleResponsesData(
   data: any[],
   volunteers: Record<string, Volunteer>,
   targetDates?: string[], // 傳入格式如 ["07/07", "07/14"] 的目標排班日期
+  bookedElsewhere: Record<string, string[]> = {},
 ): Shift[] {
   if (data.length === 0) return [];
 
@@ -418,6 +439,7 @@ export function parseScheduleResponsesData(
     // --- Inner helpers (closures over this week's state) ---
     const canAssign = (name: string, loc: string): boolean => {
       if (assigned.has(name) || name === restingFT) return false;
+      if (bookedElsewhere[date]?.includes(name)) return false;
       if (backfillLeaderList.includes(name)) return false; // handled in post-processing
       if (effectiveFullTimers.includes(name)) return true;
       return locationAvailability[field][loc]?.includes(name) ?? false;
@@ -472,8 +494,8 @@ export function parseScheduleResponsesData(
       else szAssign['導播'] = '缺';
     }
 
-    // --- Step 3: 山莊其他職位 (含偏好 + 彈性度加分) ---
-    for (const role of ['平面', ...CAM_ROLES, 'AD']) {
+    // --- Step 3: 山莊職位依業務優先順序補齊 ---
+    for (const role of ['平面', 'CAM1', 'CAM2', 'CAM3', '網路導播', 'CAM4', 'AD']) {
       let bestPerson = '';
       let bestScore = -100;
       const candidates = new Set([...(locationAvailability[field]['山莊'] || []), ...effectiveFullTimers]);
@@ -503,7 +525,9 @@ export function parseScheduleResponsesData(
         if (eligible <= 1) score += 5;
         else if (eligible <= 2) score += 2;
 
-        if (score > bestScore) { bestScore = score; bestPerson = name; }
+        if (score > bestScore || (score === bestScore && name.localeCompare(bestPerson, 'zh-Hant') < 0)) {
+          bestScore = score; bestPerson = name;
+        }
       }
 
       if (bestPerson) recordAssignment(bestPerson, role, '山莊');
@@ -637,8 +661,8 @@ function buildOverrides(
 
     const personPrefs = prefs[person]?.[field];
 
-    // 沒有偏好設定、或為導播/AD 職位 → 不視為違規
-    if (!personPrefs || personPrefs.size === 0 || role === '導播' || role === 'AD') {
+    // 沒有偏好設定或為導播職位 → 不視為違規
+    if (!personPrefs || personPrefs.size === 0 || role === '導播') {
       overrides[role] = false;
       continue;
     }
@@ -646,7 +670,7 @@ function buildOverrides(
     // 偏好與分配一致 → 不違規
     const matchesPreference =
       (role === '平面' && personPrefs.has('平面')) ||
-      (CAM_ROLES.includes(role) && personPrefs.has('攝影'));
+      ((CAM_ROLES.includes(role) || role === 'AD' || role === '網路導播') && personPrefs.has('攝影'));
 
     overrides[role] = !matchesPreference;
   }

@@ -62,7 +62,7 @@ const COLLECTIONS = {
 
 /** 安全清理 Document ID（移除斜線等非法字元） */
 function sanitizeDocId(id: string): string {
-  return id.replace(/[\/\s]/g, '_').trim();
+  return id.replace(/[/\s]/g, '_').trim();
 }
 
 // =============================================================================
@@ -95,6 +95,7 @@ export async function fetchVolunteers(): Promise<ApiResultWithData<SheetRow[]>> 
         'Avatar': data.pictureUrl || '',
         'Birthday': data.birthday || '',
         'D_Skill': String(vs.director ?? vs['導播'] ?? 0),
+        'NetworkDirector_Skill': String(vs.networkDirector ?? vs['網路導播'] ?? 0),
         'AD_Skill': String(vs.ad ?? vs['AD'] ?? 0),
         'Photo_Skill': String(vs.photo ?? vs['平面'] ?? 0),
         'Cam1_Skill': String(vs.cam1 ?? vs['CAM1'] ?? 0),
@@ -105,6 +106,7 @@ export async function fetchVolunteers(): Promise<ApiResultWithData<SheetRow[]>> 
 
       // 附加原生結構物件
       (row as any).name = data.name || d.id;
+      (row as any).volunteerId = d.id;
       (row as any).userLevel = data.userLevel || 'user';
       (row as any).jobTitles = data.jobTitles || [];
       (row as any).skillRoles = data.skillRoles || [];
@@ -112,8 +114,10 @@ export async function fetchVolunteers(): Promise<ApiResultWithData<SheetRow[]>> 
       (row as any).birthday = data.birthday || '';
       (row as any).isFullTimer = Boolean(data.isFullTimer);
       (row as any).isBackfillLeader = Boolean(data.isBackfillLeader);
+      (row as any).managedTeams = Array.isArray(data.managedTeams) ? data.managedTeams : [];
       (row as any).videoSkills = {
         director: vs.director ?? vs['導播'] ?? 0,
+        networkDirector: vs.networkDirector ?? vs['網路導播'] ?? 0,
         ad: vs.ad ?? vs['AD'] ?? 0,
         photo: vs.photo ?? vs['平面'] ?? 0,
         cam1: vs.cam1 ?? vs['CAM1'] ?? 0,
@@ -167,7 +171,7 @@ export async function addNewVolunteer(payload: {
     }
 
     const defaultVideoSkills = payload.videoSkills || {
-      director: 0, ad: 0, photo: 0, cam1: 0, cam2: 0, cam3: 0, cam4: 0
+      director: 0, networkDirector: 0, ad: 0, photo: 0, cam1: 0, cam2: 0, cam3: 0, cam4: 0
     };
     const defaultAudioSkills = payload.audioSkills || {
       ih_xj: 0, ih_sz: 0, ob_xj: 0, ob_sz: 0
@@ -272,7 +276,7 @@ export async function registerNewVolunteer(payload: NewVolunteerPayload): Promis
       userLevel: 'user',
       jobTitles: [],
       skillRoles: [],
-      videoSkills: { director: 0, ad: 0, photo: 0, cam1: 0, cam2: 0, cam3: 0, cam4: 0 },
+      videoSkills: { director: 0, networkDirector: 0, ad: 0, photo: 0, cam1: 0, cam2: 0, cam3: 0, cam4: 0 },
       lightLevel: 1,
       stageLevel: 1,
       audioSkills: { ih_xj: 0, ih_sz: 0, ob_xj: 0, ob_sz: 0 },
@@ -324,6 +328,7 @@ export async function updateUser(payload: {
   pictureUrl?: string;
   avatar?: string;
   birthday?: string;
+  managedTeams?: string[];
 }): Promise<ApiResult> {
   try {
     const oldDocId = sanitizeDocId(payload.oldName.trim());
@@ -344,6 +349,7 @@ export async function updateUser(payload: {
       jobTitles: cleanJobTitles,
       userLevel: payload.userLevel,
       pictureUrl: payload.pictureUrl || payload.avatar || '',
+      managedTeams: Array.isArray(payload.managedTeams) ? payload.managedTeams.map(toTeamKey).filter(Boolean) : [],
       updatedAt: serverTimestamp(),
     };
     if (payload.birthday !== undefined) {
@@ -371,7 +377,7 @@ export async function updateUser(payload: {
   }
 }
 
-/** 更新影視義工 7 軸技能評分 (videoSkills) 及特殊機制角色 */
+/** 更新影視義工 8 軸技能評分 (videoSkills) 及特殊機制角色 */
 export async function updateVolunteerVideoSkills(payload: {
   name: string;
   skills?: Record<string, number>;
@@ -384,21 +390,20 @@ export async function updateVolunteerVideoSkills(payload: {
     const docRef = doc(db, COLLECTIONS.VOLUNTEERS, docId);
 
     const inputSkills = payload.videoSkills || payload.skills || {};
-    const cleanVideoSkills: Record<string, number> = {
-      director: 0, ad: 0, photo: 0, cam1: 0, cam2: 0, cam3: 0, cam4: 0
-    };
+    const cleanVideoSkills: Record<string, number> = {};
 
     Object.entries(inputSkills).forEach(([key, val]) => {
-      const enKey = (REVERSE_VIDEO_SKILL_MAP[key] || key.toLowerCase()) as VideoSkillKey;
+      const enKey = (REVERSE_VIDEO_SKILL_MAP[key] || key) as VideoSkillKey;
       if (VIDEO_SKILL_KEYS.includes(enKey)) {
         cleanVideoSkills[enKey] = Math.max(0, Math.min(10, Number(val) || 0));
       }
     });
 
-    const updateData: Record<string, any> = {
-      videoSkills: cleanVideoSkills,
-      updatedAt: serverTimestamp(),
-    };
+    // 逐軸更新，避免尚未更新的舊版前端抹掉第 8 軸。
+    const updateData: Record<string, any> = { updatedAt: serverTimestamp() };
+    Object.entries(cleanVideoSkills).forEach(([key, value]) => {
+      updateData[`videoSkills.${key}`] = value;
+    });
 
     if (payload.isFullTimer !== undefined) {
       updateData.isFullTimer = payload.isFullTimer;
@@ -407,7 +412,7 @@ export async function updateVolunteerVideoSkills(payload: {
       updateData.isBackfillLeader = payload.isBackfillLeader;
     }
 
-    await setDoc(docRef, updateData, { merge: true });
+    await updateDoc(docRef, updateData);
 
     return { success: true, message: '影視技能與角色設定更新成功！' };
   } catch (err: any) {
@@ -463,18 +468,24 @@ export async function updateVolunteerAudioSkills(payload: {
 export async function submitVolunteerForm(payload: {
   data: Record<string, string>;
   team?: string;
+  cycleId?: string;
+  volunteerId?: string;
 }): Promise<ApiResult> {
   try {
     const enTeam = toTeamKey(payload.team || 'video');
     const timestamp = payload.data['時間戳記'] || new Date().toISOString();
     const name = payload.data['姓名'] || '未知';
-    const docId = `${sanitizeDocId(enTeam)}_${sanitizeDocId(name)}_${new Date(timestamp).getTime() || Date.now()}`;
+    const cycleId = payload.cycleId || 'legacy';
+    const identity = payload.volunteerId || name;
+    const docId = `${sanitizeDocId(enTeam)}_${sanitizeDocId(cycleId)}_${sanitizeDocId(identity)}_${new Date(timestamp).getTime() || Date.now()}`;
 
     const docRef = doc(db, COLLECTIONS.FORM_RESPONSES, docId);
     await setDoc(docRef, {
       team: enTeam,
       name,
       timestamp,
+      cycleId,
+      volunteerId: payload.volunteerId || null,
       data: payload.data, // 包含 [9/7], [9/14] 等動態日期地點
       createdAt: serverTimestamp(),
     });
@@ -482,12 +493,12 @@ export async function submitVolunteerForm(payload: {
     return { success: true, message: '表單已成功提交' };
   } catch (err: any) {
     console.error('[submitVolunteerForm Error]:', err);
-    return { success: true, message: '表單已暫存於本地快取，連線時將自動送出' };
+    return { success: false, message: err?.message || '表單送出失敗，請確認網路後重新送出' };
   }
 }
 
 /** 讀取指定團隊的所有排班表單回覆 */
-export async function fetchFormResponsesFromCloud(team?: string): Promise<ApiResultWithData<Record<string, string>[]>> {
+export async function fetchFormResponsesFromCloud(team?: string, cycleId?: string): Promise<ApiResultWithData<Record<string, string>[]>> {
   try {
     const colRef = collection(db, COLLECTIONS.FORM_RESPONSES);
     const enTeam = toTeamKey(team || 'video');
@@ -502,6 +513,8 @@ export async function fetchFormResponsesFromCloud(team?: string): Promise<ApiRes
       const list: Record<string, string>[] = [];
       snap.forEach(d => {
         const val = d.data();
+        // 新資料一定標記週期；排班時只能取該週期，避免未來填報覆蓋上一期意願。
+        if (cycleId && val.cycleId !== cycleId) return;
         if (val.data && typeof val.data === 'object') {
           const item = { ...val.data };
           if (!item['姓名'] && val.name) item['姓名'] = val.name;
@@ -526,7 +539,7 @@ export async function fetchFormResponsesFromCloud(team?: string): Promise<ApiRes
     }
 
     // 2. 若 Firestore 尚無資料，嘗試從 Google Sheets 備份讀取
-    if (APPS_SCRIPT_URL) {
+    if (!cycleId && APPS_SCRIPT_URL) {
       const sheetRes = await fetchFromOldAppsScript<any>('fetchFormResponses', { team: zhTeam });
       if (sheetRes && sheetRes.success && Array.isArray(sheetRes.data) && sheetRes.data.length > 0) {
         // 同步回寫至 Firestore 供後續快速讀取
@@ -549,7 +562,7 @@ export async function fetchFormResponsesFromCloud(team?: string): Promise<ApiRes
     }
 
     // 3. 若為影視團隊且雲端無資料，回退至本地 CSV 示範資料
-    if (enTeam === 'video') {
+    if (enTeam === 'video' && import.meta.env.DEV && import.meta.env.VITE_ENABLE_DEMO_DATA === 'true') {
       try {
         const csvData = await fetchCSVAsJson('/schedule_responses.csv');
         if (csvData && csvData.length > 0) {
@@ -1010,4 +1023,3 @@ export async function autoMergeFinalSchedule(sheetName: string): Promise<FinalSc
 export async function syncOfflineForms(): Promise<void> {
   console.log('[Firebase] 離線快取與同步已由 Firestore SDK 自動管理');
 }
-

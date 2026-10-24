@@ -5,6 +5,7 @@ import type { Volunteer, Shift } from '../utils/scheduler';
 import { getCycleDates, getLastSundayOfCycle } from '../utils/dateUtils';
 import { UserAvatar } from './UserAvatar';
 import { toTeamName, toTeamKey, TEAM_DEFAULT_ROLES } from '../utils/constants';
+import { calculateMeals, displayAssignee } from '../utils/scheduleMeals';
 
 interface ApprovedVersion {
   timestamp: string;
@@ -52,7 +53,7 @@ function formatMMDD(d: Date): string {
 /** 根據職位回傳 icon */
 function getRoleIcon(role: string) {
   if (role.includes('CAM') || role === '平面') return <Camera size={16} />;
-  if (role === '導播' || role === '信息版') return <Video size={16} />;
+  if (role === '導播' || role === '網路導播' || role === '信息版') return <Video size={16} />;
   return <Sparkles size={16} />;
 }
 
@@ -600,7 +601,7 @@ function renderFullScheduleTable(
                       color: isMissing ? 'var(--text-missing)' : isMe ? 'var(--icon-accent)' : 'var(--text-primary)',
                       background: isMe ? 'rgba(234, 179, 8, 0.06)' : s.date === formatMMDD(getNextSunday()) ? 'rgba(234, 179, 8, 0.04)' : undefined,
                     }}>
-                      {val}{isMe && ' ⭐'}
+                      {displayAssignee(role, val, s, edits || {})}{isMe && ' ⭐'}
                     </td>
                   );
                 })}
@@ -652,15 +653,7 @@ function renderFullScheduleTable(
                   borderBottom: '1px solid var(--bg-table-border)',
                 }}>山莊早餐數量</td>
                 {locationShifts.map(s => {
-                  let active = 0;
-                  for (const r of allRoleKeys) {
-                    const p = getCellVal(s.date, r, s.assignments[r] || '缺');
-                    if (p && p !== '缺' && p !== '—' && p.trim() !== '') active++;
-                  }
-                  const sp1 = edits?.[`${locationName}|${s.date}|備用1`] || s.assignments?.['備用1'];
-                  if (sp1 && sp1.trim() !== '' && sp1 !== '缺' && sp1 !== '—') active++;
-                  const sp2 = edits?.[`${locationName}|${s.date}|備用2`] || s.assignments?.['備用2'];
-                  if (sp2 && sp2.trim() !== '' && sp2 !== '缺' && sp2 !== '—') active++;
+                  const active = calculateMeals(shifts, s.date, edits || {}).szBreakfast;
 
                   return (
                     <td key={s.date} style={{
@@ -683,15 +676,7 @@ function renderFullScheduleTable(
                     borderBottom: '1px solid var(--bg-table-border)',
                   }}>宣教早餐數量</td>
                   {locationShifts.map(s => {
-                    let active = 0;
-                    for (const r of allRoleKeys) {
-                      const p = getCellVal(s.date, r, s.assignments[r] || '缺');
-                      if (p && p !== '缺' && p !== '—' && p.trim() !== '') active++;
-                    }
-                    const sp1 = edits?.[`${locationName}|${s.date}|備用1`] || s.assignments?.['備用1'];
-                    if (sp1 && sp1.trim() !== '' && sp1 !== '缺' && sp1 !== '—') active++;
-                    const sp2 = edits?.[`${locationName}|${s.date}|備用2`] || s.assignments?.['備用2'];
-                    if (sp2 && sp2.trim() !== '' && sp2 !== '缺' && sp2 !== '—') active++;
+                    const active = calculateMeals(shifts, s.date, edits || {}).xjBreakfast;
 
                     return (
                       <td key={s.date} style={{
@@ -712,15 +697,7 @@ function renderFullScheduleTable(
                     borderBottom: '1px solid var(--bg-table-border)',
                   }}>宣教午餐數量</td>
                   {locationShifts.map(s => {
-                    let active = 0;
-                    for (const r of allRoleKeys) {
-                      const p = getCellVal(s.date, r, s.assignments[r] || '缺');
-                      if (p && p !== '缺' && p !== '—' && p.trim() !== '') active++;
-                    }
-                    const sp1 = edits?.[`${locationName}|${s.date}|備用1`] || s.assignments?.['備用1'];
-                    if (sp1 && sp1.trim() !== '' && sp1 !== '缺' && sp1 !== '—') active++;
-                    const sp2 = edits?.[`${locationName}|${s.date}|備用2`] || s.assignments?.['備用2'];
-                    if (sp2 && sp2.trim() !== '' && sp2 !== '缺' && sp2 !== '—') active++;
+                    const active = calculateMeals(shifts, s.date, edits || {}).xjLunch;
 
                     return (
                       <td key={s.date} style={{
